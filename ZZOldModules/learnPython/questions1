@@ -1,0 +1,13 @@
+123
+763822
+0.8934
+54.34
+'spam'
+"spam"
+"Wizard's hut"
+"G'day matey"
+[1, 54.45, [83, 'test']]
+["Let us go then", 'u', 'and i']
+{'color': 'red', 'taste': 'sour'}
+('Fire', 'in', 2, 8)
+myfile = open('my', 'test', 'files')

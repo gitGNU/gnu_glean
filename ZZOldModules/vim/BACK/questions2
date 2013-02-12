@@ -1,0 +1,20 @@
+Go to the beginning of the paragraph.
+Go to the end of the paragraph.
+Go to the beginning of the sentence.
+Go to the end of the sentence.
+Go to the beginning of the code block.
+Go to the end of the code block.
+Go to the beginning of the method.
+Go to the end of the method.
+Go to the beginning of the comment block.
+Go to the end of the comment block.
+Find next open block character.
+Go to the next occurence of a character 'n' (inclusive).
+Go to the next occurence of a character 'n' (exclusive).
+Go to the previous occurence of a character 'n' (inclusive).
+Go to the previous occurence of a character 'n' (exclusive).
+Search for the next occurence of 'pattern'.
+Search for the previous occurence of 'pattern'.
+Repeat the last search forward.
+Repeat the last search backward.
+Go to the line with the latest change.

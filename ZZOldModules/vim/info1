@@ -1,0 +1,14 @@
+#=================
+#  Introduction
+#=================
+help_title="Now... run."
+
+help_short="This is a continuation of the movement commands level."
+help_long="vim has over 40 movement commands. This may seem like a lot, but they are logically paired and well spread out over the keyboard. The enormous variety of movement commands allows you, once you know them, to move extremely quickly within a document.\nThe movement commands have been split into two bashcraft levels. In this continuation we will cover searching and block, bracket or sentence based movement."
+
+default_question="$question"
+
+#=================
+#  OPTIONS
+#=================
+shopt -u nocasematch

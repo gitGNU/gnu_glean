@@ -1,0 +1,9 @@
+<?xml version="1.1"?>
+<!-- Externel DocType declaration define each element and provide source  -->
+<!DOCTYPE greeting SYSTEM "hello.dtd">
+<!-- Internal DocType declarations  -->
+<!DOCTYPE greeting [
+<!ELEMENT greeting (#PCDATA)>
+]>
+<greeting>"Hello, World!"</greeting>
+

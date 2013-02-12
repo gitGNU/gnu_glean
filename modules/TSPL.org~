@@ -1,0 +1,6 @@
+* Commentary:
+An attempt to write a module in org-mode (plain text) to assess its feasibility.
+The module is based on R. Kent Dybvig's The Scheme Programming Language (need permission before publication).
+It will follow the individual chapters in its 'story mode', but will build on the reference section in Chapter 6.
+Guilecraft tags in this module represent the same procedure, asked about in different manners. 
+This module is hand-crafted.

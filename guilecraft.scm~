@@ -1,0 +1,14 @@
+#! /usr/bin/guile -s
+coding:utf-8
+!#
+
+;;; Launcher sets the loadpath to include guilecraft's 
+;;; modules and then launches a UI — currently cli-ui.
+;;; For now it simply adds the load-path and then 
+;;; activates a listener for hacking.
+
+(add-to-load-path "/home/alex/Projects/guilecraft/") ;location of guilecraft libs
+
+((@ (guilecraft boot) boot) (program-arguments))
+
+

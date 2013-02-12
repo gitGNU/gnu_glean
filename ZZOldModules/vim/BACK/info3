@@ -1,0 +1,18 @@
+#=================
+#  Introduction
+#=================
+help_title="Basic editing - adding, replacing and deleting"
+
+help_short="This level will teach you the basic editing commands."
+help_long="Now that you know how to move around a file we can introduce editing commands. Generally There are three kinds: adding, deleting and replacing. Most of the commands in this level are also compatible with counts.\nFor instance: x deletes the character under the cursor. If you wanted to delete the next 9 characterts you could use 9x."
+
+default_question="$question"
+
+#=================
+#  OPTIONS
+#=================
+shopt -u nocasematch
+
+# There are duplicate commands in this level that I need to enable:
+#+cc, C and S all do the same thing. Should be in one question.
+#+Other commands, like D, are equivalent to d$. This should be possible.

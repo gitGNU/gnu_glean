@@ -1,0 +1,10 @@
+#=================
+#  Introduction
+#=================
+help_title="Vim"
+help_short="The vim module teaches you vim keyboard commands."
+help_long="In this module you will be given a description of a command in vim. Your task is to enter the right sequence of key strokes to accomplish the task. For instance: Move the cursor one space to the right, would require you to press l."
+#=================
+#  OPTIONS
+#=================
+shopt -u nocasematch

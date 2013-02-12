@@ -1,0 +1,810 @@
+* A Journey Through a Guilecraft Game
+** Initialization
+1) Client -> Controller: (controller 'list-modules)
+   1) Controller -> Library: (request-module-list)
+      1) Library -> File-Server: (get-from-file-server 'scan-modules)
+      2) File-Server -> Library: list-of-modules
+   2) Library -> Controller: list-of-modules
+2) Controller -> Client: list-of-modules
+*** TODO introduce way to select user profile :roadmap:
+** First Question
+3) Client -> Controller: (controller 'generate-question module-name user-name level)
+   1) = Controller: module-name/user-name/level/
+   2) Controller -> Generator: (compile-question)
+      1) Generator -> Balancer: (request-tags)
+	 1) if 'tag-list empty: Balancer -> Controller: (request-current-module)
+	    1) Controller -> Balancer: current-module-name
+	    2) Balancer -> File-Server: (get-from-file-server 'balancer-data current-module-name)
+	    3) if File-Server data: File-Server -> Balancer: balancer-current-module-data
+	 2) Balancer -> Library: (request-current-tags-set)
+	    1) Library -> Controller: (request-current-module)
+	    2) Controller -> Library: current-module-name
+	       1) Library -> File-Server: (get-from-file-server 'load-module current-module-name)
+	       2) File-Server -> Library: rules, tag-streams, tag-list
+	       3) = Library: rules/tag-streams/tag-list/
+	 3) Library -> Balancer: tag-list
+	 4) = Balancer: tag-list/scores/schedules/
+      2) Balancer -> Generator: tag(s)
+      3) Generator -> Library: (request-question tag)
+      4) Library -> Generator: (question (stream-car (cdr tag-stream))) => question
+   3) Generator -> Controller: question
+4) Controller -> Client: question
+** First Evaluation
+5) Client -> Controller: (controller 'evaluate-answer answer)
+   1) Controller -> Evaluator: (evaluate-answer answer)
+      1) Evaluator -> Library: (request-solution-pattern-and-rules)
+      2) Library -> Evaluator: solution-pattern rules
+      3) = Evaluator: answer/solution-pattern/rules => evaluation
+      4) Evaluator -> Balancer: evaluation
+	 1. Balancer: (store-new-score)
+      5) Balancer -> Evaluator: evaluation
+   2) Evaluator -> Controller: evaluation
+6) Controller -> Client: evaluation
+7) Client -> Controller: (controller 'generate-question) => Restart above.
+** Back to Go
+Shortened Cycle now all data is loaded.
+* The Session Controller
+  :PROPERTIES:
+  :tangle:   ./controller.scm
+  :END:
+*** TODO Allow for a way to switch module, level: :roadmap:
+- in game for module? (change module and balancer gradually incorporates new tags?)
+- total reset: store current info, move on to new settings as if restarted.
+- Also: enable/disable additional module, to allow for learning several subjects at once.
+*** TODO Allow for a way to switch username :roadmap:
+- hard reset: save and restart.
+** Guile Documentation
+#+name: documentation
+#+begin_src scheme :shebang "#! /usr/bin/guile -s"
+  coding:utf-8
+  !#
+  ;;; Commentary:
+  
+  ;;; Controller acts as the interface between client-UIs and
+  ;;; the guilecraft modules/servers.
+  ;;; Benefit is that client UIs merely have to implement some,
+  ;;; or optionally, all, exported controller procedures, which
+  ;;; ensures backward compatibility of the UIs. On the other
+  ;;; hand, extensions to guilecraft can be made in the backend
+  ;;; without having to worry about implementing all necessary 
+  ;;; changes in the UIs.
+  ;;; Centralizing traffic through controller also allows for 
+  ;;; easier development of multiple simultaniously active clients
+  ;;; on one server, and reduces the amount of paths needed between
+  ;;; the lower level modules/servers.
+  ;;; It will risk creating a bottle-neck at controller, which might
+  ;;; have to be resolved by turning controller into a load-balancing
+  ;;; server, and letting session management occur further down, in
+  ;;; an as yet non-existing layer.
+    
+  ;;; Code:
+#+end_src
+** Module Definition
+#+name: module-definition
+#+BEGIN_SRC scheme  
+  (define-module (guilecraft controller)
+    #:export (controller)                 ; by client
+    #:use-module (guilecraft generator)   ; for compile-question
+    #:use-module (guilecraft evaluator)   ; for request-evaluation
+  )
+  #+END_SRC
+** Session Manager
+*** Introduction
+Users interact with Guilecraft through a client. To facilitate the easy development of multiple different clients, Guilecraft channels this interaction through Controller. Controller is the single point of entry and exit for data — it accepts commands from the client and returns Guilecraft data.
+*** Code
+**** TODO integrate request-evaluation @ Evaluator :basic:
+**** Enable profile selection
+**** Enable module selection
+**** Enable Level Selection (intelligent?)
+**** Code:
+#+name: controller
+#+BEGIN_SRC scheme  
+  (define (controller command . parameters)
+      (let ((profile "atheia")
+            (module "guile")
+            (level 1))
+        (cond ((eqv? command 'generate-question)
+               (compile-question))        ;from Generator
+              ((eqv? command 'evaluate-answer)
+               (request-evaluation (car parameters))))))
+  #+END_SRC
+     
+** Old Functions
+*** Request Challenge
+This is now superseded: question selection is entirely handled by the Generator, which merely returns the value of question through request question above. 
+(define (request-challenge)
+  "Procedure to return a question to a requesting client.
+No input is necessary at this stage."
+  (request-question 			; From Library
+   (problem-ID-store			; From .here.
+    (choose-problem problems))))	; From Generator
+
+*** Problem ID Store
+This is now superseded because controller is no longer used to store the problem ID. This is handled by the streams in the library.
+;;; choose-problem in request-challenge returns a problem-ID 
+;;; which is then needed by request-evaluation:
+(define (problem-ID-store problem-ID)
+  "Procedure which stores problem-ID in use for future reference, or releases it.
+To store, invoke with 'store as the first argument and the problem-ID as the second argument.
+To retrieve, invoke with 'retrieve as the first argument.
+In both cases problem-ID-store returns the problem-ID."
+  (if (>= problem-ID 0)
+      (begin
+	(set! ID problem-ID)		; Change global state
+	ID)				; Return new global state
+      ID))				; Return old global state
+
+*** Request Evaluation
+This is now located in Evaluator — controller merely calls it from evaluator and expects the result of evalution. This is the result of placing the problem-ID-store within the sphere of the library.
+(define (request-evaluation answer)
+  "Procedure to return #t or #f to the client upon being called with the user's answer. 
+
+This procedure would originally also return additional information, like the solution, explanation and links to education. This is now conceived off as being handled by further queries from the client."
+  (ranking-put 				; From balancer
+   (problem-ID-store -1)		; From .here.
+   (if (correct-answer?			; From Evaluator
+	(problem-ID-store -1)		; From .here.
+	answer)				; From client
+       #t				; Evaluation for ranking-put
+       #f)))				; Evaluation for ranking-put
+	
+* The Generator
+  :PROPERTIES:
+  :tangle:   ./generator.scm
+  :END:
+** Guile Documentation
+#+name: documentation 
+#+BEGIN_SRC scheme :shebang "#! /usr/bin/guile -s"
+  coding:utf-8
+  !#
+  ;;; Commentary:
+  
+  ;;; Generator picks lowest ranking (weighting supplied by 
+  ;;; balancer) question from available problem IDs 
+  ;;; (supplied by library), or picks random if multiple 
+  ;;; lowest ranks. Returns question & meta info to UI.
+  ;;; Stores Problem-ID for query by Evaluator.
+  
+  ;;; Code:
+#+END_SRC
+** Module Definition
+#+name: module-definition
+#+BEGIN_SRC scheme  
+  (define-module (guilecraft generator)
+      #:export (compile-question)         ; by Controller
+      #:use-module (guilecraft balancer)  ; for request-tags
+      #:use-module (guilecraft library)   ; for request-question
+  )
+  #+END_SRC
+** Generator
+*** Introduction
+The role of the Generator is to obtain a question. In order to do so it obtains a list of tags from the Balancer, from which it then selects one at random (if necessary) and requests a corresponding question from the stream in the library.
+
+Compile Question:
+- first obtains a list of low-scoring or scheduled tags from Balancer, using its exported request-tags.
+- It then selects one of those tags, using Generator's select-tag.
+- Finally it obtains a question from library's tag-based streams using its exported request-question.
+It returns the result of this operation to its caller, normally Controller.
+*** Code
+**** TODO integrate request-question @ library :basic:
+**** TODO integrate request-tags @ balancer :basic:
+**** Compile Question
+#+name: compile question
+#+BEGIN_SRC scheme  
+  (define (compile-question)
+      "Procedure which algorithmically returns one question.
+  
+  No input is necessary for this activity."
+      (request-question              ;from Library
+       (select-tag                        ;from Here
+        (request-tags))))                 ;from Balancer
+  #+END_SRC
+** Select Tag
+*** Introduction
+Select Tag is a procedure to reduce a list containing one or more tags to only one tag, provided as a symbol.
+
+One can envisage this being done through a sophisticated algorithm. For now it is simply done by picking the first tag in the list.
+*** Code
+#+name: select-tag
+#+BEGIN_SRC scheme
+  (define (select-tag tag-list)
+    "Select exactly one tag from a list of tags.
+    
+    Input is normally a list of tags retrieved from the Balancer. Returns a single symbol that is a tag, normally used to activate a stream in the Library."
+      (car tag-list))
+  #+END_SRC
+** Old Functions
+*** Choose Problem
+This function has been significantly re-designed as a consequence of storing the current question through the use of streams in the Library.
+(define (choose-problem mylist)
+  "Procedure which algorithmically returns one of the lowest-ranking problem-IDs supplied via request-ranking.
+No input is necessary for this activity."
+  (car (request-ranked-ID mylist)))
+
+* The Balancer
+  :PROPERTIES:
+  :tangle:   ./balancer.scm
+  :END:
+*** TODO Balancer should be written to use a stream internally to generate the next set of lowest scoring tags. :architecture:
+** Guile Documentation
+#+name: documentation
+#+BEGIN_SRC scheme :shebang "#! /usr/bin/guile -s"  
+  coding:utf-8
+  !#
+    
+  ;;; Commentary:
+    
+  ;;; Balancer provides the cache of eligible problem IDs
+  ;;; to Generator. Generator then makes the final
+  ;;; selection.
+  ;;; Balancer maintains a rank for each possible question
+  ;;; which provides the ground for selection: the lower the
+  ;;; score, the more likely the question is picked.
+  ;;; The rank is revised after every player attempt at solving
+  ;;; the problem.
+  ;;; When no ranking exists Balancer obtains the initial set
+  ;;; of problem IDs from Library and assigns them a base rank.
+      
+  ;;; Code:
+#+END_SRC
+** Module Definition
+#+name: module-definition
+#+BEGIN_SRC scheme  
+  (define-module (guilecraft balancer)
+    #:export (request-tags                ; used by Generator
+              ranking-put)                ; used by Controller
+    #:use-module (guilecraft controller)  ; for request-current-module
+                                          ; No longer to be used: module name now passed as input to generator
+    #:use-module (guilecraft file-server) ; for restore-balancer-data
+                                          ; Not implemented yet
+    #:use-module (guilecraft library))    ; for librarian 'provide-tags access
+#+END_SRC
+** Request Tags: public access
+**** TODO integrate (librarian 'request-current-tag-set) @ library    :basic:
+**** TODO implement restore-balancer-data @ file-server :next:
+***** TODO integrate request-current-module @ controller
+
+*** Intro
+Request-tags is intended to return the list of tags that qualify equally for being used to generate a question using Library's tag-based question streams. The list of tags consists of the lowest, equal ranking tags.
+
+Characteristics to be taken into account for the ranking of tags:
+- the result of the evaluations of previously posed problems for the same tag: correct answers increase the rank; incorrect answers decrease the rank.
+- scheduling of tags: once a tag has reached a certain rank it will not be asked again, until a set date, at which point its rank will be dramatically reduced, resulting in its being used for question generation immediately once more.
+*** Code
+#+name: request-tags
+#+BEGIN_SRC scheme
+  (define (request-tags module-list)
+      "Initiate the rank table if necessary and call lowest-ranking-from-table to obtain a list of lowest ranking problems.
+  Request-tags needs a list of the modules currently played, and returns a list of the tags from those modules that score the lowest rank."
+      (let ((local-list '()))
+        (cond (or (not (eq? local-list module-list))
+                  (eq? rank-table '())
+               (populate-rank-table (librarian 'provide-tags module-list))
+               (lowest-ranking-from-table rank-table 0 5 (list)))
+              (else 
+               (lowest-ranking-from-table rank-table 0 5 (list))))))
+#+END_SRC
+** Helper Functions: initial population and retrieving the lowest ranking set
+#+name: populate-rank-table
+#+BEGIN_SRC scheme
+  (define (populate-rank-table tag-set)
+    "Procedure which initially populates the rank-table. It is pure side-effect, and could be called by a hook.
+    
+    populate-rank-table requires the set of problem-IDs which it will populate the table with, as well as a default rank to assign them with.
+    
+    Improvements:
+    - must be capable of restoring ranking across sessions -> data persistence
+    - currently state-ful solution: either call it through a hook or implement a functional solution."
+    (for-each (lambda (tag)      ; tag-set is split into its atoms: tags
+                (set! rank-table
+                      (acons tag 
+                             100 
+                             rank-table)))
+              tag-set))
+  
+#+END_SRC
+#+name: lowest-ranking-from-rank-table
+#+BEGIN_SRC scheme
+  (define (lowest-ranking-from-table 
+           rank-table          ; The state-based rank-table
+           tag-reference       ; The reference of tag currently examined
+           lowest-rank         ; The lowest rank so far
+           lowest-ranking-tag-set) ; The tags with the lowest rank so far
+    "Simple procedure to retrieve the question-IDs with the lowest rank from rank-table.
+    
+    Improvements:
+    - Implement a way to keep track of the current lowest rank: eliminates the need for searching the entire table recursively — instead we simply search it for any problem-IDs matching the lowest score. We could then substitute the complicated cond below for a simple map lowest-ranking? rank-table."
+    (if (= (length rank-table)
+           tag-reference)
+        lowest-ranking-tag-set
+        (cond ((= (cdr (list-ref 
+                        rank-table
+                        tag-reference)) 
+                  lowest-rank)
+               (lowest-ranking-from-table rank-table 
+                                          (+ tag-reference 1)
+                                          lowest-rank
+                                          (append lowest-ranking-tag-set (list (car (list-ref rank-table tag-reference))))))
+              ((< (cdr (list-ref 
+                        rank-table 
+                        tag-reference))
+                  lowest-rank)
+               (lowest-ranking-from-table rank-table
+                                          (+ tag-reference 1)
+                                          (cdr (list-ref rank-table tag-reference))
+                                          (list (car (list-ref rank-table tag-reference)))))
+              (else (lowest-ranking-from-table rank-table
+                                               (+ tag-reference 1)
+                                               lowest-rank
+                                               lowest-ranking-tag-set)))))
+#+END_SRC
+** Updating the rank-table
+*** Code:
+#+BEGIN_SRC scheme   
+  (define (ranking-put tag evaluation)
+    "Procedure to update the current ranking of a given problem-ID on the basis of the evaluation of the player's answer to the challenge.
+    
+    ranking-put requires the problem-ID that it will update and the result of the evaluation, with which it modifies the rank. It returns evaluation, as this function serves purely for its side-effect.
+    
+    Improvements:
+    - call ranking-put via a hook if I decide to use the state based approach: this would tidy the code.
+    - do away with ranking-put after devising a functional solution to problem-ID ranking."
+    (begin
+      (assq-set! rank-table 
+                 tag 
+                 (calculate-new-rank (assq-ref rank-table tag)  ; assq-ref returns the value of tag
+                                     evaluation))
+      evaluation))
+  
+  (define (calculate-new-rank rank-table-value evaluation)
+    "The actual algorithm used to obtain a new rank.
+    
+    calculate-new-rank requires a the key of a value in the rank-table and the result of the evaluation of the player's answer, and returns the new ranking for that key in the rank-table."
+    (cond (evaluation (+ rank-table-value 1))
+          (else (- rank-table-value 1))))
+#+END_SRC
+** State: rank-table
+Currently balancer uses a state variable, alist, to maintain its ranking:
+#+name: rank-table
+#+BEGIN_SRC scheme
+  (define rank-table (list))
+#+END_SRC
+* The Library
+    :PROPERTIES:
+    :tangle:   ./library.scm
+    :END:
+** Guile Documentation
+#+name: documentation
+#+begin_src scheme :shebang "#! /usr/bin/guile -s"
+    coding:utf-8
+    !#
+    
+    ;;; Commentary:
+    
+    ;; library handles all in-game module data. 
+    ;; Library stores in-game module and level data, 
+    ;; - requests information from fs handler on load
+    ;; - pushes information to fs handler for writing
+    ;; Is asked for info by question evaluator, weighting 
+    ;; system question generator.
+    
+    ;;; Code:
+#+end_src
+** Module Definition
+#+name: module-definition
+#+begin_src scheme
+  (define-module (guilecraft library)
+    #:export (librarian          ;used by Balancer, Generator, Evaluator
+              )
+    #:use-module (guilecraft data-types)
+    #:use-module (guilecraft file-server))
+  #+end_src
+** Librarian:
+Librarian is the exposed library module function. It is called with a COMMAND, and potentially with a parameter, if the command requires it.
+Librarian is a dispatcher, which then proceeds to execute the required functions that retrieve the requested information from the Library.
+#+name: librarian
+#+begin_src scheme
+  (define (librarian command . parameters)
+    "Scans an incoming request for @var{command} and invokes the correct procedure to resolve it.
+  
+  @var{parameters} must be:
+  - a tag, if the command is 'provide-question or 'provide-solution
+  - a module, if the command is 'build-library.
+  
+  'provide-tags is a thunk that simply returns all tags currently providing a stream within the library."
+    (cond ((provide-tags? command)
+           (retrieve-current-tag-set))
+          ((provide-question? command) 
+           (retrieve-current-question parameter))
+          ((provide-solution? command)
+           (retrieve-current-solution))
+          ((build-library? command)
+           (build-library parameter))
+          (else #f)))
+#+end_src
+Library provides the data for all things module. It provides:
+- a current list of active tags, through RETRIEVE-CURRENT-TAG-SET
+- one stream per active tag, providing through this an interface to problem data, sorted by tag.
+The streams are accessed by calling LIBRARIAN with with the PROVIDE-QUESTION or PROVIDE-SOLUTION commands, both of which require a tag as a parameter. Librarian will then call either RETRIEVE-CURRENT-QUESTION or RETRIEVE-CURRENT-SOLUTION to obtain data from the streams corresponding to the tag in question.
+Whenever new data needs to be added to the library, the BUILD-LIBRARY command is issued. It updates the list of active tags
+#+name: library
+#+BEGIN_SRC scheme  
+  (define (retrieve-current-tag-set)
+      '())
+#+END_SRC
+#+name: predicates
+#+BEGIN_SRC scheme
+    ;; Commands:
+    (define (provide-level? subject)
+      (eqv? 'provide-level subject))
+    (define (provide-tags? subject)
+      (eqv? 'provide-tags subject))
+    (define (provide-question? subject)
+      (eqv? 'provide-question subject))
+    (define (provide-solution? subject)
+      (eqv? 'provide-solution subject))
+    (define (build-library? subject)
+      (eqv? 'build-library subject))
+#+END_SRC
+** Library
+#+begin_src scheme
+  
+  (define (request-problem-ID-set mylist)
+    "Procedure used by Balancer to obtain the initial list of problem-IDs in use for the duration of this session. This list needs to be refreshed when a different module or level is chosen.
+  GAP IN LOGIC.
+  problem-IDs are simply the index to the list of problems in the problems holder problems below."
+    (create-list-ID-set (length mylist) 0 (list)))
+#+end_src
+
+#+begin_src scheme
+(define (create-list-ID-set list-length counter problem-ID-set)
+  (cond ((= counter list-length)
+	 problem-ID-set)
+	((create-list-ID-set list-length
+			      (+ counter 1)
+			      (append problem-ID-set (list counter))))))
+#+end_src
+
+#+begin_src scheme 
+(define (request-question problem-ID)
+  "Procedure used by Generator to obtain the question to ask the player after selecting one.
+List of suitable problem-IDs will have been provided to Generator by Balancer."
+  (question (list-ref problems problem-ID)))
+
+#+end_src
+
+#+begin_src scheme 
+(define (request-solution problem-ID)
+  "Procedure used by Evaluator to obtain the solution to the problem posed to the player after the player has attempted to answer thus.
+problem-ID is provided by Generator to Evaluator upon request, after which Evaluator requests the solution from Library."
+  (solution (list-ref problems problem-ID)))
+
+#+end_src
+
+** Library as a stream
+A new experiment is to let library provide sets of problems through a stream. This paves the way for providing 'dynamic problems', which describe the rules for generating problems rather than explicitly programming the individual problems. Using streams preserves the ability to use 'programmed' problems.
+#+name: stream-provider
+#+BEGIN_SRC scheme  
+  (define (stream-element-selector target-element state stream) 
+    "Pick an @var{target-element} that is a member of a @var{stream}.
+  Target element is essentially the index reference for the desired element of the stream."
+    (if (= state target-element)
+        (stream-car stream)
+        (stream-element-selector target-element (+ state 1) (stream-cdr stream))))
+  #+END_SRC
+** Old functions:
+   :PROPERTIES:
+   :tangle:   no
+   :END:
+#+begin_src scheme
+  
+  (define (request-problem-ID-set mylist)
+    "Procedure used by Balancer to obtain the initial list of problem-IDs in use for the duration of this session. This list needs to be refreshed when a different module or level is chosen.
+  GAP IN LOGIC.
+  problem-IDs are simply the index to the list of problems in the problems holder problems below."
+    (create-list-ID-set (length mylist) 0 (list)))
+#+end_src
+
+#+begin_src scheme
+(define (create-list-ID-set list-length counter problem-ID-set)
+  (cond ((= counter list-length)
+	 problem-ID-set)
+	((create-list-ID-set list-length
+			      (+ counter 1)
+			      (append problem-ID-set (list counter))))))
+#+end_src
+
+#+begin_src scheme 
+(define (request-tag problem-ID)
+  "Procedure used by Balancer to obtain the tags corresponding to the problem-IDs supplied to it by library through request-problem-ID-set. The tags are used to group problems together. Balancing scores are applied to tags rather than individual problems."
+  (tag (list-ref problems problem-ID)))
+
+#+end_src
+
+#+begin_src scheme 
+(define (request-question problem-ID)
+  "Procedure used by Generator to obtain the question to ask the player after selecting one.
+List of suitable problem-IDs will have been provided to Generator by Balancer."
+  (question (list-ref problems problem-ID)))
+
+#+end_src
+
+#+begin_src scheme 
+(define (request-solution problem-ID)
+  "Procedure used by Evaluator to obtain the solution to the problem posed to the player after the player has attempted to answer thus.
+problem-ID is provided by Generator to Evaluator upon request, after which Evaluator requests the solution from Library."
+  (solution (list-ref problems problem-ID)))
+
+#+end_src
+* The File Server
+  :PROPERTIES:
+  :tangle:   ./file-server.scm
+  :END:
+** Introduction
+The file server is supposed to act as an interface between guilecraft's internal data-structure and the persistent/backup data that is stored in XML format on the filesystem. Examples of data stored in the filesystem are:
+- modules (levels, problems, achievements)
+- user-serv (not implemented yet: user profile information such as authentication)
+- statistics (not implemented yet, but essential for the balancing algorithms and for user introspection)
+- user-profile (not implemented yet: user profile data that tracks module and learning progress and ties achievements to profiles)
+All xml/sxml processing takes place within the file-server.
+*** When is file-server used?
+Guilecraft is designed in such a way that files are only read from the file-server when absolutely necessary. This will either be when information is accessed for the first time (e.g. when the player has chosen a module to play, and that module has not previously been accessed by the running instance of Guilecraft).
+Selector components, for instance module-selection or profile-selection, always request a latest version from the file-server, to allow for revisions of loaded modules or profiles.
+*** Guilecraft is non-destructive
+Guilecraft is written in the functional paradigm and is non-destructive in relation to data it stores on the file-system. 
+- Cleaning functions need to be provided, to remove 'obsolete' data as and when required, without threatening the capabilities of Guilecraft (rollback, looking back in history, etc.).
+- file-server needs to have a means of establishing what 'version' of the files it is accessing it needs to access. By default file-server will always work with the 'current' version, that is the latest version available. A method must be provided to fall-back to prior versions.
+- this method is likely to be a system of symlinks.
+** Module definition
+  :PROPERTIES:
+  :tangle:   ./file-server.scm
+  :END:
+#+name: file-server-definition
+#+begin_src scheme :shebang "#! /usr/bin/guile -s"
+  coding:utf-8
+  !#
+
+  (define-module (guilecraft file-server)
+    #:export (get-from-file-server)
+    #:use-module (sxml ssax))
+  #+end_src
+** Entrance — get-from-file-server, put-on-file-server and select-from-file-server:
+  :PROPERTIES:
+  :tangle:   ./file-server.scm
+  :END:
+All queries to the file-server enter through one of three functions:
+- [[get-from-file-server]]
+- [[put-on-file-server]]
+- [[select-from-file-server]]
+*** get-from-file-server
+Gffs calls procedures within this module as needed in order to return a guile data-type (probably in the form of vlists) to the caller. 
+The first task to be carried out by gffs is to correlate the provided "what" symbol with a filesystem path. To this end gffs calls resolve-path, which in turn should call gffs, this time with a path in "what's" place.
+Gffs is then able to call get-data with a path to actually retrieve the data and have it return the data-type to return to the file-server caller.
+#+name: get-from-file-server
+#+begin_src scheme
+  (define (get-from-file-server what . who)
+    "Exported function returning the contents of an xml guilecraft config file in sxml.
+  
+  Requires a recognised target to fetch, as symbol from a list, and, depending on the target, a further argument that specifies the sub-location to fetch.
+  
+  get-from-file-server returns the data requested or 'fail"
+    (cond ((not (eqv? '() who))
+           (resolve-path what who))
+          ((symbol? what)
+           (resolve-path what))
+          (else (get-data what))))
+#+end_src
+**** get-data
+get-data actually opens a file as input port and calls the ssax xml parser on the file and returns an sxml list. As expected it exits on error.
+
+The only responsibility of get-data is to return the list, so it can be passed back to the component that requested file-system information. That component then needs to analyse the returned list and convert it into data it can use.
+
+The benefit is that get-data does not need to concern itself with the Guilecraft internal representation of component objects, and conversely, the internal components need not concern themselves with the file-system or sxml.
+
+#+name: get-data
+#+begin_src scheme
+  (define (get-data uri)
+    "requires uri to Guilecraft XML file, returns a list with the elements of that file."
+    (xml->sxml (open-input-file uri)))
+#+end_src
+*** put-on-file-server
+Pofs is the persistent data saving component of Guilecraft. It should require a Guile data-type (probably vlist) a "what" symbol and, depending on "what" is being saved, a "who" symbol.
+#+name: put-on-file-server
+#+begin_src scheme
+  (define (put-on-file-server data what . who)
+    "put-on-file-server stores DATA as WHAT on the filesystem. WHAT and WHO are used to determine the path of the xml file in which the data is to be stored.
+  
+  Put-on-file-server is called for its side-effect. It returns 'success or 'fail.")
+#+end_src 
+*** select-from-file-server
+sffs fulfills two roles:
+- it provides data that can be used by interfaces to provide menus to users
+- it makes Guilecraft aware of newer versions of data stored on the file-system, thus allowing in-session dynamic re-loading of data.
+*** Helper functions
+This section details a number of helper functions that are used by the root functions described above.
+**** resolve-path
+rp expects a WHAT symbol and returns the associated path.
+When the WHAT symbol is module or user the additional symbol WHO is employed to establish the full path to be returned.
+#+name: resolve-path
+#+begin_src scheme
+  (define (resolve-path what . who)
+  "Generates the appropriate URI for get-data to import the file's XML as SXML.
+  "
+    (cond ((eqv? what 'user-serv)
+           "users/user-serv.xml")
+          ((eqv? what 'statistics)
+           "statistics/statistics.xml")
+          ((not (eqv? '() who))
+           (cond ((eqv? what 'module)
+                  (string-append "modules/" (symbol->string (car who)) "/module.xml"))
+                 ((eqv? what 'user-profile)
+                  (string-append "modules/" (symbol->string (car who)) "/user.xml"))
+                 (else 'who-but-not-what)))
+          (else 'not-a-recognised-symbol)))
+#+end_src
+* The Data Types
+  :PROPERTIES:
+  :tangle:   ./data-types.scm
+  :END:
+** Guile Documentation
+First, the documentation segment, which serves to create the basic live documentation which can be called whilst hacking guilecraft, by calling (help (guilecraft data-types)).
+#+name: documentation
+#+begin_src scheme :shebang "#! /usr/bin/guile -s"
+  coding:utf-8
+  !#
+  
+  ;;; Commentary:
+  
+  ;; Data-types defines the creators and selectors
+  ;; used throughout guilecraft. It is loaded by
+  ;; all other modules.
+  
+  ;;; Code:
+#+end_src
+** Module Definition
+Then, exporting the data types to be used throughout the rest of guilecraft. Not all data-types are exported as many of the basic types are only used by the procedures used to create the more advanced data-types.
+#+name: module-definition
+#+begin_src scheme
+  (define-module (guilecraft data-types)
+    #:export (make-gc-module
+              make-level
+              make-problem
+              make-question
+              make-solution
+              make-tag
+              gc-module?
+              level?
+              problem?
+              question?
+              solution?
+              tag?
+              level
+              problem
+              question
+              solution
+              tag
+              type
+              content))
+  #+end_src
+** Creators
+*** Question
+#+name: question-creator
+#+begin_src scheme 
+(define (make-question content)
+  "Fundamental data type."
+  (cons 'question content)) 
+#+end_src
+
+*** Solution
+#+name: solution-creator
+#+begin_src scheme
+(define (make-solution content)
+  "Fundamental data type carrying the value of the right answer for a problem."
+  (cons 'solution content)) 
+#+end_src
+*** Tag
+#+name: tag-creator
+#+begin_src scheme
+(define (make-tag content)
+  "Fundamental data-type carrying meta-data about a problem, allowing problems to be grouped by problem area.
+
+Example: two problems, (+ 2 2) and (+ 7 10), might both have the tag 'addition, as both are instances of that operation."
+  (cons 'tag content)) 
+#+end_src
+*** Problems
+**** Open Problems
+#+name: open-problem-creator
+#+begin_src scheme
+  (define (make-open-problem question solution tag)
+    "Open-problem compound data-type creator. 
+  Open problems are a type of problem. Problems are the fundamental data-type used in interactions with users. At heart they consist of a question, a solution and a tag for grouping different problems together. Problems are subsumed within levels and modules in turn."
+    (list 'problem question solution tag))
+#+end_src
+*** Level
+#+name: level-creator
+#+begin_src scheme
+  (define (make-level . problems)
+    "Level compound data-type creator. 
+  Levels are logical groupings of problems for guilecraft. They consist of any number of problems which are combined to set a soft limit to the number of problems that are added to the balancing algorithm at any one time."
+    (cons 'level problems))
+#+end_src
+*** Module
+#+name: guilecraft-module-creator
+#+begin_src scheme
+  (define (make-gc-module . levels)
+    "Module compound data-type creator. 
+  Modules are the primary way by which sets of problems, through the grouping of levels, are linked into a whole in Guilecraft. Modules consist of any number of levels.
+Modules should be thought of as narrating devices which provide a context through which users can engage with study materials."
+    (cons 'module levels))
+ #+end_src
+** Selectors
+#+name: base-selectors
+#+begin_src scheme
+  (define (type guilecraft-base-data)
+    (car guilecraft-base-data))
+  (define (content guilecraft-base-data)
+    (cdr guilecraft-base-data))
+  #+end_src
+#+name: simple-selectors
+#+begin_src scheme
+  (define (question problem)
+    "Problem compound data-type caar selector."
+    (cadr problem))
+  
+  (define (solution problem)
+    "Problem compound data-type cdar selector."
+    (caddr problem))
+  
+  (define (tag problem)
+    "Problem compound data-type selector to read the tag.
+  Problems are grouped by tag, which allows for the ranking 
+  of problems as a group."
+   (cadddr problem))
+#+end_src
+#+name: compound-selectors
+#+begin_src scheme
+  (define (problem index level)
+    (if (> index (length (content level)))
+        'index-out-of-range
+        (list-ref level index)))
+  
+  (define (level index module)
+    (if (> index (length (content module)))
+        'index-out-of-range
+        (list-ref module index)))
+#+end_src
+** Predicates
+#+name: various-predicates
+#+begin_src scheme
+  (define (gc-module? obj)
+    "test whether @var{obj} is a guilecraft module"
+    (if (eqv? (type obj) 'module)
+        #t
+        #f))
+  (define (level? obj)
+    "test whether @var{obj} is a guilecraft level."
+    (if (eqv? (type obj) 'level)
+        #t
+        #f))
+  (define (problem? obj)
+    "test whether @var{obj} is a guilecraft problem."
+    (if (eqv? (type obj) 'problem)
+        #t
+        #f))
+  (define (question? obj)
+    "test whether @var{obj} is a guilecraft question"
+    (if (eqv? (type obj) 'question)
+        #t
+        #f))
+  (define (solution? obj)
+    "test whether @var{obj} is a guilecraft solution"
+    (if (eqv? (type obj) 'solution)
+        #t
+        #f))
+  (define (tag? obj)
+    "test whether @var{obj} is a guilecraft tag"
+    (if (eqv? (type obj) 'tag)
+        #t
+        #f))
+#+end_src
+

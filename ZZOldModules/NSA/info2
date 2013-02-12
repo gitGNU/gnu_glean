@@ -1,0 +1,6 @@
+help_title="And Now... The Proper Way!"
+
+help_short="Did you read the entire code word or only its first letter last level?\n"
+help_long="Now you will be asked to give the code word corresponding to a particular letter of the alphabet.\n(Only exact spelling will get you the points!)."
+
+default_question="What is the code word for $question?"

@@ -1,0 +1,19 @@
+Move one line up.
+Move one line down.
+Move one character to the right.
+Move one character to the left.
+Move to the beginning of the word.
+Move to the end of the word.
+Move to the end of the white space delimited word.
+Move to the next word.
+Move to next white space delimited word.
+Move to the end of the line.
+Move to the end of the screen line.
+Move to the beginning of the line.
+Move to the beginning of the screen line.
+Up one screen line.
+Down one screen line.
+Go to end of file.
+Go to beginning of file.
+Go to the first instance of the word below the cursor (definition).
+Go to the previous instance of the word below the cursor.

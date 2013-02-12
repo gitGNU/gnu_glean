@@ -1,0 +1,6 @@
+help_title="Short Words - How Is Your Touch-Typing?"
+
+help_short="Now you will be given short words to translate to ICAO code.\n"
+help_long="You will be asked how you would say a particular short word by using the right code words. However, we're still practising the code words, not their phonetics.\n(Separate each code word with a space to receive the points)."
+
+default_question="How would you say $question?"

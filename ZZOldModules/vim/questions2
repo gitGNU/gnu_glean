@@ -1,0 +1,19 @@
+Insert at cursor.
+Insert at the beginning of the line.
+Insert in column 1 of the line.
+Append after the cursor.
+Append at the end of the line.
+Open a blank line below cursor.
+Opena blank line above cursor.
+Replace character under cursor and exit insert mode.
+Insert at the cursor in overstrike mode.
+Delete (change) movement and enter insert mode.
+Replace entire line.
+Delete character under cursor and enter insert mode.
+Delete char under cursor.
+Delete char before cursor.
+Delete range of movement m.
+Delete current line (text moves up).
+Delete to the end of the line.
+Join the line below to the current.
+Append the line below to the end of current line.

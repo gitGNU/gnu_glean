@@ -1,0 +1,17 @@
+:split foo
+:vsplit foo
+:close
+:only
+Nctrl-Wctrl-W
+Nctrl-W+
+Nctrl-W-
+Nctrl-W_
+ctrl-WJ
+ctrl-WK
+ctrl-Wh
+ctrl-Wl
+ctrl-Wj
+ctrl-Wk
+:ls
+:buffer N
+:hide

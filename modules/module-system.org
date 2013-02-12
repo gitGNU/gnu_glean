@@ -1,0 +1,7 @@
+* Introduction
+The Guilecraft module system's backbone is the guilecraft.dtd XML document type definition. It sets out the format of valid Guilecraft module files, and any modules that work with Guilecraft will be parsed against this. Invalid module files will not be admitted.
+** TODO Link to guilecraft.dtd
+You can create new modules, or edit existing ones, either by directly editing the XML files (guilecraft -x module-name will provide you with an XML module file currently in use by Guilecraft), or by converting the resulting XML file to a markdown format that is convenient to you.
+In future Guilecraft is likely to support Emacs' org-mode, as Guilecraft was written through org's literate programming interface.
+** DTD Documentation
+For now, guilecraft.dtd is amply commented. In the near future we will use org-mode literate programming to describe the dtd.
