@@ -1,8 +1,8 @@
 ;;; -*- coding:utf-8 -*-
 
 (define-module (modules scheme)
-  :#use-module (guilecraft gmodules)
-  :#export (scheme))
+  #:use-module (guilecraft gmodules)
+  #:export (scheme))
 
 (define scheme 
   (make-gmodule "The Scheme Programming Language"

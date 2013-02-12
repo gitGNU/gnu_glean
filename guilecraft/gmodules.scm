@@ -24,12 +24,26 @@
   #:use-module (srfi srfi-9)
   #:export (make-gmodule
             gmodule?
-            gmodule-name
-            gmodule-version
-            gmodule-full-name
-            gmodule-description
-            gmodule-long-description
-            gmodule-license))
+            get-name
+            get-version
+            get-description
+            get-long-description
+	    get-creator
+	    get-find-out-more
+	    get-derivation-source
+	    get-parts
+            get-full-name
+
+	    gset?
+	    make-gset
+	    get-tag
+	    get-problems
+
+	    open-problem?
+	    make-open-problem
+	    get-challenge
+	    get-solution
+))
 
 ;;; Commentary:
 ;;;
