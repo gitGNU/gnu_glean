@@ -22,7 +22,9 @@
   ;; #:use-module (guix build-system)
   #:use-module (srfi srfi-1)
   #:use-module (srfi srfi-9)
-  #:export (make-gmodule
+  #:export (
+	    ;; gmodule record functions
+	    make-gmodule
             gmodule?
             get-name
             get-version
@@ -32,17 +34,24 @@
 	    get-find-out-more
 	    get-derivation-source
 	    get-parts
-            get-full-name
 
+	    ;; gset record functions
 	    gset?
 	    make-gset
 	    get-tag
 	    get-problems
 
+	    ;; open-problem record functions
 	    open-problem?
 	    make-open-problem
 	    get-challenge
 	    get-solution
+
+	    ;; helper functions
+            gmodule-full-name
+	    get-tags
+	    get-tag-problems
+	    assess-open-problem
 ))
 
 ;;; Commentary:
@@ -189,3 +198,27 @@ to maximise the resilience of the superstructure against low-level changes."
     (if (equal? player-answer open-problem-solution)
 	#t
 	#f)))
+
+
+(define get-gmodule-tags 
+  (lambda (gmodule)
+    (map get-tag (get-parts gmodule))))
+
+(define get-tag-problems
+  (lambda (gset-tag gmodule)
+    (define helper
+      (lambda (gset-tag gmodule-tag-list)
+	(cond ((null? gmodule-tag-list)
+	       '())
+	      ((eq? gset-tag (get-tag (car gmodule-tag-list)))
+	       (get-problems (car gmodule-tag-list)))
+	      (else (helper gset-tag (cdr gmodule-tag-list))))))
+    (helper gset-tag (get-parts gmodule))))
+
+(define get-tag-challenges
+  (lambda (gset-tag gmodule)
+    (map get-challenge (get-tag-problems gset-tag gmodule))))
+
+(define get-tag-solutions
+  (lambda (gset-tag gmodule)
+    (map get-solution (get-tag-problems gset-tag gmodule))))
