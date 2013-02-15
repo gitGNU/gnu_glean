@@ -1,25 +1,6 @@
 ;;; guilecraft --- Nix package management from Guile.         -*- coding: utf-8 -*-
-;;; Copyright (C) 2012 Ludovic Courtès <ludo@gnu.org>
-;;;
-;;; This file is part of guilecraft.
-;;;
-;;; guilecraft is free software; you can redistribute it and/or modify it
-;;; under the terms of the GNU General Public License as published by
-;;; the Free Software Foundation; either version 3 of the License, or (at
-;;; your option) any later version.
-;;;
-;;; guilecraft is distributed in the hope that it will be useful, but
-;;; WITHOUT ANY WARRANTY; without even the implied warranty of
-;;; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-;;; GNU General Public License for more details.
-;;;
-;;; You should have received a copy of the GNU General Public License
-;;; along with guilecraft.  If not, see <http://www.gnu.org/licenses/>.
 
 (define-module (guilecraft gmodules)
-  ;; #:use-module (guix utils)
-  ;; #:use-module (guix store)
-  ;; #:use-module (guix build-system)
   #:use-module (srfi srfi-1)
   #:use-module (srfi srfi-9)
   #:export (
@@ -34,12 +15,17 @@
 	    get-find-out-more
 	    get-derivation-source
 	    get-parts
+	    get-gmodule-tags
+            get-gmodule-full-name
 
 	    ;; gset record functions
 	    gset?
 	    make-gset
 	    get-tag
 	    get-problems
+	    get-tag-problems
+	    get-tag-challenges
+	    get-tag-solutions
 
 	    ;; open-problem record functions
 	    open-problem?
@@ -47,11 +33,11 @@
 	    get-challenge
 	    get-solution
 
-	    ;; helper functions
-            gmodule-full-name
-	    get-tags
-	    get-tag-problems
-	    assess-open-problem
+	    ;; temp helper functions
+	    assess-open-problem?
+	    eq-open-problem?
+	    generate-tag-solution
+	    generate-tag-challenge
 ))
 
 ;;; Commentary:
@@ -85,17 +71,19 @@
   (parts get-parts)                 ; list of variables
 )
 
-;; (set-record-type-printer! 
-;;  <gmodule>
-;;  (lambda (gmodule port)
-;;    (format port "#<gmodule ~a-~a ~a:~a ~a>"
-;;            (get-name gmodule)
-;;            (get-version gmodule)
-;;            (get-description gmodule))))
+;;;
+;; Gmodule Helper Functions
+;;;
 
-(define (gmodule-full-name gmodule)
-  "Return the full name of GMODULE--i.e., `NAME-VERSION'."
-  (string-append (get-name gmodule) "-" (get-version gmodule)))
+(define get-gmodule-full-name 
+  (lambda (gmodule)
+  "Return the full name of GMODULE--i.e., `NAME — version VERSION'."
+    (string-append (get-name gmodule) " — version " (get-version gmodule))))
+
+(define get-gmodule-tags 
+  (lambda (gmodule)
+    "Return the tags in use in a given guilecraft module."
+    (map get-tag (get-parts gmodule))))
 
 
 ;; Accreditation: Give creds where they are due
@@ -105,9 +93,9 @@
   ;; The current maintainer of the module
   (current-creator get-current-creator)           ; string
   ;; Honor past work
-  (past-creator    get-past-creator)              ; string
+  (past-creator get-past-creator)              ; string
   ;; regular contributor
-  (contributor     get-contributor))              ; string
+  (contributor get-contributor))              ; string
 
 ;; Background Information: materials for self-directed
 ;; study or reference to origin of module.
@@ -117,11 +105,11 @@
   ;; Organization, group or person associated with resource
   (identity get-identity)
   ;; Reading: websites, books, pamphlet, etc.
-  (reading  get-reading)
-  (video    get-video)
-  (audio    get-audio)
+  (reading get-reading)
+  (video get-video)
+  (audio get-audio)
   ;; Regular haunts: meetups, #channels, etc.
-  (venue    get-venue))
+  (venue get-venue))
 
 ;;; 
 ;; Define gsets
@@ -150,6 +138,35 @@
   (problems get-problems)             ; list of <problems>
   )
 
+
+(define get-tag-problems
+  (lambda (gset-tag gmodule)
+    "Return the challenge/solution pairs subsumed under TAG in a given GMODULE.
+
+get-tag-problems searches gmodule parts and returns '() or the problems subsumed within a tag within a module."
+    (define helper
+      (lambda (gset-tag gmodule-tag-list)
+	(cond ((null? gmodule-tag-list)
+	       '())
+	      ((eq? gset-tag (get-tag (car gmodule-tag-list)))
+	       (get-problems (car gmodule-tag-list)))
+	      (else (helper gset-tag (cdr gmodule-tag-list))))))
+    (helper gset-tag (get-parts gmodule))))
+
+;;;
+;; Gset Helper Functions
+;;;
+
+(define get-tag-challenges
+  (lambda (gset-tag gmodule)
+    "Return the challenges subsumed within a tag in a given guilecraft module."
+    (map get-challenge (get-tag-problems gset-tag gmodule))))
+
+(define get-tag-solutions
+  (lambda (gset-tag gmodule)
+    "Return the solutions subsumed within a tag in a given guilecraft module."
+    (map get-solution (get-tag-problems gset-tag gmodule))))
+
 ;;;
 ;; Define Problems
 ;;;
@@ -168,7 +185,6 @@
 ;;
 ;; Problems should also be able to provide their challenges using
 ;; different media types: text, audio, video.
-
 
 ;; Open-problem: an individual problem record of the open problem
 ;; variety.
@@ -199,26 +215,34 @@ to maximise the resilience of the superstructure against low-level changes."
 	#t
 	#f)))
 
+(define generate-tag-challenge
+  (let ([next-challenges #f])
+    (lambda (gset-tag gmodule)
+      "Returns the first challenge in subsumed within a gset, with GSET-TAG in GMODULE. Every subsequent call cycles and returns through the list of challenges."
+      (cond ((not next-challenges)
+	     (begin 
+	       (set! next-challenges (get-tag-challenges gset-tag gmodule))
+	       (car next-challenges)))
+	    (else (begin
+		    (set! next-challenges (cdr next-challenges))
+		    (cond ((null? next-challenges)
+			   (begin
+			     (set! next-challenges (get-tag-challenges gset-tag gmodule))
+			     (car next-challenges)))
+			  (else (car next-challenges)))))))))
 
-(define get-gmodule-tags 
-  (lambda (gmodule)
-    (map get-tag (get-parts gmodule))))
-
-(define get-tag-problems
-  (lambda (gset-tag gmodule)
-    (define helper
-      (lambda (gset-tag gmodule-tag-list)
-	(cond ((null? gmodule-tag-list)
-	       '())
-	      ((eq? gset-tag (get-tag (car gmodule-tag-list)))
-	       (get-problems (car gmodule-tag-list)))
-	      (else (helper gset-tag (cdr gmodule-tag-list))))))
-    (helper gset-tag (get-parts gmodule))))
-
-(define get-tag-challenges
-  (lambda (gset-tag gmodule)
-    (map get-challenge (get-tag-problems gset-tag gmodule))))
-
-(define get-tag-solutions
-  (lambda (gset-tag gmodule)
-    (map get-solution (get-tag-problems gset-tag gmodule))))
+(define generate-tag-solution
+  (let ([next-solutions #f])
+    (lambda (gset-tag gmodule)
+      "Returns the first solution in subsumed within a gset, with GSET-TAG in GMODULE. Every subsequent call cycles and returns through the list of solutions."
+      (cond ((not next-solutions)
+	     (begin 
+	       (set! next-solutions (get-tag-solutions gset-tag gmodule))
+	       (car next-solutions)))
+	    (else (begin
+		    (set! next-solutions (cdr next-solutions))
+		    (cond ((null? next-solutions)
+			   (begin
+			     (set! next-solutions (get-tag-solutions gset-tag gmodule))
+			     (car next-solutions)))
+			  (else (car next-solutions)))))))))

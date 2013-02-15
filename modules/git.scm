@@ -60,7 +60,7 @@
 
 (define git-branch
   (make-gset 'git-branch
-	     `(,(make-open-problem "How would you branch your current project to create a new branch named 'experimantal'?"
+	     `(,(make-open-problem "How would you branch your current project to create a new branch named 'experimental'?"
 				  "git branch experimental")
 	       ,(make-open-problem "How can you tell what different branches exist as part of the same project?"
 				  "git branch")
