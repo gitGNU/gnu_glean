@@ -36,8 +36,9 @@
 	    ;; temp helper functions
 	    assess-open-problem?
 	    eq-open-problem?
-	    generate-tag-solution
-	    generate-tag-challenge
+	    next-tag-solution
+	    next-tag-challenge
+	    next-tag-problem
 ))
 
 ;;; Commentary:
@@ -70,21 +71,6 @@
   ;; 'Contents' of your gmodule: 'external' gmodules and 'internal' sets
   (parts get-parts)                 ; list of variables
 )
-
-;;;
-;; Gmodule Helper Functions
-;;;
-
-(define get-gmodule-full-name 
-  (lambda (gmodule)
-  "Return the full name of GMODULE--i.e., `NAME — version VERSION'."
-    (string-append (get-name gmodule) " — version " (get-version gmodule))))
-
-(define get-gmodule-tags 
-  (lambda (gmodule)
-    "Return the tags in use in a given guilecraft module."
-    (map get-tag (get-parts gmodule))))
-
 
 ;; Accreditation: Give creds where they are due
 (define-record-type <credit>
@@ -154,20 +140,6 @@ get-tag-problems searches gmodule parts and returns '() or the problems subsumed
     (helper gset-tag (get-parts gmodule))))
 
 ;;;
-;; Gset Helper Functions
-;;;
-
-(define get-tag-challenges
-  (lambda (gset-tag gmodule)
-    "Return the challenges subsumed within a tag in a given guilecraft module."
-    (map get-challenge (get-tag-problems gset-tag gmodule))))
-
-(define get-tag-solutions
-  (lambda (gset-tag gmodule)
-    "Return the solutions subsumed within a tag in a given guilecraft module."
-    (map get-solution (get-tag-problems gset-tag gmodule))))
-
-;;;
 ;; Define Problems
 ;;;
 
@@ -197,6 +169,35 @@ get-tag-problems searches gmodule parts and returns '() or the problems subsumed
   (solution get-solution)        ; String 
   ) 
 
+;;;
+;; Gset Helper Functions
+;;;
+
+(define get-tag-challenges
+  (lambda (gset-tag gmodule)
+    "Return the challenges subsumed within a tag in a given guilecraft module."
+    (map get-challenge (get-tag-problems gset-tag gmodule))))
+
+(define get-tag-solutions
+  (lambda (gset-tag gmodule)
+    "Return the solutions subsumed within a tag in a given guilecraft module."
+    (map get-solution (get-tag-problems gset-tag gmodule))))
+
+
+;;;
+;; Gmodule Helper Functions
+;;;
+
+(define get-gmodule-full-name 
+  (lambda (gmodule)
+  "Return the full name of GMODULE--i.e., `NAME — version VERSION'."
+    (string-append (get-name gmodule) " — version " (get-version gmodule))))
+
+(define get-gmodule-tags 
+  (lambda (gmodule)
+    "Return the tags in use in a given guilecraft module."
+    (map get-tag (get-parts gmodule))))
+
 ;; Helper Functions:
 (define assess-open-problem?
   (lambda (player-answer open-problem-solution)
@@ -215,34 +216,26 @@ to maximise the resilience of the superstructure against low-level changes."
 	#t
 	#f)))
 
-(define generate-tag-challenge
-  (let ([next-challenges #f])
-    (lambda (gset-tag gmodule)
-      "Returns the first challenge in subsumed within a gset, with GSET-TAG in GMODULE. Every subsequent call cycles and returns through the list of challenges."
-      (cond ((not next-challenges)
-	     (begin 
-	       (set! next-challenges (get-tag-challenges gset-tag gmodule))
-	       (car next-challenges)))
-	    (else (begin
-		    (set! next-challenges (cdr next-challenges))
-		    (cond ((null? next-challenges)
-			   (begin
-			     (set! next-challenges (get-tag-challenges gset-tag gmodule))
-			     (car next-challenges)))
-			  (else (car next-challenges)))))))))
+(define temp-profile
+  (let ([problem-counter 0]
+	[gmodule-variable git-gmodule]
+	[gset-tag 'git-branch])
+    (lambda (msg gset-tag gmodule-variable)
+      (cond ((eq? msg 'next-problem)
+	     (problem-interface get-tag-problems (+ problem-counter 1) gset-tag gmodule-variable))
+	    ((eq? msg 'current-problem)
+	     (problem-interface get-tag-problems problem-counter gset-tag gmodule-variable))
+	    ((eq? msg 'next-challenge)
+	     (problem-interface get-tag-challenges (+ problem-counter 1) gset-tag gmodule-variable))
+	    ((eq? msg 'current-challenge)
+	     (problem-interface get-tag-challenges problem-counter gset-tag gmodule-variable))
+	    ((eq? msg 'current-solution)
+	     (problem-interface get-tag-solutions problem-counter gset-tag gmodule-variable))))))
 
-(define generate-tag-solution
-  (let ([next-solutions #f])
-    (lambda (gset-tag gmodule)
-      "Returns the first solution in subsumed within a gset, with GSET-TAG in GMODULE. Every subsequent call cycles and returns through the list of solutions."
-      (cond ((not next-solutions)
-	     (begin 
-	       (set! next-solutions (get-tag-solutions gset-tag gmodule))
-	       (car next-solutions)))
-	    (else (begin
-		    (set! next-solutions (cdr next-solutions))
-		    (cond ((null? next-solutions)
-			   (begin
-			     (set! next-solutions (get-tag-solutions gset-tag gmodule))
-			     (car next-solutions)))
-			  (else (car next-solutions)))))))))
+(define problem-interface
+  (lambda (proc problem-counter gset-tag gmodule-variable)
+    "Returns the first challenge in subsumed within a gset, with GSET-TAG in GMODULE. Every subsequent call cycles and returns through the list of challenges."
+    (let ([list (proc gset-tag gmodule-variable)])
+      (cond ((> problem-counter (length list))
+	     (list-ref list (- (modulo problem-counter (length list)) 1)))
+	    (else (list-ref list (- problem-counter 1)))))))
