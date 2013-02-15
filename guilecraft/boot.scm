@@ -96,6 +96,11 @@ Options will be surrounded by square brackets if optional."
   "The main loop which calls challenges and expects answers, until the kill signal."
   (begin ;(gdisplay (controller 'generate-question))
 	 ;(gdisplay (controller 'evaluate-answer (read)))
+    (use-modules (guilecraft gmodules)
+		 (guilecraft gprofiles)
+		 (modules git)
+		 (profiles alex))
+
     (read)
     ))
 

@@ -11,5 +11,3 @@ coding:utf-8
 (add-to-load-path "/home/alex/Projects/guilecraft/") ;location of guilecraft libs
 
 ((@ (guilecraft boot) boot) (program-arguments))
-
-

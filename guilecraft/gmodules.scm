@@ -36,9 +36,10 @@
 	    ;; temp helper functions
 	    assess-open-problem?
 	    eq-open-problem?
-	    next-tag-solution
-	    next-tag-challenge
-	    next-tag-problem
+	    problem-interface
+	    get-tag-challenge
+	    get-tag-solution
+	    get-tag-problem
 ))
 
 ;;; Commentary:
@@ -218,7 +219,7 @@ to maximise the resilience of the superstructure against low-level changes."
 
 (define temp-profile
   (let ([problem-counter 0]
-	[gmodule-variable git-gmodule]
+	[gmodule-variable 'git-gmodule]
 	[gset-tag 'git-branch])
     (lambda (msg gset-tag gmodule-variable)
       (cond ((eq? msg 'next-problem)
@@ -237,8 +238,8 @@ to maximise the resilience of the superstructure against low-level changes."
     "Returns the first challenge in subsumed within a gset, with GSET-TAG in GMODULE. Every subsequent call cycles and returns through the list of challenges."
     (let ([list (proc gset-tag gmodule-variable)])
       (cond ((> problem-counter (length list))
-	     (list-ref list (- (modulo problem-counter (length list)) 1)))
-	    (else (list-ref list (- problem-counter 1)))))))
+	     (list-ref list (modulo problem-counter (length list))))
+	    (else (list-ref list problem-counter))))))
 
 (define get-tag-challenge
   (lambda (problem-counter gset-tag gmodule-variable)

@@ -3,9 +3,10 @@ coding:utf-8
 !#
 
 ;;; Launcher sets the loadpath to include guilecraft's 
-;;; modules and then launches a UI — currently cli-ui.
-;;; For now it simply adds the load-path and then 
-;;; activates a listener for hacking.
+;;; directory.
+;;; For testing:
+;;; Execute script, launch emacs, connect-to-guile, 
+;;; load-file, eval-buffer.
 
 (add-to-load-path "/home/alex/Projects/guilecraft/") ;location of guilecraft libs
 
