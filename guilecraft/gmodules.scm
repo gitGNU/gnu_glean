@@ -222,15 +222,15 @@ to maximise the resilience of the superstructure against low-level changes."
 	[gset-tag 'git-branch])
     (lambda (msg gset-tag gmodule-variable)
       (cond ((eq? msg 'next-problem)
-	     (problem-interface get-tag-problems (+ problem-counter 1) gset-tag gmodule-variable))
+	     (get-tag-problem (+ problem-counter 1) gset-tag gmodule-variable))
 	    ((eq? msg 'current-problem)
-	     (problem-interface get-tag-problems problem-counter gset-tag gmodule-variable))
+	     (get-tag-problem problem-counter gset-tag gmodule-variable))
 	    ((eq? msg 'next-challenge)
-	     (problem-interface get-tag-challenges (+ problem-counter 1) gset-tag gmodule-variable))
+	     (get-tag-challenge (+ problem-counter 1) gset-tag gmodule-variable))
 	    ((eq? msg 'current-challenge)
-	     (problem-interface get-tag-challenges problem-counter gset-tag gmodule-variable))
+	     (get-tag-challenge problem-counter gset-tag gmodule-variable))
 	    ((eq? msg 'current-solution)
-	     (problem-interface get-tag-solutions problem-counter gset-tag gmodule-variable))))))
+	     (get-tag-solution problem-counter gset-tag gmodule-variable))))))
 
 (define problem-interface
   (lambda (proc problem-counter gset-tag gmodule-variable)
@@ -239,3 +239,15 @@ to maximise the resilience of the superstructure against low-level changes."
       (cond ((> problem-counter (length list))
 	     (list-ref list (- (modulo problem-counter (length list)) 1)))
 	    (else (list-ref list (- problem-counter 1)))))))
+
+(define get-tag-challenge
+  (lambda (problem-counter gset-tag gmodule-variable)
+    (problem-interface get-tag-challenges problem-counter gset-tag gmodule-variable)))
+
+(define get-tag-solution
+  (lambda (problem-counter gset-tag gmodule-variable)
+    (problem-interface get-tag-solutions problem-counter gset-tag gmodule-variable)))
+
+(define get-tag-problem
+  (lambda (problem-counter gset-tag gmodule-variable)
+    (problem-interface get-tag-problems problem-counter gset-tag gmodule-variable)))
