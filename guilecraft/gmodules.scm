@@ -36,10 +36,9 @@
 	    ;; temp helper functions
 	    assess-open-problem?
 	    eq-open-problem?
-	    problem-interface
-	    get-tag-challenge
-	    get-tag-solution
-	    get-tag-problem
+	    make-whirligig 
+	    get-next-problem 
+	    get-current-problem
 ))
 
 ;;; Commentary:
@@ -204,9 +203,7 @@ get-tag-problems searches gmodule parts and returns '() or the problems subsumed
   (lambda (player-answer open-problem-solution)
     "Evaluate @var{player-answer} against @var{open-problem-solution}
 and return #t if correct or #f if incorrect."
-    (if (eq-open-problem? player-answer open-problem-solution)
-	#t
-	#f)))
+    (eq-open-problem? player-answer open-problem-solution)))
 
 (define eq-open-problem? 
   (lambda (player-answer open-problem-solution)
@@ -217,38 +214,43 @@ to maximise the resilience of the superstructure against low-level changes."
 	#t
 	#f)))
 
-(define temp-profile
-  (let ([problem-counter 0]
-	[gmodule-variable 'git-gmodule]
-	[gset-tag 'git-branch])
-    (lambda (msg gset-tag gmodule-variable)
-      (cond ((eq? msg 'next-problem)
-	     (get-tag-problem (+ problem-counter 1) gset-tag gmodule-variable))
-	    ((eq? msg 'current-problem)
-	     (get-tag-problem problem-counter gset-tag gmodule-variable))
-	    ((eq? msg 'next-challenge)
-	     (get-tag-challenge (+ problem-counter 1) gset-tag gmodule-variable))
-	    ((eq? msg 'current-challenge)
-	     (get-tag-challenge problem-counter gset-tag gmodule-variable))
-	    ((eq? msg 'current-solution)
-	     (get-tag-solution problem-counter gset-tag gmodule-variable))))))
+(define get-current-problem
+  (lambda (whirligig)
+    "Returns the current problem in a given whirligig"
+    (whirligig 'current)))
+(define get-next-problem
+  (lambda (whirligig)
+    "Returns the next problem in a given whirligig"
+    (whirligig 'next)))
 
-(define problem-interface
-  (lambda (proc problem-counter gset-tag gmodule-variable)
-    "Returns the first challenge in subsumed within a gset, with GSET-TAG in GMODULE. Every subsequent call cycles and returns through the list of challenges."
-    (let ([list (proc gset-tag gmodule-variable)])
-      (cond ((> problem-counter (length list))
-	     (list-ref list (modulo problem-counter (length list))))
-	    (else (list-ref list problem-counter))))))
+(define issue-challenge
+  (lambda (whirligig)
+    "Currently returns the next challenge in a given whirligig."
+    (get-challenge (get-next-problem whirligig))))
 
-(define get-tag-challenge
-  (lambda (problem-counter gset-tag gmodule-variable)
-    (problem-interface get-tag-challenges problem-counter gset-tag gmodule-variable)))
+(define assess-answer
+  (lambda (player-answer whirligig)
+    "Currently returns #t if @var{player-answer} is assessed successfully against @var{whirligig}'s current problem's solution.
+This is a high-level function, called directly from the UI."
+    (cond ((open-problem? (get-current-problem whirligig))
+	   (assess-open-problem? player-answer (get-solution (get-current-problem whirligig))))
+	  (else 'not-working))))
 
-(define get-tag-solution
-  (lambda (problem-counter gset-tag gmodule-variable)
-    (problem-interface get-tag-solutions problem-counter gset-tag gmodule-variable)))
-
-(define get-tag-problem
-  (lambda (problem-counter gset-tag gmodule-variable)
-    (problem-interface get-tag-problems problem-counter gset-tag gmodule-variable)))
+(define make-whirligig
+  (lambda (gset-tag gmodule-variable)
+    "Returns a whirligig, an engine capable of cycling through the problems grouped under a tag, independently of other whirligig instances, when called."
+    (let ([counter 0]
+	  [max-counter (length (get-tag-problems gset-tag gmodule-variable))]
+	  [list (get-tag-problems gset-tag gmodule-variable)])
+      (lambda (message)
+	(cond ((eq? message 'current)
+	       (if (= counter 0)
+		   (list-ref list (- max-counter 1))
+		   (list-ref list (- counter 1))))
+	      ((eq? message 'next)
+	       (begin
+		 (if (= counter max-counter)
+		     (set! counter 0))
+		 (set! counter (+ counter 1))
+		 (list-ref list (- counter 1))))
+	      (else #f))))))
