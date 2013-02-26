@@ -39,6 +39,7 @@
 	    make-whirligig 
 	    get-next-problem 
 	    get-current-problem
+	    whirligig-hangar
 ))
 
 ;;; Commentary:
@@ -241,7 +242,8 @@ This is a high-level function, called directly from the UI."
     "Returns a whirligig, an engine capable of cycling through the problems grouped under a tag, independently of other whirligig instances, when called."
     (let ([counter 0]
 	  [max-counter (length (get-tag-problems gset-tag gmodule-variable))]
-	  [list (get-tag-problems gset-tag gmodule-variable)])
+	  [list (get-tag-problems gset-tag gmodule-variable)]
+	  [tag gset-tag])
       (lambda (message)
 	(cond ((eq? message 'current)
 	       (if (= counter 0)
@@ -253,4 +255,22 @@ This is a high-level function, called directly from the UI."
 		     (set! counter 0))
 		 (set! counter (+ counter 1))
 		 (list-ref list (- counter 1))))
+	      ((eq? message 'tag)
+	       tag)
 	      (else #f))))))
+
+(define whirligig-hangar
+  (let ([whirligig-list '()])
+    (lambda (message gset-tag gmodule-variable)
+      "Creates new whirligigs as needed or uses them to retrieve the next question/answer for a gset tag in a module."
+      (define helper
+	(lambda (tmp-whirligig-list message gset-tag gmodule-variable)
+	  (cond ((null? tmp-whirligig-list)
+		 (begin
+		   (set! whirligig-list (cons (make-whirligig gset-tag gmodule-variable) whirligig-list))
+		   ((car whirligig-list) message)))
+		((equal? ((car tmp-whirligig-list) 'tag) gset-tag)
+		 ((car tmp-whirligig-list) message))
+		(else (helper (cdr tmp-whirligig-list) message gset-tag gmodule-variable)))))
+
+      (helper whirligig-list message gset-tag gmodule-variable))))

@@ -98,6 +98,7 @@ Options will be surrounded by square brackets if optional."
 	 ;(gdisplay (controller 'evaluate-answer (read)))
     (use-modules (guilecraft gmodules)
 		 (guilecraft gprofiles)
+		 (guilecraft portal)
 		 (modules git)
 		 (profiles alex))
 

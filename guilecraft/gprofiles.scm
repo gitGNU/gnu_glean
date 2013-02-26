@@ -17,3 +17,14 @@
   (name get-name)                          ; Human friendly name
   (active-gmodules get-active-gmodules)    ; List of currently active gmodules
   (gset-counters get-gset-counters))       ; List of gset counters for currently used gsets
+
+;;; Player profile scores are stored as an association list embedded
+;;; within an association list, e.g:
+;;; (
+;;; (git-gmodule . (git-branch . 0)
+;;;                (git-log . 5))
+;;; (scheme-gmodule . (scheme-lists . 3)
+;;;                   (scheme-lambda .1))
+;;;                   )
+;;; Would return git-branch as the next challenge.
+
