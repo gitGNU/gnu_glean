@@ -6,7 +6,7 @@
 
 
 (define git-init
-  (make-gset 'git-tutorial
+  (make-gset 'git-init
 	     `(,(make-open-problem "What git command would you use to initiate a new project in the current directory?"
 				  "git init"))))
 (define git-status

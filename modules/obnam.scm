@@ -10,7 +10,7 @@
 	     `(,(make-open-problem "How would you backup ~/Documents in /media/backups?"
 				  "obnam backup ~/Documents  /media/backups"))))
 
-(define git-gmodule
+(define obnam-gmodule
   (make-gmodule "Obnam: easy backup"
 		"0.1"
 		"Learn to backup your files with Obnam."

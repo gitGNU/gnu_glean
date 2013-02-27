@@ -40,6 +40,8 @@
 	    get-next-problem 
 	    get-current-problem
 	    whirligig-hangar
+	    issue-challenge
+	    assess-answer
 ))
 
 ;;; Commentary:
@@ -219,6 +221,7 @@ to maximise the resilience of the superstructure against low-level changes."
   (lambda (whirligig)
     "Returns the current problem in a given whirligig"
     (whirligig 'current)))
+
 (define get-next-problem
   (lambda (whirligig)
     "Returns the next problem in a given whirligig"
@@ -227,14 +230,14 @@ to maximise the resilience of the superstructure against low-level changes."
 (define issue-challenge
   (lambda (whirligig)
     "Currently returns the next challenge in a given whirligig."
-    (get-challenge (get-next-problem whirligig))))
+    (get-challenge (whirligig 'next))))
 
 (define assess-answer
-  (lambda (player-answer whirligig)
+  (lambda (player-answer challenge)
     "Currently returns #t if @var{player-answer} is assessed successfully against @var{whirligig}'s current problem's solution.
 This is a high-level function, called directly from the UI."
-    (cond ((open-problem? (get-current-problem whirligig))
-	   (assess-open-problem? player-answer (get-solution (get-current-problem whirligig))))
+    (cond ((open-problem? challenge)
+	   (assess-open-problem? player-answer (get-solution challenge)))
 	  (else 'not-working))))
 
 (define make-whirligig
