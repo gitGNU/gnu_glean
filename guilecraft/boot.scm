@@ -25,8 +25,6 @@
 ;;; Code:
 
 (define-module (guilecraft boot)    
-  #:use-module (guilecraft base) ; Basic useful functions (member? etc.)
-  #:use-module (guilecraft controller)
   #:use-module (ice-9 format)		; 
   #:use-module (ice-9 getopt-long)	;
   #:use-module (srfi srfi-19) ; To store and manipulate time effectively
@@ -96,12 +94,9 @@ Options will be surrounded by square brackets if optional."
   "The main loop which calls challenges and expects answers, until the kill signal."
   (begin ;(gdisplay (controller 'generate-question))
 	 ;(gdisplay (controller 'evaluate-answer (read)))
-    (use-modules (guilecraft gmodules)
-		 (guilecraft gprofiles)
-		 (guilecraft portal)
+    (use-modules (guilecraft portal)
 		 (modules git)
 		 (profiles alex))
-
     (read)
     ))
 

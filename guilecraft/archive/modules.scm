@@ -83,7 +83,7 @@
   ;; Give a shout out to your inspiration
   (derivation-source get-derivation-source) ; <materials> instance
   ;; 'Contents' of your gmodule: 'external' gmodules and 'internal' sets
-  (parts get-parts)                 ; list of variables
+  (parts gmod_get-parts)                 ; list of variables
   (license gmodule-license (default '()))) ; This will default to CC-by-SA
 
 (set-record-type-printer! 
