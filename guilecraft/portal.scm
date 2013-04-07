@@ -9,32 +9,21 @@
   #:use-module (guilecraft scorecards)
   
   #:use-module (guilecraft open-problems)
-  #:export (port_portal))
+  #:export (port_portal
+	    port_make-challenge-request
+	    port_make-eval-request
+	    port_challenge-request?))
 
-;;; 
-;; High Level UI Entry Point
-;;; 
+(define-record-type <challenge-request>
+  (port_make-challenge-request profile)
+  port_challenge-request?
+  (profile get-challenge-profile))
 
-(define port_portal
-  (lambda (message profile)
-    "Returns either the next question for a given profile, or a list
-containing the result of the evaluation of the player's answer and the
-player's new profile."
-    (cond ((and (symbol? message)	; If message is a symbol and 
-		(eq? message 'next))	; the symbol next, then we 
-					; want a challenge
-	   (op_get-challenge
-	    (whirl_hangar 'next 
-			      (profiler 'get-gset-tag profile)
-			      (profiler 'get-gset-gmodule profile))))
-	  ((string? message)		; If message is a string
-					; then we want evaluation
-	   (assess-answer 
-	    message
-	    (whirl_hangar 'current
-			      (profiler 'get-gset-tag profile)
-			      (profiler 'get-gset-gmodule profile))))
-	  (else 'error-unknown-format)))) ;Unknown format
+(define-record-type <evaluation-request>
+  (port_make-eval-request answer profile)
+  eval-request?
+  (answer get-eval-answer)
+  (profile get-eval-profile))
 
 ;;; 
 ;; Helper functions
@@ -49,7 +38,8 @@ the profile."
 	   (return-lowest-scoring-tag profile))
 	  ((eq? message 'get-gset-gmodule)
 					; Return gmodule name of lowest scoring gset-tag
-	   (return-lowest-scoring-gmodule profile)))))
+	   (return-lowest-scoring-gmodule profile))
+	  (else (error "profiler: unknown message: " message)))))
 
 (define return-lowest-scoring-tag
   (lambda (profile)
@@ -61,7 +51,7 @@ given profile"
   (lambda (profile)
     "Convenience function to return the lowest scoring gmodule from a
 given profile"
-    (return-lowest-scoring-tag-or-gmodule scc_get-scorecard-datum-gmodule-name profile)))
+    (return-lowest-scoring-tag-or-gmodule scc_get-scorecard-datum-gmodule-id profile)))
 
 ;; Function below carries out meat of computation. It relies on
 ;; properly exposed data structures defined in the gprofiles module,
@@ -115,5 +105,101 @@ successfully against @var{whirligig}'s current problem's solution.
 This is a high-level function, called directly from the UI."
     (cond ((op_open-problem? challenge)
 	   (op_assess player-answer 
-				 (op_get-solution challenge)))
-	  (else 'not-working))))
+		      (op_get-solution challenge)))
+	  (else 'unknown-problem-type))))
+
+(define get-challenge
+  (lambda (challenge)
+    "Return a challenge, depending on the type of problem."
+    (cond ((op_open-problem? challenge)
+	   (op_get-challenge challenge))
+	  (else 'unknown-problem-type))))
+
+;;; Currently is spaghetti code - probably needs to be split into
+;;; separate functions and might need to be exported into a separate
+;;; module. Currently returns a new profile only., which then makes
+;;; port_portal return the new profile. port_portal should return
+;;; evaluation, as well as correct answer and new profile.
+
+(define update-profile
+  (lambda (old-profile assessment-result)
+    "Return a new profile, which is used to generate the next
+challenge on the basis of the existing profile and a boolean, normally
+derived from player answer assessment."
+    (let ([lowest-scoring-datum `(,(return-lowest-scoring-tag
+				   old-profile)
+				  ,(return-lowest-scoring-gmodule old-profile))])
+	(define helper
+	  (lambda (temp-scorecard lowest-scoring-datum
+				  new-scorecard)
+	    "Return a modified scorecard by recursing through tho old
+scorecard and updating the lowest scoring datum"
+	    (cond ((null? temp-scorecard)
+		   (reverse new-scorecard))
+		  ((and (eq? (scc_get-scorecard-datum-gmodule-id
+			      (scc_first-in-scorecard temp-scorecard))
+			     (cadr lowest-scoring-datum)))
+		   (helper (scc_rest-of-scorecard temp-scorecard)
+			   lowest-scoring-datum (cons
+						 (scc_make-scorecard-datum
+						  (scc_get-scorecard-datum-gmodule-id
+						   (scc_first-in-scorecard
+						    temp-scorecard))
+						  (scc_get-scorecard-datum-gset-tag
+						   (scc_first-in-scorecard
+						    temp-scorecard))
+						  (+ (scc_get-scorecard-datum-score
+						      (scc_first-in-scorecard
+						       temp-scorecard))
+						     1)) 
+				 new-scorecard)))
+		  (else (helper (scc_rest-of-scorecard temp-scorecard)
+				lowest-scoring-datum 
+				(cons (scc_first-in-scorecard
+				       temp-scorecard)
+				      new-scorecard))))))
+
+	(cond ((eq? assessment-result #t) 
+	       (gprof_make-profile (gprof_get-UUID old-profile)
+				   (gprof_get-name old-profile)
+				   (gprof_get-active-modules old-profile)
+				   (helper (gprof_get-scorecard old-profile)
+					   lowest-scoring-datum
+					   '())))
+	      (else old-profile)))))
+
+
+;;; 
+;; High Level UI Entry Point
+;;; 
+;;; Currently returns a new profile only.
+;;; port_portal should return evaluation, as well as correct answer
+;;; and  new profile.
+
+(define port_portal
+  (lambda (request)
+    "Returns either the next question for a given profile, or a list
+containing the result of the evaluation of the player's answer and the
+player's new profile."
+    (catch #t 
+      (lambda ()
+	(cond ((port_challenge-request? request)
+	       (get-challenge
+		(whirl_hangar 'next 
+			      (profiler 'get-gset-tag 
+					(get-challenge-profile request))
+			      (profiler 'get-gset-gmodule 
+					(get-challenge-profile request)))))
+	      ((eval-request? request)
+	       (update-profile (get-eval-profile request)
+			       (assess-answer 
+				(get-eval-answer request)
+				(whirl_hangar 'current
+					      (profiler 'get-gset-tag  
+							(get-eval-profile request))
+					      (profiler 'get-gset-gmodule
+							(get-eval-profile request))))))
+	      (else (error "portal: Unknown Request:" request))))
+      (lambda (k . args)
+	(format (current-output-port) "'~a: ~a\n" k args))))) ;Unknown format
+
