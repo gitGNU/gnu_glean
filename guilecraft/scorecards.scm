@@ -5,7 +5,8 @@
   #:use-module (srfi srfi-9)
   #:export (scc_make-scorecard-datum
 	    scc_get-scorecard-datum-gset-tag
-	    scc_get-scorecard-datum-gmodule-name
+	    scc_get-scorecard-datum-gmodule-id
+	    scc_get-scorecard-datum-score
 	    scc_make-dummy-scorecard-datum
 
 	    scc_first-in-scorecard
@@ -15,11 +16,11 @@
 	    scc_lower-score?))
 
 (define-record-type <scorecard-datum>
-  (scc_make-scorecard-datum module set-tag score)
+  (scc_make-scorecard-datum module-id set-tag score)
   scorecard-datum?
-  (module scc_get-scorecard-datum-gmodule-name)
+  (module-id scc_get-scorecard-datum-gmodule-id)
   (set-tag scc_get-scorecard-datum-gset-tag)
-  (score get-scorecard-datum-score))
+  (score scc_get-scorecard-datum-score))
 
 (define scc_make-dummy-scorecard-datum
   (lambda ()
@@ -27,11 +28,11 @@
 
 (define dummy-scorecard-datum?
   (lambda (scorecard-datum)
-    (if (and (eq? (scc_get-scorecard-datum-gmodule-name scorecard-datum)
+    (if (and (eq? (scc_get-scorecard-datum-gmodule-id scorecard-datum)
 		  'no-module)
 	     (eq? (scc_get-scorecard-datum-gset-tag scorecard-datum)
 		  'no-set-tag)
-	     (not (get-scorecard-datum-score scorecard-datum)))
+	     (not (scc_get-scorecard-datum-score scorecard-datum)))
 	#t
 	#f)))
 
@@ -51,7 +52,7 @@
   (lambda (scorecard-datum1 scorecard-datum2)
     (cond ((dummy-scorecard-datum? scorecard-datum2)
 	   #t)
-	  ((< (get-scorecard-datum-score scorecard-datum1) 
-	      (get-scorecard-datum-score scorecard-datum2))
+	  ((< (scc_get-scorecard-datum-score scorecard-datum1) 
+	      (scc_get-scorecard-datum-score scorecard-datum2))
 	   #t)
 	  (else #f))))
