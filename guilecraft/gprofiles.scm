@@ -38,7 +38,7 @@
 
 (define gprof_active-module?
   (lambda (scorecard-datum active-modules)
-    (member (scc_get-scorecard-datum-gmodule-name scorecard-datum) 
+    (member (scc_get-scorecard-datum-gmodule-id scorecard-datum) 
 	    active-modules)))
 
 ;;; Player profile scores are stored as an association list embedded
