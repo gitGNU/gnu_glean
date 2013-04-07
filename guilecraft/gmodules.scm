@@ -6,6 +6,7 @@
   #:export (;; gmodule record functions
 	    gmod_make-gmodule
 	    gmod_get-parts
+	    gmod_get-id
             ))
 
 ;;; Commentary:
@@ -20,7 +21,7 @@
 (define-record-type <gmodule>
   (gmod_make-gmodule id name version description long-description creators find-out-more derivation-source parts)
   gmodule?
-  (id get-id)		     		; short symbol id
+  (id gmod_get-id)		     		; short symbol id
   ;; What's the gmodule called?
   (name get-name)		  ; string
   ;; Version should really be a number
