@@ -1,4 +1,5 @@
-;; Guilecraft
+;;; guilecraft --- fast learning tool.         -*- coding: utf-8 -*-
+
 ;; Copyright (C) 2008, 2010, 2012 Alex Sassmannshausen
 
 ;; This program is free software; you can redistribute it and/or
@@ -48,13 +49,15 @@ Options will be surrounded by square brackets if optional."
 	(cond ((member? (cdr opt) 'required?)
 	       (string-append "--" (object->string (car opt))))
 	      (else (string-append "[--" (object->string (car opt)) "]")))))
-  (gdisplay (string-append "usage: guilecraft "
+  (format (string-append "usage: guilecraft "
 			   (string-join (map repr-option *option-grammar*))))))
   
   
 
 (define version (lambda ()
-		  (gdisplay "Guilecraft version 0.1")))
+		  (begin
+		    (display "Guilecraft version 0.1")
+		    (newline))))
 
 ;; krap code
 (define parse-options (lambda (args)
@@ -75,7 +78,7 @@ Options will be surrounded by square brackets if optional."
 
 (define (boot args)
   "Set the locale, parse the options, drop into the main loop."
-  (setlocale LC_ALL "") ; sets the locale to the system locale
+  ;(setlocale LC_ALL "") ; sets the locale to the system locale
   (let ((options (parse-options args))
 	(start-clock (current-time)))
     ;;; No need for config file yet
@@ -96,7 +99,9 @@ Options will be surrounded by square brackets if optional."
 	 ;(gdisplay (controller 'evaluate-answer (read)))
     (use-modules (guilecraft portal)
 		 (modules git)
-		 (profiles alex))
+		 (profiles alex)
+		 ;(guilecraft gmodule-manager)
+		 )
     (read)
     ))
 
