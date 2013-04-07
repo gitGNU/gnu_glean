@@ -4,10 +4,10 @@
   #:use-module (guilecraft gmodules)
   #:use-module (guilecraft gsets)
   #:use-module (guilecraft open-problems)
-
+  #:use-module (guilecraft gmodule-manager)
   #:export (scheme))
 
-(define scheme 
+(define scheme-gmodule
   (gmod_make-gmodule 'scheme
 		     "The Scheme Programming Language"
 		     "0.1"
@@ -16,6 +16,7 @@
 		     "Alex Sassmannshausen"
 		     "http://www.schemers.org"
 		     "Kent Dybvig's The Scheme Programming Language"
+		     `(,general-predicates ,lists ,numbers ,strings)))
 		     ;; Will add:
 		     ;; - general-predicates (eq? etc.)
 		     ;; - lists (making, using, comparing)
@@ -23,7 +24,6 @@
 		     ;; - numbers (ibid.)
 		     ;; - strings (ibid.)
 		     ;; - constants (ibid.)
-		     `(,general-predicates ,lists ,numbers ,strings)))
 
 (define general-predicates
   (gset_make-gset 'general-predicates
@@ -48,3 +48,5 @@
 		  `(,(op_make-open-problem
 		      "What is the predicate for strings?" 
 		      "string?"))))
+
+(gman_add-gmodule scheme-gmodule)

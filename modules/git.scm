@@ -4,8 +4,8 @@
   #:use-module (guilecraft gmodules)
   #:use-module (guilecraft gsets)
   #:use-module (guilecraft open-problems)
+  #:use-module (guilecraft gmodule-manager)
   #:export (git-gmodule))
-
 
 (define git-init
   (gset_make-gset 'git-init
@@ -86,3 +86,6 @@ made in 'experimental' branch back into main branch?"
 		"http://www.git-scm.com"
 		"Git man pages & website"
 		`(,git-init ,git-status ,git-add ,git-commit ,git-diff ,git-log ,git-branch)))
+
+(gman_add-gmodule git-gmodule)
+
