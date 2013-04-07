@@ -46,11 +46,11 @@
       (lambda (opt)
 	"Return, as string the car of OPT.
 Options will be surrounded by square brackets if optional."
-	(cond ((member? (cdr opt) 'required?)
-	       (string-append "--" (object->string (car opt))))
-	      (else (string-append "[--" (object->string (car opt)) "]")))))
-  (format (string-append "usage: guilecraft "
-			   (string-join (map repr-option *option-grammar*))))))
+	(string-append "[--" (object->string (car opt)) "]")))
+    (format #t (string-append "usage: guilecraft "
+			      (string-join (map repr-option *option-grammar*))
+			      "\n"))
+    (format #t "For now you should run guilecraft with the --listen flag, or one of the other flags — else guilecraft will return a read prompt and exit.\n")))
   
   
 
