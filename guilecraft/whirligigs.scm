@@ -4,6 +4,8 @@
   #:use-module (srfi srfi-1)
   #:use-module (srfi srfi-9)
   #:use-module (guilecraft gsets)
+  #:use-module (guilecraft gmodules)
+  #:use-module (guilecraft gmodule-manager)
   #:export (;; temp helper functions
 	    whirl_make-whirligig 
 	    whirl_get-next-problem 
@@ -44,22 +46,34 @@ instances, when called."
 
 (define whirl_hangar
   (let ([whirligig-list '()])
-    (lambda (message gset-tag gmodule-variable)
+    (lambda (message gset-tag gmodule-id)
       "Creates new whirligigs as needed or uses them to retrieve the
 next question/answer for a gset tag in a module."
       (define helper
-	(lambda (tmp-whirligig-list message gset-tag gmodule-variable)
+	(lambda (message tmp-whirligig-list gset-tag gmodule-object)
 	  (cond ((null? tmp-whirligig-list)
 		 (begin
-		   (set! whirligig-list (cons (whirl_make-whirligig gset-tag
-							      gmodule-variable)
-					      whirligig-list))
+		   (set! whirligig-list (cons 
+					 (whirl_make-whirligig gset-tag
+							       gmodule-object)
+					 whirligig-list))
 		   ((car whirligig-list) message)))
 		((equal? ((car tmp-whirligig-list) 'tag) gset-tag)
 		 ((car tmp-whirligig-list) message))
 		(else (helper (cdr tmp-whirligig-list) 
 			      message
 			      gset-tag 
-			      gmodule-variable)))))
+			      gmodule-object)))))
 
-      (helper whirligig-list message gset-tag gmodule-variable))))
+      (helper message whirligig-list gset-tag (gmodule-id->gmodule-object gmodule-id)))))
+
+
+;;; For now transmute-gmodule-id is hardcoded to check some known
+;;; gmodules. In future it needs to scan the gmodule directory
+;;; dynamically when transmute-gmodule-id first encounters a new
+;;; gmodule-id. 
+(define gmodule-id->gmodule-object
+  (lambda (gmodule-id)
+    "Return the gmodule that is named by gmodule-id."
+    (gman_get-gmodule gmodule-id)))
+
