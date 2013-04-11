@@ -1,6 +1,6 @@
 ;;; guilecraft --- .         -*- coding: utf-8 -*-
 
-(define-module (guilecraft open-problems)
+(define-module (guilecraft types open-problems)
   #:use-module (srfi srfi-1)
   #:use-module (srfi srfi-9)
   #:export (;; open-problem record functions

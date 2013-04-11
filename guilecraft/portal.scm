@@ -8,7 +8,7 @@
   #:use-module (guilecraft whirligigs)
   #:use-module (guilecraft scorecards)
   
-  #:use-module (guilecraft open-problems)
+  #:use-module (guilecraft types open-problems)
   #:export (port_portal
 	    port_make-challenge-request
 	    port_make-eval-request

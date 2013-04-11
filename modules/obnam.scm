@@ -3,7 +3,7 @@
 (define-module (modules obnam)
   #:use-module (guilecraft gmodules)
   #:use-module (guilecraft gsets)
-  #:use-module (guilecraft open-problems)
+  #:use-module (guilecraft types open-problems)
 
   #:export (obnam-gmodule))
 

@@ -5,7 +5,7 @@
   #:use-module (srfi srfi-9)
   #:use-module (guilecraft gsets)
   #:use-module (guilecraft gmodules)
-  #:use-module (guilecraft gmodule-manager)
+  #:use-module (guilecraft data-manager)
   #:export (;; temp helper functions
 	    whirl_make-whirligig 
 	    whirl_get-next-problem 
@@ -75,5 +75,5 @@ next question/answer for a gset tag in a module."
 (define gmodule-id->gmodule-object
   (lambda (gmodule-id)
     "Return the gmodule that is named by gmodule-id."
-    (gman_get-gmodule gmodule-id)))
+    (dman_get-gmodule gmodule-id)))
 

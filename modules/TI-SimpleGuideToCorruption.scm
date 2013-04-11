@@ -1,7 +1,7 @@
 (define-module (modules ti-plain-guide)
   #:use-module (guilecraft gmodules)
   #:use-module (guilecraft gsets)
-  #:use-module (guilecraft open-problems))
+  #:use-module (guilecraft types open-problems))
 
 (define ti-plain-guide 
   (gmod_make-gmodule 

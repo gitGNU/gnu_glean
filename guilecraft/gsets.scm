@@ -4,7 +4,7 @@
   #:use-module (srfi srfi-1)
   #:use-module (srfi srfi-9)
   #:use-module (guilecraft gmodules)
-  #:use-module (guilecraft open-problems)
+  #:use-module (guilecraft types open-problems)
   #:export (;; gset record functions
 	    gset_gset?
 	    gset_make-gset

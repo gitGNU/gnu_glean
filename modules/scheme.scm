@@ -3,8 +3,8 @@
 (define-module (modules scheme)
   #:use-module (guilecraft gmodules)
   #:use-module (guilecraft gsets)
-  #:use-module (guilecraft open-problems)
-  #:use-module (guilecraft gmodule-manager)
+  #:use-module (guilecraft types open-problems)
+  #:use-module (guilecraft data-manager)
   #:export (scheme))
 
 (define scheme-gmodule
@@ -49,4 +49,4 @@
 		      "What is the predicate for strings?" 
 		      "string?"))))
 
-(gman_add-gmodule scheme-gmodule)
+(dman_add-gmodule scheme-gmodule)

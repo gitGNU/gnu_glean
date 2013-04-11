@@ -3,8 +3,8 @@
 (define-module (modules git)
   #:use-module (guilecraft gmodules)
   #:use-module (guilecraft gsets)
-  #:use-module (guilecraft open-problems)
-  #:use-module (guilecraft gmodule-manager)
+  #:use-module (guilecraft types open-problems)
+  #:use-module (guilecraft data-manager)
   #:export (git-gmodule))
 
 (define git-init
@@ -87,5 +87,5 @@ made in 'experimental' branch back into main branch?"
 		"Git man pages & website"
 		`(,git-init ,git-status ,git-add ,git-commit ,git-diff ,git-log ,git-branch)))
 
-(gman_add-gmodule git-gmodule)
+(dman_add-gmodule git-gmodule)
 
