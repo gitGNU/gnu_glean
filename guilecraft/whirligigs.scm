@@ -10,13 +10,14 @@
 	    whirl_make-whirligig 
 	    whirl_get-next-problem 
 	    whirl_get-current-problem 
-	    whirl_hangar
-	    whirl_issue-challenge))
+	    whirl_hangar))
 
 ;;; 
 ;; Whirligig Functions
 ;;; 
-
+;; Whirligigs return problems. Whirligigs return the next problem
+;; in accordance with the player profile.
+;;
 ;; Whirligigs are generators. The whirligig hangar keeps track of
 ;; existing whirligigs and provides access through tags
 (define whirl_make-whirligig
@@ -48,7 +49,7 @@ instances, when called."
   (let ([whirligig-list '()])
     (lambda (message gset-tag gmodule-id)
       "Creates new whirligigs as needed or uses them to retrieve the
-next question/answer for a gset tag in a module."
+next challenge for a gset tag in a module."
       (define helper
 	(lambda (message tmp-whirligig-list gset-tag gmodule-object)
 	  (cond ((null? tmp-whirligig-list)
