@@ -7,16 +7,15 @@
   #:use-module (guilecraft gmodules)	; For whirligig etc.
   #:use-module (guilecraft whirligigs)
   #:use-module (guilecraft scorecards)
-  
-  #:use-module (guilecraft types open-problems)
+  #:use-module (guilecraft problem-type-manager)
+
   #:export (port_portal
 	    port_make-challenge-request
-	    port_make-eval-request
-	    port_challenge-request?))
+	    port_make-eval-request))
 
 (define-record-type <challenge-request>
   (port_make-challenge-request profile)
-  port_challenge-request?
+  challenge-request?
   (profile get-challenge-profile))
 
 (define-record-type <evaluation-request>
@@ -25,9 +24,9 @@
   (answer get-eval-answer)
   (profile get-eval-profile))
 
-;;; 
+;;;
 ;; Helper functions
-;;; 
+;;;
 
 (define profiler
   (lambda (message profile)
@@ -75,8 +74,8 @@ profile"
 	      ;; to an active module, and if so, whether it has a
 	      ;; lower score than the currently stored lowest scoring
 	      ;; datum
-	      ((and (gprof_active-module? (scc_first-in-scorecard scorecard) 
-				    active-modules)
+	      ((and (gprof_active-module? (scc_first-in-scorecard scorecard)
+					  active-modules)
 		    (scc_lower-score? (scc_first-in-scorecard scorecard)
 				  lowest-scoring-scorecard-datum))
 	       ;; If so, save current datum, and recurse onwards
@@ -84,36 +83,15 @@ profile"
 		       (scc_rest-of-scorecard scorecard)
 		       (scc_first-in-scorecard scorecard)))
 	      ;; Else, recurse onwards.
-	      (else (helper active-modules 
+	      (else (helper active-modules
 			    (scc_rest-of-scorecard scorecard)
 			    lowest-scoring-scorecard-datum)))))
     ;; Call helper with populated list, and return datum applied to
     ;; proc.
     ;; Proc should retrieve data field in datum, else will cause problems.
-    (proc (helper (gprof_get-active-modules profile) 
-		  (gprof_get-scorecard profile) 
+    (proc (helper (gprof_get-active-modules profile)
+		  (gprof_get-scorecard profile)
 		  (scc_make-dummy-scorecard-datum)))))
-
-;;; 
-;; High Level Evaluate Answer
-;;; 
-
-(define assess-answer
-  (lambda (player-answer challenge)
-    "Currently returns #t if @var{player-answer} is assessed
-successfully against @var{whirligig}'s current problem's solution.
-This is a high-level function, called directly from the UI."
-    (cond ((op_open-problem? challenge)
-	   (op_assess player-answer 
-		      (op_get-solution challenge)))
-	  (else 'unknown-problem-type))))
-
-(define get-challenge
-  (lambda (challenge)
-    "Return a challenge, depending on the type of problem."
-    (cond ((op_open-problem? challenge)
-	   (op_get-challenge challenge))
-	  (else 'unknown-problem-type))))
 
 ;;; Currently is spaghetti code - probably needs to be split into
 ;;; separate functions and might need to be exported into a separate
@@ -151,15 +129,15 @@ scorecard and updating the lowest scoring datum"
 						  (+ (scc_get-scorecard-datum-score
 						      (scc_first-in-scorecard
 						       temp-scorecard))
-						     1)) 
+						     1))
 				 new-scorecard)))
 		  (else (helper (scc_rest-of-scorecard temp-scorecard)
-				lowest-scoring-datum 
+				lowest-scoring-datum
 				(cons (scc_first-in-scorecard
 				       temp-scorecard)
 				      new-scorecard))))))
 
-	(cond ((eq? assessment-result #t) 
+	(cond ((eq? assessment-result #t)
 	       (gprof_make-profile (gprof_get-UUID old-profile)
 				   (gprof_get-name old-profile)
 				   (gprof_get-active-modules old-profile)
@@ -169,9 +147,9 @@ scorecard and updating the lowest scoring datum"
 	      (else old-profile)))))
 
 
-;;; 
+;;;
 ;; High Level UI Entry Point
-;;; 
+;;;
 ;;; Currently returns a new profile only.
 ;;; port_portal should return evaluation, as well as correct answer
 ;;; and  new profile.
@@ -181,25 +159,20 @@ scorecard and updating the lowest scoring datum"
     "Returns either the next question for a given profile, or a list
 containing the result of the evaluation of the player's answer and the
 player's new profile."
-    (catch #t 
-      (lambda ()
-	(cond ((port_challenge-request? request)
-	       (get-challenge
-		(whirl_hangar 'next 
-			      (profiler 'get-gset-tag 
-					(get-challenge-profile request))
-			      (profiler 'get-gset-gmodule 
-					(get-challenge-profile request)))))
-	      ((eval-request? request)
-	       (update-profile (get-eval-profile request)
-			       (assess-answer 
-				(get-eval-answer request)
-				(whirl_hangar 'current
-					      (profiler 'get-gset-tag  
-							(get-eval-profile request))
-					      (profiler 'get-gset-gmodule
-							(get-eval-profile request))))))
-	      (else (error "portal: Unknown Request:" request))))
-      (lambda (k . args)
-	(format (current-output-port) "'~a: ~a\n" k args))))) ;Unknown format
-
+      (cond ((challenge-request? request)
+	     (ptm_get-challenge
+	      (whirl_hangar 'next
+			    (profiler 'get-gset-tag
+				      (get-challenge-profile request))
+			    (profiler 'get-gset-gmodule
+				      (get-challenge-profile request)))))
+	    ((eval-request? request)
+	     (update-profile (get-eval-profile request)
+			     (ptm_assess-answer
+			      (get-eval-answer request)
+			      (whirl_hangar 'current
+					    (profiler 'get-gset-tag
+						      (get-eval-profile request))
+					    (profiler 'get-gset-gmodule
+						      (get-eval-profile request))))))
+	    (else  (error "portal: Unknown Request:" request)))))
