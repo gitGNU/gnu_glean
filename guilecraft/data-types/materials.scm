@@ -1,4 +1,4 @@
-;;; guilecraft ---          -*- coding: utf-8 -*-
+;;; guilecraft --- Fast learning tool.         -*- coding: utf-8 -*-
 
 (define-module (guilecraft data-types materials)
   #:use-module (srfi srfi-1)

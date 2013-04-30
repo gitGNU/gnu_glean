@@ -1,4 +1,4 @@
-;;; guilecraft --- .         -*- coding: utf-8 -*-
+;;; guilecraft --- Fast learning tool.         -*- coding: utf-8 -*-
 
 (define-module (guilecraft data-types gsets)
   #:use-module (guilecraft data-types gmodules)

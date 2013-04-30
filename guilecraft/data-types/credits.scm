@@ -1,4 +1,4 @@
-;;; guilecraft --- Nix package management from Guile.         -*- coding: utf-8 -*-
+;;; guilecraft --- Fast learning tool.         -*- coding: utf-8 -*-
 
 (define-module (guilecraft data-types credits)
   #:use-module (srfi srfi-1)
