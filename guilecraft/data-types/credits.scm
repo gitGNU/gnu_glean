@@ -1,6 +1,6 @@
 ;;; guilecraft --- Nix package management from Guile.         -*- coding: utf-8 -*-
 
-(define-module (guilecraft credits)
+(define-module (guilecraft data-types credits)
   #:use-module (srfi srfi-1)
   #:use-module (srfi srfi-9)
   #:export (cred_make-credit))

@@ -1,6 +1,6 @@
 ;;; guilecraft ---          -*- coding: utf-8 -*-
 
-(define-module (guilecraft materials)
+(define-module (guilecraft data-types materials)
   #:use-module (srfi srfi-1)
   #:use-module (srfi srfi-9)
   #:export (make-materials))
