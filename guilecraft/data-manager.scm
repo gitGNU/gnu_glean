@@ -24,11 +24,7 @@
 ;; Code:
 
 (define-module (guilecraft data-manager)
-  #:use-module (guilecraft gmodules)
-
-  #:export (dman_add-gmodule
-	    dman_get-gmodule
-	    dman_data-manager))
+  #:export (dman_data-manager))
 
 (define dman_data-manager
   (lambda (identifier-getter)
@@ -80,11 +76,14 @@ is an index in the table. Return #f otherwise."
 
 	(define data-type-putter
 	  (lambda (args identifier-getter old-data-type-table)
-	    "Returns a new table with the new content
-(data-type-interface) added by index id, retrieved through applying
-identifier-getter to the data-type-prototype."
-	    (let ([data-interface (car args)] [data-prototype (cadr args)])
-	      (cons (cons (identifier-getter data-prototype) data-interface) old-data-type-table))))
+	    "Returns a new table with the new content, data-type-interface, added by index id, retrieved through applying identifier-getter to the data-type-prototype."
+	    ; identifier-getter is assigned in a let to be able to apply identifier-getter,
+	    ; which is normally a record-type accessor, and hence generated through
+	    ; syntax-transformation.
+	    ; I'm not sure why I need to do this - I cannot reproduce it outside of data-manager.
+	    (let ([data-interface (car args)] [data-prototype (cadr args)]
+		  [proc identifier-getter])
+	      (cons (cons (proc data-prototype) data-interface) old-data-type-table))))
 
 
 	(cond ((eq? message 'get)
@@ -102,21 +101,3 @@ identifier-getter to the data-type-prototype."
 	       data-type-table)
 
 	      (else (error "data-manager: unknown message: " message)))))))
-
-(define dman_add-gmodule
-  (lambda (gmodule-object)
-    "Convenience procedure to add a given gmodule to the
-gmodule-manager.
-
-gmodule-manager is an instance of data-manager. It stores the
-gmodule-object indexed by its gmodule-id, derived using gmod_get-id."
-    (gmodule-manager 'put gmodule-object gmodule-object)))
-
-(define dman_get-gmodule
-  (lambda (gmodule-id)
-    "Convenience procedure to retrieve a given gmodule from the active
-gmodule-table stored in gmodule-manager."
-    (gmodule-manager 'get gmodule-id)))
-
-; define a data-manager instance using the result of gmod_get-id as key
-(define gmodule-manager (dman_data-manager gmod_get-id))
