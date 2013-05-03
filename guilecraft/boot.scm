@@ -78,7 +78,7 @@ Options will be surrounded by square brackets if optional."
 
 (define (boot args)
   "Set the locale, parse the options, drop into the main loop."
-  ;(setlocale LC_ALL "") ; sets the locale to the system locale
+  (setlocale LC_ALL "") ; sets the locale to the system locale
   (let ((options (parse-options args))
 	(start-clock (current-time)))
     ;;; No need for config file yet
