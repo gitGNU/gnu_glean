@@ -3,30 +3,31 @@
 (define-module (guilecraft whirligigs)
   #:use-module (srfi srfi-1)
   #:use-module (srfi srfi-9)
-  #:use-module (guilecraft gsets)
-  #:use-module (guilecraft gmodules)
-  #:use-module (guilecraft data-manager)
-  #:export (;; temp helper functions
-	    whirl_make-whirligig 
-	    whirl_get-next-problem 
-	    whirl_get-current-problem 
+  #:use-module (guilecraft data-types gsets)
+  #:use-module (guilecraft gset-ops)
+  #:use-module (guilecraft gmodule-manager)
+  #:export (whirl_make-whirligig
 	    whirl_hangar))
 
-;;; 
+;;; Commentary:
+;;
 ;; Whirligig Functions
-;;; 
+;;
 ;; Whirligigs return problems. Whirligigs return the next problem
 ;; in accordance with the player profile.
 ;;
 ;; Whirligigs are generators. The whirligig hangar keeps track of
 ;; existing whirligigs and provides access through tags
+;;
+;;; Code:
+
 (define whirl_make-whirligig
   (lambda (gset-tag gmodule-variable)
     "Returns a whirligig, an engine capable of cycling through the
 problems grouped under a tag, independently of other whirligig
 instances, when called."
     (let ([counter 0]
-	  [max-counter (length (gset_get-tag-problems gset-tag 
+	  [max-counter (length (gset_get-tag-problems gset-tag
 						 gmodule-variable))]
 	  [list (gset_get-tag-problems gset-tag gmodule-variable)]
 	  [tag gset-tag])
@@ -54,27 +55,16 @@ next challenge for a gset tag in a module."
 	(lambda (message tmp-whirligig-list gset-tag gmodule-object)
 	  (cond ((null? tmp-whirligig-list)
 		 (begin
-		   (set! whirligig-list (cons 
+		   (set! whirligig-list (cons
 					 (whirl_make-whirligig gset-tag
 							       gmodule-object)
 					 whirligig-list))
 		   ((car whirligig-list) message)))
 		((equal? ((car tmp-whirligig-list) 'tag) gset-tag)
 		 ((car tmp-whirligig-list) message))
-		(else (helper (cdr tmp-whirligig-list) 
-			      message
-			      gset-tag 
+		(else (helper message
+			      (cdr tmp-whirligig-list)
+			      gset-tag
 			      gmodule-object)))))
 
-      (helper message whirligig-list gset-tag (gmodule-id->gmodule-object gmodule-id)))))
-
-
-;;; For now transmute-gmodule-id is hardcoded to check some known
-;;; gmodules. In future it needs to scan the gmodule directory
-;;; dynamically when transmute-gmodule-id first encounters a new
-;;; gmodule-id. 
-(define gmodule-id->gmodule-object
-  (lambda (gmodule-id)
-    "Return the gmodule that is named by gmodule-id."
-    (dman_get-gmodule gmodule-id)))
-
+      (helper message whirligig-list gset-tag (gman_gmodule-id->gmodule-object gmodule-id)))))
