@@ -1,6 +1,6 @@
 ;;; guilecraft --- .         -*- coding: utf-8 -*-
 
-(define-module (guilecraft types multi-choice-problems)
+(define-module (guilecraft problem-types multi-choice-problems)
   #:use-module (guilecraft data-manager)
   #:use-module (guilecraft problem-type-manager)
   #:use-module (srfi srfi-1)

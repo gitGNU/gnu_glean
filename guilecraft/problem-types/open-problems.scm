@@ -1,6 +1,6 @@
 ;;; guilecraft --- fast learning tool.         -*- coding: utf-8 -*-
 
-(define-module (guilecraft types open-problems)
+(define-module (guilecraft problem-types open-problems)
   #:use-module (guilecraft problem-type-manager)
   #:use-module (srfi srfi-1)
   #:use-module (srfi srfi-9)
