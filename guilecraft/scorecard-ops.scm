@@ -7,7 +7,7 @@
   #:use-module (guilecraft data-types gprofiles)
   #:use-module (guilecraft gprofile-ops)
   #:use-module (guilecraft gmodule-ops)
-  #:use-module (guilecraft data-manager)
+  #:use-module (guilecraft gmodule-manager)
   #:use-module (guilecraft profiler)
   #:export (scc_make-dummy-scorecard-datum
 	    scc_dummy-scorecard-datum?
@@ -36,7 +36,7 @@ for each acive-module in the active-modules list."
       (append
        (add-scorecard-data (car active-modules)
 			   (gmod_get-gmodule-tags
-			    (dman_gmodule-id->gmodule-object
+			    (gman_gmodule-id->gmodule-object
 			     (car active-modules))))
        (scc_make-scorecard-skeleton (cdr active-modules)))))))
 
