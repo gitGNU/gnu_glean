@@ -1,11 +1,11 @@
-;;; -*- coding:utf-8 -*-
+;;; guilecraft --- learning the world using Guile.         -*- coding: utf-8 -*-
 
 (define-module (modules git)
-  #:use-module (guilecraft gmodules)
-  #:use-module (guilecraft gsets)
-  #:use-module (guilecraft types open-problems)
-  #:use-module (guilecraft types multi-choice-problems)
-  #:use-module (guilecraft data-manager)
+  #:use-module (guilecraft data-types gmodules)
+  #:use-module (guilecraft data-types gsets)
+  #:use-module (guilecraft problem-types open-problems)
+  #:use-module (guilecraft problem-types multi-choice-problems)
+  #:use-module (guilecraft gmodule-manager)
   #:export (git-gmodule))
 
 (define git-init
@@ -83,15 +83,16 @@ made in 'experimental' branch back into main branch?"
 					   "git branch -D crazy-idea"))))
 
 (define git-gmodule
-  (gmod_make-gmodule 'git
-		"Git: fast version control"
-		"0.1"
-		"Learn to use git to manage your projects."
-		"Long Description: background on git, introductory text"
-		"Alex Sassmannshausen"
-		"http://www.git-scm.com"
-		"Git man pages & website"
-		`(,git-init ,git-status ,git-add ,git-commit ,git-diff ,git-log ,git-branch)))
+  (gmod_make-gmodule
+   (id 'git)
+   (name "Git: fast version control")
+   (version "0.1")
+   (description "Learn to use git to manage your projects.")
+   (long-description "Long Description: background on git, introductory text")
+   (creators "Alex Sassmannshausen")
+   (derivation-source "Git man pages & website")
+   (parts `(,git-init ,git-status ,git-add ,git-commit ,git-diff ,git-log ,git-branch))
+   (find-out-more "http://www.git-scm.com")))
 
-(dman_add-gmodule git-gmodule)
+(gman_add-gmodule git-gmodule)
 
