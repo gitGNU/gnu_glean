@@ -67,4 +67,4 @@ next challenge for a gset tag in a module."
 			      gset-tag
 			      gmodule-object)))))
 
-      (helper message whirligig-list gset-tag (gman_gmodule-id->gmodule-object gmodule-id)))))
+      (helper message whirligig-list gset-tag (gmodule-id->gmodule-object gmodule-id)))))
