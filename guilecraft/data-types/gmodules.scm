@@ -4,7 +4,9 @@
   #:use-module (guilecraft utils)
    #:export (gmod_get-id
 	     gmod_make-gmodule
-	    
+
+	     gmodule?
+
 	     gmodule-name
 	     gmodule-parts
 	     gmodule-version
