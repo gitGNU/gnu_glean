@@ -28,14 +28,17 @@
 (define-module (guilecraft boot)    
   #:use-module (ice-9 format)		; 
   #:use-module (ice-9 getopt-long)	;
-  #:use-module (srfi srfi-19) ; To store and manipulate time effectively
-					; #:use-module (guilecraft web)
+  #:use-module (srfi srfi-19) ; To store and manipulate time
+			      ; effectively #:use-module (guilecraft
+			      ; web)
+  #:use-module (tests test-suite)
   #:export (boot))
 
 ;; Define the list of accepted options and their special properties
 (define *option-grammar* '((listen)
                            (usage (single-char #\u))
 ;                          (config (value #t) (single-char #\c))
+			   (test-suite (single-char #\t))
                            (version (single-char #\v))
                            (help (single-char #\h))))
 
@@ -68,6 +71,8 @@ Options will be surrounded by square brackets if optional."
         (begin
           (usage)
           (exit 0)))
+    (if (option-ref opts 'test-suite #f)
+	(run-test-suite))
     (if (option-ref opts 'version #f)
         (begin
           (version)

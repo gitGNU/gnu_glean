@@ -19,62 +19,53 @@
 ;; 59 Temple Place - Suite 330        Fax:    +1-617-542-2652
 ;; Boston, MA  02111-1307,  USA       gnu@gnu.org
 
-(define-module (scorecard-tests)
+(define-module (tests scorecards)
   #:use-module (srfi srfi-64)
-  #:use-module (guilecraft data-types gsets)
-  #:use-module (guilecraft problem-types open-problems)
-  #:use-module (guilecraft problem-types multi-choice-problems)
-  #:use-module (guilecraft data-types gmodules)
+  #:use-module (tests test-utils)
 
   #:use-module (guilecraft data-types scorecards)
   #:use-module (guilecraft scorecard-ops))
 
-(define test-gmodule-object 
-  (gmod_make-gmodule
-   (id 'test)
-   (name "Test Gmodule")
-   (version "0.1")
-   (description "Test Description")
-   (long-description "Long Description:")
-   (creators "Alex Sassmannshausen")
-   (derivation-source "None")
-   (parts (list (gset_make-gset 'gset-tag
-				(list (make-open-problem "question?"
-							 "solution")
-				      (make-multi-choice-problem "question?"
-								 (cons "b" "option b")
-								 (cons "a" "option a")
-								 (cons "b" "option b")
-								 (cons "c" "option c"))))))
-   (find-out-more "http://some.url")))
-
 (test-begin "scorecard-tests")
 
-(test-assert "dummy-datum" (and (scorecard-datum? (make-dummy-scorecard-datum))
-			      (dummy-scorecard-datum? (make-dummy-scorecard-datum))))
+(test-assert "dummy-score-gset-blob"
+	     (and (score-gset-blob? (make-dummy-score-gset-blob))
+		  (dummy-score-gset-blob? (make-dummy-score-gset-blob))))
 
-(test-assert "dummy-subdatum" (and (scorecard-subdatum? (make-dummy-scorecard-subdatum))
-				 (dummy-scorecard-subdatum? (make-dummy-scorecard-subdatum))))
+(test-assert "dummy-score-gmod-blob"
+	     (and (score-gmod-blob? (make-dummy-score-gmod-blob))
+		  (dummy-score-gmod-blob? (make-dummy-score-gmod-blob))))
 
 (test-assert "empty-scorecard" (empty-scorecard? (make-scorecard '())))
 
 (test-equal "first in scorecard" 
-  (make-scorecard-datum 'test
-			(list (make-scorecard-subdatum 'gset-tag
-						       0)))
-  (first-in-scorecard (make-scorecard-skeleton (list test-gmodule-object))))
+	    (make-score-gmod-blob 
+	     'test (list (make-score-gset-blob 'gset-tag 0)))
+	    (first-in-scorecard (make-scorecard-skeleton 
+				 (list test-gmodule-object))))
 
 (test-equal "rest of scorecard"
-  '()
-  (rest-of-scorecard (make-scorecard-skeleton (list test-gmodule-object))))
+	    '()
+	    (rest-of-scorecard
+	     (make-scorecard-skeleton (list test-gmodule-object))))
 
-(test-assert "skeleton-scorecard" (scorecard? (make-scorecard-skeleton (list test-gmodule-object))))
+(test-assert "skeleton-scorecard" 
+	     (scorecard? (make-scorecard-skeleton 
+			  (list test-gmodule-object))))
 
-(test-assert "lower score" (lower-score? (make-scorecard-subdatum 'foo
-								  1)
-					 (make-scorecard-subdatum 'bar
-								  4)))
+(test-assert "lower score" 
+	     (lower-score? (make-score-gset-blob 'foo 1)
+			   (make-score-gset-blob 'bar 4)))
+
+(test-eq "update-scorecard" 
+	 1
+	 (score-gset-blob-score 
+	  (car (score-gmod-blob-data
+		(first-in-scorecard
+		 (update-scorecard (make-scorecard-skeleton (list test-gmodule-object))
+				   'test
+				   'gset-tag
+				   #t))))))
 
 (test-end "scorecard-tests")
 
-(exit (= (test-runner-fail-count (test-runner-current)) 0))
