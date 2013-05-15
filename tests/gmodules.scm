@@ -27,25 +27,25 @@
   #:use-module (guilecraft data-types gmodules)
   #:use-module (guilecraft gmodule-ops))
 
-(test-begin "gmodule tests")
+(test-begin "gmodule-tests")
 
 (test-assert "Checking a gmodule"
-	     (gmodule? test-gmodule-object))
+	     (gmodule? test-gmodule))
 
 (test-eq "Checking a gmodule ID"
 	 'test
-	 (gmod_get-id test-gmodule-object))
+	 (gmodule-id test-gmodule))
 
 (test-equal "Checking a gmodule name"
-	    "Test Gmodule"
-	    (gmodule-name test-gmodule-object))
+  "Test Gmodule"
+  (gmodule-name test-gmodule))
 
 (test-assert "Retrieving first gset"
-	     (let ([gmod-parts (gmodule-parts test-gmodule-object)])
-	       (gset_gset? (first-gset gmod-parts))))
+  (let ([gmod-parts (gmodule-parts test-gmodule)])
+    (gset_gset? (car-gsets gmod-parts))))
 
 (test-assert "Recognising empty gmodule-parts"
- 	     (let ([empty-gmod-parts (rest-of-gsets (gmodule-parts test-gmodule-object))])
- 	       (no-more-gsets? empty-gmod-parts)))
+  (let ([empty-gmod-parts (cdr-gsets (gmodule-parts test-gmodule))])
+    (null-gsets? empty-gmod-parts)))
 
-(test-end "gmodule tests")
+(test-end "gmodule-tests")

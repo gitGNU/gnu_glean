@@ -32,6 +32,6 @@
   (begin
     (chdir "/home/alex/Projects/guilecraft/logs/")
     (use-modules (tests scorecards)
-		 (tests gmodules))
+		 (tests gmodules)
+		 (tests portal))
     (exit 0)))
-

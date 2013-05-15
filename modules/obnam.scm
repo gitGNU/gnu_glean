@@ -15,7 +15,7 @@
 					   "obnam backup ~/Documents  /media/backups"))))
 
 (define obnam-gmodule
-  (gmod_make-gmodule
+  (gmodule
    (id 'obnam)
    (name "Obnam: easy backup")
    (version "0.1")

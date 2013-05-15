@@ -4,10 +4,11 @@
   #:use-module (guilecraft data-types gmodules)
   #:use-module (guilecraft data-types gsets)
   #:export (gmodule-full-name
-	    first-gset
-	    rest-of-gsets
-	    no-more-gsets?
-	    gmod_get-gmodule-tags))
+	    gmodule-tags
+
+	    car-gsets
+	    cdr-gsets
+	    null-gsets?))
 
 ;;; Commentary:
 ;;;
@@ -15,13 +16,13 @@
 ;;;
 ;;; Code:
 
-(define (first-gset gmodule-parts-object)
+(define (car-gsets gmodule-parts-object)
   "Return the first gset in a gmodule-parts object."
   (car gmodule-parts-object))
-(define (rest-of-gsets gmodule-parts-object)
+(define (cdr-gsets gmodule-parts-object)
   "Return all but the first gset in a gmodule-parts-object."
   (cdr gmodule-parts-object))
-(define (no-more-gsets? gmodule-parts-object)
+(define (null-gsets? gmodule-parts-object)
   "Return #t if there are no gsets left in the gmodule-parts-object."
   (if (eq? '() gmodule-parts-object)
       #t
@@ -32,7 +33,7 @@
   "Return the full name of GMODULE--i.e., `NAME — version VERSION'."
     (string-append (gmodule-name gmodule) " — version " (gmodule-version gmodule))))
 
-(define gmod_get-gmodule-tags
+(define gmodule-tags
   (lambda (gmodule)
     "Return the tags in use in a given guilecraft module."
     (map gset_get-tag (gmodule-parts gmodule))))

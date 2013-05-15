@@ -2,17 +2,17 @@
 
 (define-module (guilecraft data-types gmodules)
   #:use-module (guilecraft utils)
-   #:export (gmod_get-id
-	     gmod_make-gmodule
+  #:export (gmodule-id
+	    gmodule
 
-	     gmodule?
+	    gmodule?
 
-	     gmodule-name
-	     gmodule-parts
-	     gmodule-version
-	     gmodule-description
-	     gmodule-long-description
-	     gmodule-creators))
+	    gmodule-name
+	    gmodule-parts
+	    gmodule-version
+	    gmodule-description
+	    gmodule-long-description
+	    gmodule-creators))
 
 ;;; Commentary:
 ;;;
@@ -24,9 +24,9 @@
 ;; A gmodule.
 ;; Gmodules consist of meta-data and one or more sets/gmodules
 (define-record-type* <gmodule>
-  gmod_make-gmodule make-gmodule
+  gmodule make-gmodule
   gmodule?
-  (id   gmod_get-id)                   ; string
+  (id   gmodule-id)                   ; string
   (name gmodule-name)		  ; string
   (version gmodule-version)		       ; number
   (description gmodule-description)		; one-line descriptive string

@@ -15,8 +15,8 @@
 	     gman_get-gmodule
 	     gmodule-id->gmodule-object))
 
-; define a data-manager instance using the result of gmod_get-id as key
-(define gmodule-manager (dman_data-manager gmod_get-id))
+; define a data-manager instance using the result of gmodule-id as key
+(define gmodule-manager (dman_data-manager gmodule-id))
 
 (define gman_add-gmodule
   (lambda (gmodule-object)
@@ -24,7 +24,7 @@
 gmodule-manager.
 
 gmodule-manager is an instance of data-manager. It stores the
-gmodule-object indexed by its gmodule-id, derived using gmod_get-id."
+gmodule-object indexed by its gmodule-id, derived using gmodule-id."
     (gmodule-manager 'put gmodule-object gmodule-object)))
 
 (define gman_get-gmodule

@@ -28,44 +28,46 @@
 
 (test-begin "scorecard-tests")
 
-(test-assert "dummy-score-gset-blob"
-	     (and (score-gset-blob? (make-dummy-score-gset-blob))
-		  (dummy-score-gset-blob? (make-dummy-score-gset-blob))))
+(test-assert "dummy gset-blob"
+  (and (gset-blob? (make-dummy-gset-blob))
+       (dummy-gset-blob? (make-dummy-gset-blob))))
 
-(test-assert "dummy-score-gmod-blob"
-	     (and (score-gmod-blob? (make-dummy-score-gmod-blob))
-		  (dummy-score-gmod-blob? (make-dummy-score-gmod-blob))))
+(test-assert "dummy gmod-blob"
+  (and (gmod-blob? (make-dummy-gmod-blob))
+       (dummy-gmod-blob? (make-dummy-gmod-blob))))
 
-(test-assert "empty-scorecard" (empty-scorecard? (make-scorecard '())))
+(test-assert "The empty scorecard"
+  (null-scorecard? (make-scorecard '())))
 
-(test-equal "first in scorecard" 
-	    (make-score-gmod-blob 
-	     'test (list (make-score-gset-blob 'gset-tag 0)))
-	    (first-in-scorecard (make-scorecard-skeleton 
-				 (list test-gmodule-object))))
+(test-equal "first in scorecard"
+  (make-gmod-blob
+   'test (list (make-gset-blob 'gset-tag 0)))
+  (car-gmod-blobs (scorecard-data (make-scorecard-skeleton
+				   (list test-gmodule)))))
 
 (test-equal "rest of scorecard"
-	    '()
-	    (rest-of-scorecard
-	     (make-scorecard-skeleton (list test-gmodule-object))))
+  '()
+  (cdr-gmod-blobs (scorecard-data (make-scorecard-skeleton
+				   (list test-gmodule)))))
 
-(test-assert "skeleton-scorecard" 
-	     (scorecard? (make-scorecard-skeleton 
-			  (list test-gmodule-object))))
+(test-assert "skeleton-scorecard"
+  (scorecard? (make-scorecard-skeleton
+	       (list test-gmodule))))
 
-(test-assert "lower score" 
-	     (lower-score? (make-score-gset-blob 'foo 1)
-			   (make-score-gset-blob 'bar 4)))
+(test-assert "lower score"
+  (lower-score? (make-gset-blob 'foo 1)
+		(make-gset-blob 'bar 4)))
 
-(test-eq "update-scorecard" 
+(test-eq "update-scorecard"
 	 1
-	 (score-gset-blob-score 
-	  (car (score-gmod-blob-data
-		(first-in-scorecard
-		 (update-scorecard (make-scorecard-skeleton (list test-gmodule-object))
-				   'test
-				   'gset-tag
-				   #t))))))
+	 (gset-blob-score
+	  (car-gset-blobs
+	   (gmod-blob-data
+	    (car-gmod-blobs
+	     (scorecard-data
+	      (update-scorecard (make-scorecard-skeleton (list test-gmodule))
+				'test
+				'gset-tag
+				#t)))))))
 
 (test-end "scorecard-tests")
-

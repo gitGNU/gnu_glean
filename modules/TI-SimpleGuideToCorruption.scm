@@ -9,7 +9,7 @@
   #:export (ti-plain-guide-module))
 
 (define ti-plain-guide-module
-  (gmod_make-gmodule
+  (gmodule
    (id 'ti-plain-guide)
    (name "The Anti-Corruption Plain Language Guide")
    (version "0.1")

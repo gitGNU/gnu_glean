@@ -83,7 +83,7 @@ made in 'experimental' branch back into main branch?"
 					   "git branch -D crazy-idea"))))
 
 (define git-gmodule
-  (gmod_make-gmodule
+  (gmodule
    (id 'git)
    (name "Git: fast version control")
    (version "0.1")

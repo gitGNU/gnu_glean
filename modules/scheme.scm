@@ -9,7 +9,7 @@
   #:export (scheme-gmodule))
 
 (define scheme-gmodule
-  (gmod_make-gmodule
+  (gmodule
    (id 'scheme)
    (name  "The Scheme Programming Language")
    (version "0.1")

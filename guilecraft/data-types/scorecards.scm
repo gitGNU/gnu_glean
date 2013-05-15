@@ -7,27 +7,27 @@
 	    scorecard?
 	    scorecard-data
 
-	    make-score-gmod-blob
-	    score-gmod-blob?
-	    score-gmod-blob-id
-	    score-gmod-blob-data
+	    make-gmod-blob
+	    gmod-blob?
+	    gmod-blob-id
+	    gmod-blob-data
 
-	    make-score-gset-blob
-	    score-gset-blob?
-	    score-gset-blob-tag
-	    score-gset-blob-score))
+	    make-gset-blob
+	    gset-blob?
+	    gset-blob-tag
+	    gset-blob-score))
 
 (define-record-type <score-gset-blob>
-  (make-score-gset-blob set-tag score)
-  score-gset-blob?
-  (set-tag score-gset-blob-tag)
-  (score score-gset-blob-score))
+  (make-gset-blob set-tag score)
+  gset-blob?
+  (set-tag gset-blob-tag)
+  (score gset-blob-score))
 
 (define-record-type <score-gmod-blob>
-  (make-score-gmod-blob gmodule-id gset-data)
-  score-gmod-blob?
-  (gmodule-id score-gmod-blob-id)
-  (gset-data score-gmod-blob-data))
+  (make-gmod-blob gmodule-id gset-data)
+  gmod-blob?
+  (gmodule-id gmod-blob-id)
+  (gset-data gmod-blob-data))
 
 (define-record-type <scorecard>
   (make-scorecard data)
