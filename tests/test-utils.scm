@@ -21,14 +21,19 @@
 
 (define-module (tests test-utils)
   #:use-module (guilecraft data-types gsets)
+  #:use-module (guilecraft data-types gmodules)
   #:use-module (guilecraft problem-types open-problems)
   #:use-module (guilecraft problem-types multi-choice-problems)
 
-  #:use-module (guilecraft data-types gmodules)
-  #:export (test-gmodule-object))
+  #:use-module (guilecraft data-types gprofiles)
+  #:use-module (guilecraft data-types scorecards)
+  #:use-module (guilecraft gprofile-ops)
 
-(define test-gmodule-object 
-  (gmod_make-gmodule
+  #:export (test-gmodule
+	    test-profile))
+
+(define test-gmodule
+  (gmodule
    (id 'test)
    (name "Test Gmodule")
    (version "0.1")
@@ -36,9 +41,9 @@
    (long-description "Long Description:")
    (creators "Alex Sassmannshausen")
    (derivation-source "None")
-   (parts 
-    (list 
-     (gset_make-gset 
+   (parts
+    (list
+     (gset_make-gset
       'gset-tag
       (list (make-open-problem "question?"
 			       "solution")
@@ -48,3 +53,9 @@
 				       (cons "b" "option b")
 				       (cons "c" "option c"))))))
    (find-out-more "http://some.url")))
+
+(define test-profile
+  (gprof_make-profile (name "test")
+		      (id (gprof_make-id "test" 1366787517))
+		      (active-modules '(test))
+		      (scorecard (make-scorecard '()))))
