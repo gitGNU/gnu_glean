@@ -3,14 +3,33 @@
 (define-module (guilecraft data-types scorecards)
   #:use-module (srfi srfi-1)
   #:use-module (srfi srfi-9)
-  #:export (scc_make-scorecard-datum
-	    scc_get-scorecard-datum-gset-tag
-	    scc_get-scorecard-datum-gmodule-id
-	    scc_get-scorecard-datum-score))
+  #:export (make-scorecard
+	    scorecard?
+	    scorecard-data
 
-(define-record-type <scorecard-datum>
-  (scc_make-scorecard-datum module-id set-tag score)
-  scorecard-datum?
-  (module-id scc_get-scorecard-datum-gmodule-id)
-  (set-tag scc_get-scorecard-datum-gset-tag)
-  (score scc_get-scorecard-datum-score))
+	    make-score-gmod-blob
+	    score-gmod-blob?
+	    score-gmod-blob-id
+	    score-gmod-blob-data
+
+	    make-score-gset-blob
+	    score-gset-blob?
+	    score-gset-blob-tag
+	    score-gset-blob-score))
+
+(define-record-type <score-gset-blob>
+  (make-score-gset-blob set-tag score)
+  score-gset-blob?
+  (set-tag score-gset-blob-tag)
+  (score score-gset-blob-score))
+
+(define-record-type <score-gmod-blob>
+  (make-score-gmod-blob gmodule-id gset-data)
+  score-gmod-blob?
+  (gmodule-id score-gmod-blob-id)
+  (gset-data score-gmod-blob-data))
+
+(define-record-type <scorecard>
+  (make-scorecard data)
+  scorecard?
+  (data scorecard-data))
