@@ -26,18 +26,18 @@
 ;;; Code:
 
 (define-module (guilecraft boot)    
-  #:use-module (ice-9 format)		; 
-  #:use-module (ice-9 getopt-long)	;
-  #:use-module (srfi srfi-19) ; To store and manipulate time
-			      ; effectively #:use-module (guilecraft
-			      ; web)
-  #:use-module (tests test-suite)
+  #:use-module (ice-9 format)      ; Print output
+  #:use-module (ice-9 getopt-long) ; Manipulate command-line options
+  #:use-module (srfi srfi-19)      ; To store and manipulate time
+			           ; effectively
+  #:use-module (tests test-suite)  ; In case of -t option: run
+				   ; test-suite
   #:export (boot))
 
 ;; Define the list of accepted options and their special properties
 (define *option-grammar* '((listen)
                            (usage (single-char #\u))
-;                          (config (value #t) (single-char #\c))
+			   (config (value #t) (single-char #\c))
 			   (test-suite (single-char #\t))
                            (version (single-char #\v))
                            (help (single-char #\h))))
@@ -86,15 +86,13 @@ Options will be surrounded by square brackets if optional."
   (setlocale LC_ALL "") ; sets the locale to the system locale
   (let ((options (parse-options args))
 	(start-clock (current-time)))
-    ;;; No need for config file yet
-    ;; (let ((config (option-ref options 'config #f)))
-    ;;   (if config
-    ;;       (let ((config-module (resolve-module '(guilecraft config))))
-    ;;         (save-module-excursion
-    ;;          (lambda ()
-    ;;            (set-current-module config-module)
-    ;;            (primitive-load config))))))
-    ;; (ensure-git-repo)
+    (let ((config (option-ref options 'config #f)))
+      (if config
+          (let ((config-module (resolve-module '(guilecraft config))))
+            (save-module-excursion
+             (lambda ()
+               (set-current-module config-module)
+               (primitive-load config))))))
     (main-loop)))
 
 ;;; Just a place-holder
