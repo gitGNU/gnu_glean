@@ -1,13 +1,42 @@
-;;; guilecraft --- learning the world using Guile.         -*- coding: utf-8 -*-
+;;; guilecraft --- fast learning tool.         -*- coding: utf-8 -*-
+
+;; Copyright (C) 2008, 2010, 2012 Alex Sassmannshausen
+
+;; This program is free software; you can redistribute it and/or
+;; modify it under the terms of the GNU General Public License as
+;; published by the Free Software Foundation; either version 3 of
+;; the License, or (at your option) any later version.
+;;
+;; This program is distributed in the hope that it will be useful,
+;; but WITHOUT ANY WARRANTY; without even the implied warranty of
+;; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+;; GNU General Public License for more details.
+;;
+;; You should have received a copy of the GNU General Public License
+;; along with this program; if not, contact:
+;;
+;; Free Software Foundation           Voice:  +1-617-542-5942
+;; 59 Temple Place - Suite 330        Fax:    +1-617-542-2652
+;; Boston, MA  02111-1307,  USA       gnu@gnu.org
+
+;;; Commentary:
+;;
+;; Portal defines the exposed API through which UIs and other programs
+;; access high-level content from guilecraft.
+;;
+;;; Code:
 
 (define-module (guilecraft portal)
   #:use-module (srfi srfi-1)
   #:use-module (srfi srfi-9)
-  #:use-module (guilecraft gprofiles)	; For profile data-struct
-  #:use-module (guilecraft gmodules)	; For whirligig etc.
+  #:use-module (guilecraft data-types gprofiles)
+  #:use-module (guilecraft data-types scorecards)
+  #:use-module (guilecraft gprofile-ops)
+  #:use-module (guilecraft scorecard-ops)
   #:use-module (guilecraft whirligigs)
-  #:use-module (guilecraft scorecards)
+  #:use-module (guilecraft profiler)
   #:use-module (guilecraft problem-type-manager)
+  #:use-module (guilecraft gmodule-manager)
 
   #:export (port_portal
 	    port_make-challenge-request
@@ -16,163 +45,134 @@
 (define-record-type <challenge-request>
   (port_make-challenge-request profile)
   challenge-request?
-  (profile get-challenge-profile))
+  (profile challenge-request-profile))
 
 (define-record-type <evaluation-request>
   (port_make-eval-request answer profile)
   eval-request?
   (answer get-eval-answer)
-  (profile get-eval-profile))
+  (profile eval-request-profile))
 
-;;;
-;; Helper functions
-;;;
+(define (request-profile request)
+  "Generic procedure to retrieve the profile in a given request. Takes
+any request object and returns the profile associated with it."
+  (cond ((challenge-request? request)
+	 (challenge-request-profile request))
+	((eval-request? request)
+	 (eval-request-profile request))
+	(else (error "request-profile: Unknown Request:" request))))
 
-(define profiler
-  (lambda (message profile)
-    "Returns profile challenge data by evaluating the scores stored in
-the profile."
-    (cond ((eq? message 'get-gset-tag)
-					; Return the lowest scoring gset-tag from all active modules
-	   (return-lowest-scoring-tag profile))
-	  ((eq? message 'get-gset-gmodule)
-					; Return gmodule name of lowest scoring gset-tag
-	   (return-lowest-scoring-gmodule profile))
-	  (else (error "profiler: unknown message: " message)))))
-
-(define return-lowest-scoring-tag
-  (lambda (profile)
-    "Convenience function to return the lowest scoring tag from a
-given profile"
-    (return-lowest-scoring-tag-or-gmodule scc_get-scorecard-datum-gset-tag profile)))
-
-(define return-lowest-scoring-gmodule
-  (lambda (profile)
-    "Convenience function to return the lowest scoring gmodule from a
-given profile"
-    (return-lowest-scoring-tag-or-gmodule scc_get-scorecard-datum-gmodule-id profile)))
-
-;; Function below carries out meat of computation. It relies on
-;; properly exposed data structures defined in the gprofiles module,
-;; to access the data stored within it.
-;; I need to define those data structures next.
-
-(define return-lowest-scoring-tag-or-gmodule
-  (lambda (proc profile)
-    "Returns/extracts the lowest scoring tag or gmodule from the given
-profile"
-    (define helper  			; recurse through profile
-					; returning lowest scoring data
-      (lambda (active-modules scorecard lowest-scoring-scorecard-datum)
-	(cond ((gprof_empty-active-modules? active-modules)
-	       'no-active-modules)	; error: no game defined
-	      ((scc_end-of-scorecard? scorecard)
-	       lowest-scoring-scorecard-datum)	; reached end of profile
-					; scorecard -> lowest scoring
-					; datum
-	      ;; next, check if current score card datum is affiliated
-	      ;; to an active module, and if so, whether it has a
-	      ;; lower score than the currently stored lowest scoring
-	      ;; datum
-	      ((and (gprof_active-module? (scc_first-in-scorecard scorecard)
-					  active-modules)
-		    (scc_lower-score? (scc_first-in-scorecard scorecard)
-				  lowest-scoring-scorecard-datum))
-	       ;; If so, save current datum, and recurse onwards
-	       (helper active-modules
-		       (scc_rest-of-scorecard scorecard)
-		       (scc_first-in-scorecard scorecard)))
-	      ;; Else, recurse onwards.
-	      (else (helper active-modules
-			    (scc_rest-of-scorecard scorecard)
-			    lowest-scoring-scorecard-datum)))))
-    ;; Call helper with populated list, and return datum applied to
-    ;; proc.
-    ;; Proc should retrieve data field in datum, else will cause problems.
-    (proc (helper (gprof_get-active-modules profile)
-		  (gprof_get-scorecard profile)
-		  (scc_make-dummy-scorecard-datum)))))
-
-;;; Currently is spaghetti code - probably needs to be split into
-;;; separate functions and might need to be exported into a separate
-;;; module. Currently returns a new profile only., which then makes
-;;; port_portal return the new profile. port_portal should return
-;;; evaluation, as well as correct answer and new profile.
-
-(define update-profile
-  (lambda (old-profile assessment-result)
-    "Return a new profile, which is used to generate the next
-challenge on the basis of the existing profile and a boolean, normally
-derived from player answer assessment."
-    (let ([lowest-scoring-datum `(,(return-lowest-scoring-tag
-				   old-profile)
-				  ,(return-lowest-scoring-gmodule old-profile))])
-	(define helper
-	  (lambda (temp-scorecard lowest-scoring-datum
-				  new-scorecard)
-	    "Return a modified scorecard by recursing through tho old
-scorecard and updating the lowest scoring datum"
-	    (cond ((null? temp-scorecard)
-		   (reverse new-scorecard))
-		  ((and (eq? (scc_get-scorecard-datum-gmodule-id
-			      (scc_first-in-scorecard temp-scorecard))
-			     (cadr lowest-scoring-datum)))
-		   (helper (scc_rest-of-scorecard temp-scorecard)
-			   lowest-scoring-datum (cons
-						 (scc_make-scorecard-datum
-						  (scc_get-scorecard-datum-gmodule-id
-						   (scc_first-in-scorecard
-						    temp-scorecard))
-						  (scc_get-scorecard-datum-gset-tag
-						   (scc_first-in-scorecard
-						    temp-scorecard))
-						  (+ (scc_get-scorecard-datum-score
-						      (scc_first-in-scorecard
-						       temp-scorecard))
-						     1))
-				 new-scorecard)))
-		  (else (helper (scc_rest-of-scorecard temp-scorecard)
-				lowest-scoring-datum
-				(cons (scc_first-in-scorecard
-				       temp-scorecard)
-				      new-scorecard))))))
-
-	(cond ((eq? assessment-result #t)
-	       (gprof_make-profile (gprof_get-UUID old-profile)
-				   (gprof_get-name old-profile)
-				   (gprof_get-active-modules old-profile)
-				   (helper (gprof_get-scorecard old-profile)
-					   lowest-scoring-datum
-					   '())))
-	      (else old-profile)))))
-
-
-;;;
-;; High Level UI Entry Point
-;;;
 ;;; Currently returns a new profile only.
 ;;; port_portal should return evaluation, as well as correct answer
 ;;; and  new profile.
+(define check-profile
+	      ; TODO: also need to introduce clause that checks to
+	      ; make sure the scorecard contains info on all
+	      ; active-modules, not just the ones which already happen
+	      ; to be there.
+
+	      ; TODO:introduce clause to determine if profile
+	      ; scorecard entry order corresponds to order in gmodule,
+	      ; to allow for gmodule updates on the fly:
+	      ; - if false, change order, or insert new value, continue process
+	      ; - if true, continue as at present.
+  (lambda (profile)
+    (let ([%name (gprof_get-name profile)]
+	  [%id (gprof_update-id profile)]
+	  [%active-modules (gprof_get-active-modules profile)])
+      ; Check whether scorecard contains data, else generate new
+      ; profile with new scorecard
+      (cond ((null-gmod-blobs? (scorecard-data (gprof_get-scorecard profile)))
+	     (gprof_make-profile 
+	      (name %name) 
+	      (id %id) 
+	      (active-modules %active-modules)
+	      (scorecard (make-scorecard-skeleton
+			  (map gmodule-id->gmodule-object %active-modules)))))
+	    ;; Work in progress:
+	    ; Check whether scorecard is complete, else generate new
+	    ; profile and add missing scorecard data
+	    ;; ((complete-scorecard? profile)
+	    ;;  (gprof_make-profile name id active-modules
+	    ;; 		       (complement-scorecard
+	    ;; 			(gprof_get-active-modules profile))))
+	    ;; ENDS :::
+	    ; Otherwise we use the current module
+	    (else profile)))))
+
+(define (update-profile profile scorecard-object)
+  "Take profile and scorecard and return new profile, created using
+scorecard."
+  (gprof_make-profile
+   (name (gprof_get-name profile)) 
+   (id (gprof_get-id profile)) 
+   (active-modules (gprof_get-active-modules profile))
+   (scorecard scorecard-object)))
+
+;; (define complete-scorecard? 
+;;   (lambda (profile)
+;;     "Recurse through the scorecard, checking if every datum is
+;; commensurate with the corresponding active gmodule.
+
+;; We skip all data that exist in the profile but which is not part of
+;; an active module - these could be past scores that are currently
+;; inactive, and which might be needed in future."
+;;     (let ([%active-module-objects (map gman_gmodule-id->gmodule-object
+;; 				       %active-modules)]
+;; 	  [%scorecard (gprof_get-scorecard profile)])
+;;       ; Check whether the next datum in the scorecard is the same as
+;;       ; the next gset-tag in the gmodule
+;;       (cond ((not (eq? next-scorecard-datum next-module-datum))
+;; 	     (member? next-scorecard-datum gmodule-object))))))
 
 (define port_portal
   (lambda (request)
     "Returns either the next question for a given profile, or a list
 containing the result of the evaluation of the player's answer and the
 player's new profile."
+    ;; TODO: introduce low-overhead
+    ;; profile save, just in case profile in use is replaced with a new
+    ;; one below.
+    ;; Ensure profile-scorecard is commensurate with
+    ;; active-modules
+    (let ([profile (check-profile (request-profile request))])
+      ;; If challenge request, return new challenge
       (cond ((challenge-request? request)
-	     (ptm_get-challenge
-	      (whirl_hangar 'next
-			    (profiler 'get-gset-tag
-				      (get-challenge-profile request))
-			    (profiler 'get-gset-gmodule
-				      (get-challenge-profile request)))))
+	     ;; generate challenge
+	     (cons profile 
+		   (ptm_get-challenge
+		    (whirl_hangar 'next
+				  (prof_profiler 'get-gset-tag
+						 profile)
+				  (prof_profiler 'get-gset-gmodule
+						 profile)))))
+	    ;; if evaluation request, evaluate and return new profile
+	    ;; & evaluation result.
 	    ((eval-request? request)
-	     (update-profile (get-eval-profile request)
-			     (ptm_assess-answer
-			      (get-eval-answer request)
-			      (whirl_hangar 'current
-					    (profiler 'get-gset-tag
-						      (get-eval-profile request))
-					    (profiler 'get-gset-gmodule
-						      (get-eval-profile request))))))
-	    (else  (error "portal: Unknown Request:" request)))))
+	     (cons
+	      ;; return new profile after score evaluation
+	      (update-profile
+	       profile
+	       (update-scorecard (gprof_get-scorecard profile)
+				 (prof_profiler 'get-gset-gmodule
+						profile)
+				 (prof_profiler 'get-gset-tag
+						profile)
+				 (ptm_assess-answer
+				  (get-eval-answer request)
+				  (whirl_hangar 'current
+						(prof_profiler 'get-gset-tag
+							       profile)
+						(prof_profiler 'get-gset-gmodule
+							       profile)))))
+	      ;; append evaluation result to list to be returned.
+	      (ptm_assess-answer
+	       (get-eval-answer request)
+	       (whirl_hangar 'current
+			     (prof_profiler 'get-gset-tag
+					    profile)
+			     (prof_profiler 'get-gset-gmodule
+					    profile)))))
+
+	    ;; if not challenge or eval, currently unknown request.
+	    (else  (error "portal: Unknown Request:" request))))))

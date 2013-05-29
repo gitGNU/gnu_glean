@@ -25,63 +25,91 @@
     "Returns profile challenge data by evaluating the scores stored in
 the profile."
     (cond ((eq? message 'get-gset-tag)
-					; Return the lowest scoring gset-tag from all active modules
+	   ;; Return the lowest scoring gset-tag from all active modules
 	   (return-lowest-scoring-tag profile))
 	  ((eq? message 'get-gset-gmodule)
-					; Return gmodule name of lowest scoring gset-tag
+	   ;; Return gmodule name of lowest scoring gset-tag
 	   (return-lowest-scoring-gmodule profile))
 	  (else (error "prof_profiler: unknown message: " message)))))
 
 (define return-lowest-scoring-tag
   (lambda (profile)
+    (define (gset-blob-tag-from-gmod-blob score-gmod-blob)
+      (gset-blob-tag (gmod-blob-data score-gmod-blob)))
     "Convenience function to return the lowest scoring tag from a
 given profile"
-    (return-lowest-scoring-tag-or-gmodule scc_get-scorecard-datum-gset-tag profile)))
+    (return-lowest-scoring-tag-or-gmodule gset-blob-tag-from-gmod-blob profile)))
 
 (define return-lowest-scoring-gmodule
   (lambda (profile)
     "Convenience function to return the lowest scoring gmodule from a
 given profile"
-    (return-lowest-scoring-tag-or-gmodule scc_get-scorecard-datum-gmodule-id profile)))
+    (return-lowest-scoring-tag-or-gmodule gmod-blob-id profile)))
 
 ;; Function below carries out meat of computation. It relies on
 ;; properly exposed data structures defined in the gprofiles module,
 ;; to access the data stored within it.
 
-(define return-lowest-scoring-tag-or-gmodule
-  (lambda (proc profile)
-    "Returns/extracts the lowest scoring tag or gmodule from the given
-profile"
-    (define helper  			; recurse through profile
-					; returning lowest scoring data
-      (lambda (active-modules scorecard
-			      lowest-scoring-scorecard-datum)
-	(cond ((gprof_empty-active-modules? active-modules)
-	       (error "return-lowest-scoring-tag-or-gmodule: Profile
+(define (return-lowest-scoring-tag-or-gmodule proc profile)
+  "Returns/extracts the lowest scoring tag or gmodule from the given
+profile."
+
+  ;; return scorecard data for active gmodules
+  (define (iter active-modules scorecard lowest-scoring-gmod-blob)
+    (let ([scorecard-data (scorecard-data scorecard)])
+      (cond ((gprof_empty-active-modules? active-modules)
+	     (error "return-lowest-scoring-tag-or-gmodule: Profile
 contains no active modules: " profile))
-	      ((scc_empty-scorecard? scorecard)
-	       lowest-scoring-scorecard-datum)	; reached end of profile
-					; scorecard -> lowest scoring
-					; datum
-	      ;; otherwise, check if current score card datum is affiliated
-	      ;; to an active module, and if so, whether it has a
-	      ;; lower score than the currently stored lowest scoring
-	      ;; datum
-	      ((and (active-module? (scc_first-in-scorecard scorecard)
-					  active-modules)
-		    (scc_lower-score? (scc_first-in-scorecard scorecard)
-				  lowest-scoring-scorecard-datum))
-	       ;; If so, save current datum, and recurse onwards
-	       (helper active-modules
-		       (scc_rest-of-scorecard scorecard)
-		       (scc_first-in-scorecard scorecard)))
-	      ;; Else, recurse onwards.
-	      (else (helper active-modules
-			    (scc_rest-of-scorecard scorecard)
-			    lowest-scoring-scorecard-datum)))))
-    ;; Call helper with populated list, and return datum applied to
-    ;; proc.
-    ;; Proc should retrieve data field in datum, else will cause problems.
-    (proc (helper (gprof_get-active-modules profile)
-		   (gprof_get-scorecard profile)
-		   (scc_make-dummy-scorecard-datum)))))
+
+	    ;; reached end of profile scorecard, call
+	    ;; gset-blobs-worker to scan tmp- lowest scoring blob
+	    ((null-gmod-blobs? scorecard-data)
+	     lowest-scoring-gmod-blob)
+
+	    ;; if first gmodule blob is an active module, test whether
+	    ;; its lowest scoring gset blob is lower scoring than the
+	    ;; current lowest scoring gset blob.
+	    ((active-module? (car-gmod-blobs scorecard-data)
+			     active-modules)
+	     (let ([lowest-scoring-in-gmod-blob
+		    (lowest-in-gmod-blob (car-gmod-blobs scorecard-data))])
+	       (cond ((lower-score? lowest-scoring-in-gmod-blob
+				    (car (gmod-blob-data lowest-scoring-gmod-blob)))
+		      ;; If so, save current gmod blob id and current
+		      ;; gset blob id, and recurse onwards
+		      (iter active-modules
+			    (make-scorecard (cdr-gmod-blobs scorecard-data))
+			    (make-gmod-blob
+			     (gmod-blob-id
+			      (car-gmod-blobs scorecard-data))
+			     lowest-scoring-in-gmod-blob)))
+		     ;; Else, recurse onwards.
+		     (else (iter active-modules
+				 (make-scorecard (cdr-gmod-blobs scorecard-data))
+				 lowest-scoring-gmod-blob)))))
+	    (else (iter active-modules
+			(make-scorecard (cdr-gmod-blobs scorecard-data))
+			lowest-scoring-gmod-blob)))))
+
+  ;; Call iter with populated list, and return blob applied to proc.
+  ;; Proc should retrieve data field in blob, else will cause
+  ;; problems.
+  (proc (iter (gprof_get-active-modules profile)
+	      (gprof_get-scorecard profile)
+	      (make-dummy-gmod-blob))))
+
+(define (lowest-in-gmod-blob gmod-blob)
+  "Return the lowest scoring score-gset-blob in the given
+gmod-blob."
+  (define (iter tmp-gset-blobs lowest-scoring-gset-blob)
+    (cond ((null? tmp-gset-blobs)
+	   lowest-scoring-gset-blob)
+	  ((lower-score? (car-gset-blobs tmp-gset-blobs)
+			 lowest-scoring-gset-blob)
+	   (iter (cdr-gset-blobs tmp-gset-blobs)
+		 (car-gset-blobs tmp-gset-blobs)))
+	  (else (iter (cdr-gset-blobs tmp-gset-blobs)
+		      lowest-scoring-gset-blob))))
+
+  (iter (gmod-blob-data gmod-blob)
+	(make-dummy-gset-blob)))
