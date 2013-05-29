@@ -21,18 +21,12 @@
 
 ;;; Commentary:
 ;;
-;; Centralised way to run all tests.
+;; Set general configuration options to be used by most other files in
+;; the project.
 ;;
 ;;; Code:
 
-(define-module (tests test-suite)
-  #:use-module (guilecraft config)
-  #:export (run-test-suite))
+(define-module (guilecraft config)    
+  #:export (%guilecraft-dir%))
 
-(define (run-test-suite)
-  (begin
-    (chdir (string-append %guilecraft-dir% "/logs/"))
-    (use-modules (tests scorecards)
-		 (tests gmodules)
-		 (tests portal))
-    (exit 0)))
+(define %guilecraft-dir% "/home/trisquel/projects/guilecraft") ; location of guilecraft libs
