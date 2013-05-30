@@ -69,21 +69,26 @@ data-types should implement a call to their respective data-manager's
 is an index in the table. Return #f otherwise."
 	    (cond ((null? tmp-data-type-table)
 		   #f)
+		  ((and (struct? id) (equal? id (first-id tmp-data-type-table)))
+		   (first-data-type-object tmp-data-type-table))
 		  ((eq? id (first-id tmp-data-type-table))
 		   (first-data-type-object tmp-data-type-table))
 		  (else (data-type-getter id (rest-of-table
-					       tmp-data-type-table))))))
+					      tmp-data-type-table))))))
 
 	(define data-type-putter
 	  (lambda (args identifier-getter old-data-type-table)
-	    "Returns a new table with the new content, data-type-interface, added by index id, retrieved through applying identifier-getter to the data-type-prototype."
-	    ; identifier-getter is assigned in a let to be able to apply identifier-getter,
-	    ; which is normally a record-type accessor, and hence generated through
-	    ; syntax-transformation.
-	    ; I'm not sure why I need to do this - I cannot reproduce it outside of data-manager.
+	    "Returns a new table with the new content,
+data-type-interface, added by index id, retrieved through applying
+identifier-getter to the data-type-prototype."
+	    ;; identifier-getter is assigned in a let to be able to apply identifier-getter,
+	    ;; which is normally a record-type accessor, and hence generated through
+	    ;; syntax-transformation.
+	    ;; I'm not sure why I need to do this - I cannot reproduce it outside of data-manager.
 	    (let ([data-interface (car args)] [data-prototype (cadr args)]
 		  [proc identifier-getter])
-	      (cons (cons (proc data-prototype) data-interface) old-data-type-table))))
+	      (cons (cons (proc data-prototype) data-interface)
+		    old-data-type-table))))
 
 
 	(cond ((eq? message 'get)
@@ -100,4 +105,5 @@ is an index in the table. Return #f otherwise."
 	      ((eq? message 'list)
 	       data-type-table)
 
-	      (else (error "data-manager: unknown message: " message)))))))
+	      (else (error "data-manager: unknown message: "
+			   message)))))))
