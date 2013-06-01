@@ -30,7 +30,8 @@
   #:use-module (guilecraft gprofile-ops)
 
   #:export (test-gmodule
-	    test-profile))
+	    test-gprofile
+	    test-gprofile-2))
 
 (define test-gmodule
   (gmodule
@@ -54,8 +55,14 @@
 				       (cons "c" "option c"))))))
    (find-out-more "http://some.url")))
 
-(define test-profile
+(define test-gprofile
   (gprof_make-profile (name "test")
 		      (id (gprof_make-id "test" 1366787517))
 		      (active-modules '(test))
+		      (scorecard (make-scorecard '()))))
+
+(define test-gprofile-2
+  (gprof_make-profile (name "test2")
+		      (id (gprof_make-id "test2" 1366787517))
+		      (active-modules '(test2))
 		      (scorecard (make-scorecard '()))))

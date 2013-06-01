@@ -20,23 +20,33 @@
 ;; Boston, MA  02111-1307,  USA       gnu@gnu.org
 
 (define-module (tests portal)
-  #:use-module (srfi srfi-64)
-  #:use-module (tests test-utils)
+  #:use-module (srfi srfi-64)      ; Provide test suite
+  #:use-module (tests test-utils)  ; Provide test-profiles, etc.
+  #:use-module (guilecraft data-types gprofiles) ; Provide gprof
+					; introspection 
 
-  #:use-module (guilecraft portal)
-  #:use-module (guilecraft gmodule-manager)
-  #:use-module (guilecraft data-types gprofiles))
-
-(gman_add-gmodule test-gmodule)
+  #:use-module (guilecraft portal)) ; Provide functions to be tested.
 
 (test-begin "portal-tests")
+
+;; Dummy objects for procedures used by "challenge request" and "eval
+;; request".
+(define (ptm_get-challenge profile)
+  "Dummy object returning a challenge."
+  "Challenge")
+(define (whirl_hangar message tag gmodule)
+  "Dummy object returning a problem."
+  (make-open-problem "Challenge" "Solution"))
+(define (ptm_assess-answer answer current-problem)
+  "Dummy object returning a problem evaluation."
+  #t)
 
 (test-assert "challenge request"
   (gprof_profile?
    (car
     (port_portal
      (port_make-challenge-request
-      test-profile)))))
+      test-gprofile)))))
 
 (test-assert "eval request"
   (gprof_profile?
@@ -44,6 +54,6 @@
     (port_portal
      (port_make-eval-request
       "solution"
-      test-profile)))))
+      test-gprofile)))))
 
 (test-end "portal-tests")

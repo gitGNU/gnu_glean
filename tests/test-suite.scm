@@ -32,7 +32,9 @@
 (define (run-test-suite)
   (begin
     (chdir (string-append %guilecraft-dir% "/logs/"))
-    (use-modules (tests scorecards)
+    (use-modules (tests scorecards)		 
 		 (tests gmodules)
+		 (tests gmodule-manager)
+		 (tests gprofile-manager)
 		 (tests portal))
     (exit 0)))
