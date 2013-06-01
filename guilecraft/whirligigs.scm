@@ -50,7 +50,7 @@ instances, when called."
   (let ([whirligig-list '()])
     (lambda (message gset-tag gmodule-id)
       "Creates new whirligigs as needed or uses them to retrieve the
-next challenge for a gset tag in a module."
+next problem for a gset tag in a module."
       (define helper
 	(lambda (message tmp-whirligig-list gset-tag gmodule-object)
 	  (cond ((null? tmp-whirligig-list)
