@@ -13,6 +13,7 @@
   #:use-module (guilecraft data-types gmodules)
   #:export  (gman_add-gmodule
 	     gman_get-gmodule
+	     gman_list-gmodules
 	     gmodule-id->gmodule-object))
 
 ; define a data-manager instance using the result of gmodule-id as key
@@ -32,6 +33,9 @@ gmodule-object indexed by its gmodule-id, derived using gmodule-id."
     "Convenience procedure to retrieve a given gmodule from the active
 gmodule-table stored in gmodule-manager."
     (gmodule-manager 'get gmodule-id)))
+
+(define (gman_list-gmodules)
+  (gmodule-manager 'list))
 
 ; gmodule-id->gmodule-object is in this module, not gmodule-ops,
 ; because it operates at a higher level: it applies through
