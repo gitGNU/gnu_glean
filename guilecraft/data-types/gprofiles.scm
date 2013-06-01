@@ -10,11 +10,13 @@
 	    gprof_get-name
 	    gprof_get-active-modules
 	    gprof_get-scorecard
-	    gprof_make-id))
+	    
+	    gprof_make-id
+	    gprof_id?))
 
 (define-record-type <id>
   (gprof_make-id n t)
-  id?
+  gprof_id?
   (n get-id-n)
   (t get-id-t))
 
