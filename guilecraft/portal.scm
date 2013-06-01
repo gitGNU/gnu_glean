@@ -37,10 +37,13 @@
   #:use-module (guilecraft profiler)
   #:use-module (guilecraft problem-type-manager)
   #:use-module (guilecraft gmodule-manager)
+  #:use-module (guilecraft gprofile-manager)
 
   #:export (port_portal
 	    port_make-challenge-request
-	    port_make-eval-request))
+	    port_make-eval-request
+	    port_list-profiles
+	    port_select-profile))
 
 (define-record-type <challenge-request>
   (port_make-challenge-request profile)
@@ -180,3 +183,11 @@ player's new profile."
 			  evaluation-result))
        ;; append evaluation result to list to be returned.
        evaluation-result))))
+
+(define (port_list-profiles)
+  "Wrapper pointing to gprofile-manager's list-profiles function."
+  (list-gprofiles))
+
+(define (port_select-profile gprofile-id)
+  "Wrapper pointing to gprofile-manager's select-profile function."
+  (select-gprofile gprofile-id))
