@@ -102,11 +102,10 @@ Options will be surrounded by square brackets if optional."
 	 ;(gdisplay (controller 'evaluate-answer (read)))
     (use-modules (guilecraft portal)
 		 (modules git)
-		 (profiles alex)
-		 ;(guilecraft gmodule-manager)
-		 )
-    (read)
-    ))
+		 (profiles alex))
+    ;; for now we drop into read, but we want to drop into server
+    ;; listening mode.
+    (read)))
 
 ;;; gdisplay is a generic name for a 
 ;;; procedure that will finally 
