@@ -139,40 +139,44 @@ player's new profile."
       ;; If challenge request, return new challenge
       (cond ((challenge-request? request)
 	     ;; generate challenge
-	     (cons profile 
-		   (ptm_get-challenge
-		    (whirl_hangar 'next
-				  (prof_profiler 'get-gset-tag
-						 profile)
-				  (prof_profiler 'get-gset-gmodule
-						 profile)))))
+	     (generate-challenge profile))
 	    ;; if evaluation request, evaluate and return new profile
 	    ;; & evaluation result.
 	    ((eval-request? request)
-	     (cons
-	      ;; return new profile after score evaluation
-	      (update-profile
-	       profile
-	       (update-scorecard (gprof_get-scorecard profile)
-				 (prof_profiler 'get-gset-gmodule
-						profile)
-				 (prof_profiler 'get-gset-tag
-						profile)
-				 (ptm_assess-answer
-				  (get-eval-answer request)
-				  (whirl_hangar 'current
-						(prof_profiler 'get-gset-tag
-							       profile)
-						(prof_profiler 'get-gset-gmodule
-							       profile)))))
-	      ;; append evaluation result to list to be returned.
-	      (ptm_assess-answer
-	       (get-eval-answer request)
-	       (whirl_hangar 'current
-			     (prof_profiler 'get-gset-tag
-					    profile)
-			     (prof_profiler 'get-gset-gmodule
-					    profile)))))
+	     (let ([answer (get-eval-answer request)])
+	       (generate-evaluation answer profile)))
 
 	    ;; if not challenge or eval, currently unknown request.
 	    (else  (error "portal: Unknown Request:" request))))))
+
+(define (generate-challenge profile)
+  "Return profile and the next challenge object."
+  (cons profile 
+	(ptm_get-challenge
+	 (whirl_hangar 'next
+		       (prof_profiler 'get-gset-tag
+				      profile)
+		       (prof_profiler 'get-gset-gmodule
+				      profile)))))
+
+(define (generate-evaluation answer profile)
+  "Return  updated profile and evaluation result."
+  (let ([current-problem (whirl_hangar 'current
+				       (prof_profiler 'get-gset-tag
+						      profile)
+				       (prof_profiler 'get-gset-gmodule
+						      profile))])
+    (let ([evaluation-result (ptm_assess-answer answer
+						current-problem)])
+      (cons
+       ;; return new profile after score evaluation
+       (update-profile
+	profile
+	(update-scorecard (gprof_get-scorecard profile)
+			  (prof_profiler 'get-gset-gmodule
+					 profile)
+			  (prof_profiler 'get-gset-tag
+					 profile)
+			  evaluation-result))
+       ;; append evaluation result to list to be returned.
+       evaluation-result))))
