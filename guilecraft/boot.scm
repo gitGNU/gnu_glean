@@ -98,25 +98,9 @@ Options will be surrounded by square brackets if optional."
 ;;; Just a place-holder
 (define (main-loop)
   "The main loop which calls challenges and expects answers, until the kill signal."
-  (begin ;(gdisplay (controller 'generate-question))
-	 ;(gdisplay (controller 'evaluate-answer (read)))
-    (use-modules (guilecraft portal)
-		 (modules git)
-		 (profiles alex))
+  (begin (use-modules (guilecraft portal)
+		      (modules git)
+		      (profiles alex))
     ;; for now we drop into read, but we want to drop into server
     ;; listening mode.
     (read)))
-
-;;; gdisplay is a generic name for a 
-;;; procedure that will finally 
-;;; produce output. For now, as CLI
-;;; is the only output option, it can
-;;; be defined inside this module.
-;;; At a later stage it will be defined
-;;; in the output module, with which
-;;; Guilecraft is called.
-(define gdisplay (lambda (string)
-		   "Generic display procedure — could be overriden via introspection, but provides a unified standard for output in guilecraft."
-		   (format #t string)
-		   (newline)))
-
