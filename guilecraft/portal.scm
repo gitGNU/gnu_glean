@@ -39,19 +39,19 @@
   #:use-module (guilecraft gmodule-manager)
   #:use-module (guilecraft gprofile-manager)
 
-  #:export (port_portal
-	    port_make-challenge-request
-	    port_make-eval-request
-	    port_list-profiles
-	    port_select-profile))
+  #:export (portal
+	    make-challenge-request
+	    make-eval-request
+	    list-profiles
+	    select-profile))
 
 (define-record-type <challenge-request>
-  (port_make-challenge-request profile)
+  (make-challenge-request profile)
   challenge-request?
   (profile challenge-request-profile))
 
 (define-record-type <evaluation-request>
-  (port_make-eval-request answer profile)
+  (make-eval-request answer profile)
   eval-request?
   (answer get-eval-answer)
   (profile eval-request-profile))
@@ -66,7 +66,7 @@ any request object and returns the profile associated with it."
 	(else (error "request-profile: Unknown Request:" request))))
 
 ;;; Currently returns a new profile only.
-;;; port_portal should return evaluation, as well as correct answer
+;;; portal should return evaluation, as well as correct answer
 ;;; and  new profile.
 (define check-profile
 	      ; TODO: also need to introduce clause that checks to
@@ -128,7 +128,7 @@ scorecard."
 ;;       (cond ((not (eq? next-scorecard-datum next-module-datum))
 ;; 	     (member? next-scorecard-datum gmodule-object))))))
 
-(define port_portal
+(define portal
   (lambda (request)
     "Returns either the next question for a given profile, or a list
 containing the result of the evaluation of the player's answer and the
@@ -184,10 +184,10 @@ player's new profile."
        ;; append evaluation result to list to be returned.
        evaluation-result))))
 
-(define (port_list-profiles)
+(define (list-profiles)
   "Wrapper pointing to gprofile-manager's list-profiles function."
   (list-gprofiles))
 
-(define (port_select-profile gprofile-id)
+(define (select-profile gprofile-id)
   "Wrapper pointing to gprofile-manager's select-profile function."
   (select-gprofile gprofile-id))

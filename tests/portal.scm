@@ -44,15 +44,15 @@
 (test-assert "challenge request"
   (gprof_profile?
    (car
-    (port_portal
-     (port_make-challenge-request
+    (portal
+     (make-challenge-request
       test-gprofile)))))
 
 (test-assert "eval request"
   (gprof_profile?
    (car
-    (port_portal
-     (port_make-eval-request
+    (portal
+     (make-eval-request
       "solution"
       test-gprofile)))))
 
