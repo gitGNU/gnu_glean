@@ -1,6 +1,0 @@
-help_title="Generating output with the print() function"
-
-help_short="Using print() to say \"Ni\" and such...\n"
-help_long="Python uses the print() function to display output on the commandline to the user. It accepts any writing and even nothing. \nThe print() function does look for quotes at the beginning of the string to be displayed and at the end. This means that contracting words (like do not into don\'t) can only be done if you escape the characters.\n Print accepts 3 kinds of quotation marks: \nSingle ('): \nDouble(\") \nTriple(\"\"\").\n\nTry the following exercises..."
-
-default_question="How would you use the print() function to write the following: \"$question\"?" 

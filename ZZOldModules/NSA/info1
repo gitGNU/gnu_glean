@@ -1,6 +1,0 @@
-help_title="\"Hello Echo!\" ... E e e..."
-
-help_short="Easy as pie.\n"
-help_long="In this level you will simply be required to type the letter corresponding to the ICAO spelling alphabet's code word displayed in the question."
-
-default_question="What alphabetical letter corresponds to the code word $question?"
