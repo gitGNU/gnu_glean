@@ -4,3 +4,4 @@
 .#*profiles/
 profiles/*
 *.log
+guilecraft/config.scm
