@@ -13,8 +13,6 @@ coding:utf-8
 ;;
 ;;; Code:
 
-(define %guilecraft-dir% "/home/trisquel/projects/guilecraft")
-
-(add-to-load-path %guilecraft-dir%) ;location of guilecraft libs
+(add-to-load-path "/home/alex/projects/guilecraft") ;location of guilecraft libs
 
 ((@ (guilecraft boot) boot) (program-arguments))
