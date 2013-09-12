@@ -80,15 +80,15 @@ any request object and returns the profile associated with it."
 	      ; - if false, change order, or insert new value, continue process
 	      ; - if true, continue as at present.
   (lambda (profile)
-    (let ([%name (gprof_get-name profile)]
-	  [%id (gprof_update-id profile)]
-	  [%active-modules (gprof_get-active-modules profile)])
+    (let ([%name (get-name profile)]
+	  [%id (update-id profile)]
+	  [%active-modules (get-active-modules profile)])
       ; Check whether scorecard contains data, else generate new
       ; profile with new scorecard
-      (cond ((null-gmod-blobs? (scorecard-data (gprof_get-scorecard profile)))
-	     (gprof_make-profile 
-	      (name %name) 
-	      (id %id) 
+      (cond ((null-gmod-blobs? (scorecard-data (get-scorecard profile)))
+	     (make-profile
+	      (name %name)
+	      (id %id)
 	      (active-modules %active-modules)
 	      (scorecard (make-scorecard-skeleton
 			  (map gmodule-id->gmodule-object %active-modules)))))
@@ -96,9 +96,9 @@ any request object and returns the profile associated with it."
 	    ; Check whether scorecard is complete, else generate new
 	    ; profile and add missing scorecard data
 	    ;; ((complete-scorecard? profile)
-	    ;;  (gprof_make-profile name id active-modules
+	    ;;  (make-profile name id active-modules
 	    ;; 		       (complement-scorecard
-	    ;; 			(gprof_get-active-modules profile))))
+	    ;; 			(get-active-modules profile))))
 	    ;; ENDS :::
 	    ; Otherwise we use the current module
 	    (else profile)))))
@@ -106,13 +106,13 @@ any request object and returns the profile associated with it."
 (define (update-profile profile scorecard-object)
   "Take profile and scorecard and return new profile, created using
 scorecard."
-  (gprof_make-profile
-   (name (gprof_get-name profile)) 
-   (id (gprof_get-id profile)) 
-   (active-modules (gprof_get-active-modules profile))
+  (make-profile
+   (name (get-name profile))
+   (id (get-id profile))
+   (active-modules (get-active-modules profile))
    (scorecard scorecard-object)))
 
-;; (define complete-scorecard? 
+;; (define complete-scorecard?
 ;;   (lambda (profile)
 ;;     "Recurse through the scorecard, checking if every datum is
 ;; commensurate with the corresponding active gmodule.
@@ -122,7 +122,7 @@ scorecard."
 ;; inactive, and which might be needed in future."
 ;;     (let ([%active-module-objects (map gman_gmodule-id->gmodule-object
 ;; 				       %active-modules)]
-;; 	  [%scorecard (gprof_get-scorecard profile)])
+;; 	  [%scorecard (get-scorecard profile)])
 ;;       ; Check whether the next datum in the scorecard is the same as
 ;;       ; the next gset-tag in the gmodule
 ;;       (cond ((not (eq? next-scorecard-datum next-module-datum))
@@ -154,7 +154,7 @@ player's new profile."
 
 (define (generate-challenge profile)
   "Return profile and the next challenge object."
-  (cons profile 
+  (cons profile
 	(ptm_get-challenge
 	 (whirl_hangar 'next
 		       (prof_profiler 'get-gset-tag
@@ -175,7 +175,7 @@ player's new profile."
        ;; return new profile after score evaluation
        (update-profile
 	profile
-	(update-scorecard (gprof_get-scorecard profile)
+	(update-scorecard (get-scorecard profile)
 			  (prof_profiler 'get-gset-gmodule
 					 profile)
 			  (prof_profiler 'get-gset-tag

@@ -42,14 +42,14 @@
   #t)
 
 (test-assert "challenge request"
-  (gprof_profile?
+  (profile?
    (car
     (portal
      (make-challenge-request
       test-gprofile)))))
 
 (test-assert "eval request"
-  (gprof_profile?
+  (profile?
    (car
     (portal
      (make-eval-request

@@ -4,29 +4,37 @@
   #:use-module (srfi srfi-1)
   #:use-module (srfi srfi-9)
   #:use-module (guilecraft data-types gprofiles)
-  #:export (gprof_first-active-module
-	    gprof_rest-active-modules
-	    gprof_empty-active-modules?
-	    gprof_update-id))
+  #:export (first-active-module
+	    rest-active-modules
+	    empty-active-modules?
+	    update-id
+	    trad-make-profile))
 
-(define gprof_first-active-module
+(define first-active-module
   (lambda (active-modules)
     (car active-modules)))
 
-(define gprof_rest-active-modules
+(define rest-active-modules
   (lambda (active-modules)
     (cdr active-modules)))
 
-(define gprof_empty-active-modules?
+(define empty-active-modules?
   (lambda (active-modules)
     (null? active-modules)))
 
 (define create-profile-id
   (lambda (name)
     "Generate the ID on the basis of name and current-time."
-    (gprof_make-id name (current-time))))
+    (make-id name (current-time))))
 
-(define gprof_update-id
+(define update-id
   (lambda (profile)
     "Convenience procedure to generate new ID for existing profile."
-    (create-profile-id (gprof_get-name profile))))
+    (create-profile-id (get-name profile))))
+
+(define (trad-make-profile n i a-m sc)
+  (make-profile
+   (name n)
+   (id i)
+   (active-modules a-m)
+   (scorecard sc)))

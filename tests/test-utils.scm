@@ -56,13 +56,13 @@
    (find-out-more "http://some.url")))
 
 (define test-gprofile
-  (gprof_make-profile (name "test")
-		      (id (gprof_make-id "test" 1366787517))
+  (make-profile (name "test")
+		      (id (make-id "test" 1366787517))
 		      (active-modules '(test))
 		      (scorecard (make-scorecard '()))))
 
 (define test-gprofile-2
-  (gprof_make-profile (name "test2")
-		      (id (gprof_make-id "test2" 1366787517))
+  (make-profile (name "test2")
+		      (id (make-id "test2" 1366787517))
 		      (active-modules '(test2))
 		      (scorecard (make-scorecard '()))))

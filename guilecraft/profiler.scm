@@ -57,7 +57,7 @@ profile."
   ;; return scorecard data for active gmodules
   (define (iter active-modules scorecard lowest-scoring-gmod-blob)
     (let ([scorecard-data (scorecard-data scorecard)])
-      (cond ((gprof_empty-active-modules? active-modules)
+      (cond ((empty-active-modules? active-modules)
 	     (error "return-lowest-scoring-tag-or-gmodule: Profile
 contains no active modules: " profile))
 
@@ -94,8 +94,8 @@ contains no active modules: " profile))
   ;; Call iter with populated list, and return blob applied to proc.
   ;; Proc should retrieve data field in blob, else will cause
   ;; problems.
-  (proc (iter (gprof_get-active-modules profile)
-	      (gprof_get-scorecard profile)
+  (proc (iter (get-active-modules profile)
+	      (get-scorecard profile)
 	      (make-dummy-gmod-blob))))
 
 (define (lowest-in-gmod-blob gmod-blob)
