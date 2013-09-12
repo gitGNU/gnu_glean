@@ -5,3 +5,6 @@
 profiles/*
 *.log
 guilecraft/config.scm
+*.org
+guilecraft.scm
+guilecraft-*.scm
