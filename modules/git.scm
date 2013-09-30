@@ -5,11 +5,10 @@
   #:use-module (guilecraft data-types gsets)
   #:use-module (guilecraft problem-types open-problems)
   #:use-module (guilecraft problem-types multi-choice-problems)
-  #:use-module (guilecraft gmodule-manager)
   #:export (git-gmodule))
 
 (define git-init
-  (gset_make-gset 'git-init
+  (make-gset 'git-init
 		  `(,(make-open-problem "What git command would you use to initiate a new project in the current directory?"
 					   "git init")
 		    ,(make-multi-choice-problem "In order to create a new git repository, would you:"
@@ -18,11 +17,11 @@
 						    (cons "b" "type git init")
 						    (cons "c" "type rm -r *")))))
 (define git-status
-  (gset_make-gset 'git-status
+  (make-gset 'git-status
 		  `(,(make-open-problem "How would you get a quick overview of the current status of the project in your current directory?"
 					   "git status"))))
 (define git-add
-  (gset_make-gset 'git-add
+  (make-gset 'git-add
 		  `(,(make-open-problem "How would you add all newly created files & folders to the index of your project in the current directory?"
 					   "git add .")
 		    ,(make-open-problem "How would you add foo to the index of your project in the current directory?"
@@ -36,7 +35,7 @@
 ;; inclusion in the next commit.
 
 (define git-commit
-  (gset_make-gset 'git-commit
+  (make-gset 'git-commit
 		  `(,(make-open-problem "How would you commit your changes to the git repository for your current project?"
 					   "git commit")
 		    ,(make-open-problem "What is a git shortcut for both adding your recent changes to the index and committing the index to the repository? (this will not add any newly createy files in the project structure to the repository!)"
@@ -50,14 +49,14 @@
 ;; the body.
 
 (define git-diff
-  (gset_make-gset 'git-diff
+  (make-gset 'git-diff
 		  `(,(make-open-problem "How can you tell what you are ready to commit to your git repository in the current directory?"
 					   "git diff --cached")
 		    ,(make-open-problem "How can you tell what changes have been made since your last commit/add?"
 					   "git diff"))))
 
 (define git-log
-  (gset_make-gset 'git-log
+  (make-gset 'git-log
 		  `(,(make-open-problem "How can you view the history of your changes?"
 					   "git log")
 		    ,(make-open-problem "How can you vie the complete diffs at each step of your history?"
@@ -67,7 +66,7 @@
 		    )))
 
 (define git-branch
-  (gset_make-gset 'git-branch
+  (make-gset 'git-branch
 		  `(,(make-open-problem "How would you branch your current project to create a new branch named 'experimental'?"
 					   "git branch experimental")
 		    ,(make-open-problem "How can you tell what different branches exist as part of the same project?"
@@ -87,12 +86,9 @@ made in 'experimental' branch back into main branch?"
    (id 'git)
    (name "Git: fast version control")
    (version "0.1")
-   (description "Learn to use git to manage your projects.")
-   (long-description "Long Description: background on git, introductory text")
+   (synopsis "Learn to use git to manage your projects.")
+   (description "Long Description: background on git, introductory text")
    (creators "Alex Sassmannshausen")
    (derivation-source "Git man pages & website")
    (parts `(,git-init ,git-status ,git-add ,git-commit ,git-diff ,git-log ,git-branch))
    (find-out-more "http://www.git-scm.com")))
-
-(gman_add-gmodule git-gmodule)
-
