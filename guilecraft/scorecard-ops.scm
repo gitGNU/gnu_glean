@@ -6,15 +6,15 @@
   #:use-module (guilecraft data-types scorecards)
   #:use-module (guilecraft data-types gprofiles)
   #:use-module (guilecraft data-types gmodules)
+  #:use-module (guilecraft gset-ops)
   #:use-module (guilecraft gprofile-ops)
   #:use-module (guilecraft gmodule-ops)
-  #:use-module (guilecraft gmodule-manager)
   #:export (make-empty-scorecard
 	    null-scorecard?
 
 	    car-gmod-blobs
 	    cdr-gmod-blobs
-	    null-gmod-blobs?
+	    null-gmod-blob?
 
 	    car-gset-blobs
 	    cdr-gset-blobs
@@ -40,17 +40,17 @@
 
 (define (null-scorecard? scorecard)
   "Return #t if scorecard has no data."
-  (null-gmod-blobs? (scorecard-data scorecard)))
+  (null? (scorecard-data scorecard)))
 
 (define (make-dummy-gset-blob)
   "Return a score-gset-blob with no real data."
-  (make-gset-blob 'no-tag #f))
+  (make-gset-blob 'no-tag #f 0))
 
 (define (make-dummy-gmod-blob)
   "Return a score-gmod-blob with only one dummy-score-gset-blob as its
 data."
   (make-gmod-blob 'no-gmodule
-			(list (make-dummy-gset-blob))))
+		  (list (make-dummy-gset-blob))))
 
 (define (dummy-gmod-blob? score-gmod-blob)
   "Return #t if score-gmod-blob is a dummy-gmod-blob."
@@ -62,7 +62,8 @@ data."
 (define (dummy-gset-blob? score-gset-blob)
   "Return #t if score-gmod-blob is a dummy-gset-blob."
   (if (and (eq? (gset-blob-tag score-gset-blob) 'no-tag)
-	   (not (gset-blob-score score-gset-blob)))
+	   (not (gset-blob-score score-gset-blob))
+	   (zero? (gset-blob-counter score-gset-blob)))
       #t
       #f))
 
@@ -73,9 +74,9 @@ data."
 (define (cdr-gmod-blobs scorecard-data)
   "Return the remaining score-gmod-blobs in scorecard-data."
   (cdr scorecard-data))
-(define (null-gmod-blobs? scorecard-data)
+(define (null-gmod-blob? module-blob)
   "Return #t if scorecard-data contains no gmod-blobs."
-  (null? scorecard-data))
+  (null? (gmod-blob-data module-blob)))
 
 ;; Data abstraction for processing gset blobs.
 (define (car-gset-blobs gset-blobs)
@@ -118,8 +119,8 @@ each gmodule-object in the list."
     "Return a gmod-blob containing a nil-score gset-blob for each
 gset-tag in the gmodule object."
     (make-gmod-blob (gmodule-id gmodule-object)
-			  (add-nil-score-gset-blobs (gmodule-tags
-						     gmodule-object))))
+		    (add-nil-score-gset-blobs (gmodule-tags
+					       gmodule-object))))
   (define (add-nil-score-gset-blobs gset-tags)
     "Return a list of nil-score-gset-blobs for each tag in the
 gset-tags list."
@@ -128,7 +129,7 @@ gset-tags list."
   (define add-nil-score-gset-blob
     (lambda (gset-tag)
       "Return a newly created gset-blob of gset-tag with score 0."
-      (make-gset-blob gset-tag 0)))
+      (make-gset-blob gset-tag 0 0)))
 
   ;; Return the scorecard-skeleton
   (make-scorecard (add-scorecard-data gmodule-object-list)))
@@ -138,67 +139,53 @@ gset-tags list."
   "Return a new scorecard, with the scores of each gset-blob adjusted
 based on assessment-result."
 
-  (define (modify-score old-score assessment-result)
-    "Returns a score modified by an algorithm on the basis of
+  (define (gmod-blobs-worker gmod-blobs)
+      "Return new GMOD-BLOBS list: recurse on blobs, replace GMODULE-ID
+matching blob with updated one."
+
+    (define (gset-blobs-worker gset-blobs)
+      "Return new GSET-BLOBS list: recurse on blobs, replace GSET-TAG
+matching blob with updated one."
+
+      (define (gset-blob-inspector)
+	"See if gset-blob is the blob we're looking for. If so return
+a new, updated blob, otherwise simply return the blob."
+	(lambda (gset-blob)
+	  (if (eqv? (gset-blob-tag gset-blob) gset-tag)
+	      (make-gset-blob
+	       gset-tag
+	       (modify-score (gset-blob-score gset-blob)
+			     assessment-result)
+	       (progress-counter (gset-blob-counter gset-blob)
+				 assessment-result)))))
+
+      (map (gset-blob-inspector) gset-blobs))
+
+    (define (gmod-blob-inspector)
+      "See if gmod-blob is the blob we're looking for. If so return
+a new, updated blob, otherwise simply return the blob."
+      (lambda (gmod-blob)
+	(if (eqv? (gmod-blob-id gmod-blob) gmodule-id)
+	    (make-gmod-blob 
+	     gmodule-id
+	     (gset-blobs-worker (gmod-blob-data gmod-blob)))
+	    (gmod-blob))))
+
+    (map (gmod-blob-inspector) gmod-blobs))
+
+  ;; Make new scorecard with all old data except for the one updated
+  ;; gset-blob.
+  (make-scorecard (gmod-blobs-worker (scorecard-data scorecard))))
+
+(define (modify-score old-score assessment-result)
+  "Returns a score modified by an algorithm on the basis of
 assessment-result, to take the place of old-score."
-    (if assessment-result
-	(+ old-score 1)
-	old-score))
+  (if assessment-result
+      (+ old-score 1)
+      old-score))
 
-  (define (gset-blobs-worker old-gset-blobs gset-tag assessment-result
-			     new-gset-blobs)
-    "Returns a list of gset-blobs with the gset-blob whose tag matches
-gset-tag having its score modified by modify-score."
-    (cond ((null? old-gset-blobs)
-	   (reverse new-gset-blobs))
-	  ((eq? (gset-blob-tag (car-gset-blobs old-gset-blobs))
-		gset-tag)
-	   (gset-blobs-worker (cdr-gset-blobs old-gset-blobs)
-			      gset-tag
-			      assessment-result
-			      (cons (make-gset-blob
-				     gset-tag
-				     (modify-score (gset-blob-score
-						    (car-gset-blobs old-gset-blobs))
-						   assessment-result))
-				    new-gset-blobs)))
-	  (else (gset-blobs-worker (cdr old-gset-blobs)
-				   gset-tag
-				   assessment-result
-				   (cons (car old-gset-blobs)
-					 new-gset-blobs)))))
+(define (progress-counter old-counter-value assessment-result)
+  "Returns the increment of counter-value or 0 if counter-value
+is equal to or greater the number of problems in the gset."
+  (1+ old-counter-value))
 
-  (define (gmod-blobs-worker old-gmod-blobs gmodule-id gset-tag
-			     assessment-result new-gmod-blobs)
-    "Returns a list of gmod-blobs with the gmod-blob whose id matches
-gmodule-id having its gset-blobs modified by gset-blobs-worker."
-    (cond ((null? old-gmod-blobs)
-	   (reverse new-gmod-blobs))
-	  ((eq? (gmod-blob-id (car old-gmod-blobs))
-		gmodule-id)
-	   (gmod-blobs-worker (cdr old-gmod-blobs)
-			      gmodule-id
-			      gset-tag
-			      assessment-result
-			      (cons
-			       (make-gmod-blob
-				gmodule-id
-				(gset-blobs-worker
-				 (gmod-blob-data (car old-gmod-blobs))
-				 gset-tag
-				 assessment-result
-				 '()))
-			       new-gmod-blobs)))
-	  (else (gmod-blobs-worker (cdr old-gmod-blobs)
-				   gmodule-id
-				   gset-tag
-				   assessment-result
-				   (cons (car old-gmod-blobs)
-					 new-gmod-blobs)))))
-
-  ;; Return the updated scorecard
-  (make-scorecard (gmod-blobs-worker (scorecard-data scorecard)
-				     gmodule-id
-				     gset-tag
-				     assessment-result
-				     '())))

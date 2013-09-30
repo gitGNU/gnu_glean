@@ -28,11 +28,11 @@
 
 (test-begin "scorecard-tests")
 
-(test-assert "dummy gset-blob"
+(test-assert "dummy-gset-blob"
   (and (gset-blob? (make-dummy-gset-blob))
        (dummy-gset-blob? (make-dummy-gset-blob))))
 
-(test-assert "dummy gmod-blob"
+(test-assert "dummy-gmod-blob"
   (and (gmod-blob? (make-dummy-gmod-blob))
        (dummy-gmod-blob? (make-dummy-gmod-blob))))
 
@@ -41,7 +41,7 @@
 
 (test-equal "first in scorecard"
   (make-gmod-blob
-   'test (list (make-gset-blob 'gset-tag 0)))
+   'test (list (make-gset-blob 'gset-tag 0 0)))
   (car-gmod-blobs (scorecard-data (make-scorecard-skeleton
 				   (list test-gmodule)))))
 
@@ -55,8 +55,8 @@
 	       (list test-gmodule))))
 
 (test-assert "lower score"
-  (lower-score? (make-gset-blob 'foo 1)
-		(make-gset-blob 'bar 4)))
+  (lower-score? (make-gset-blob 'foo 1 3)
+		(make-gset-blob 'bar 4 1)))
 
 (test-eq "update-scorecard"
 	 1

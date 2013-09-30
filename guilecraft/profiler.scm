@@ -8,7 +8,8 @@
   #:use-module (guilecraft gprofile-ops)
   #:use-module (guilecraft scorecard-ops)
 
-  #:export (prof_profiler))
+  #:export (profiler
+	    lowest-scoring-gset))
 
 ;;; Commentary:
 ;;
@@ -20,96 +21,48 @@
 ;;
 ;;; Code:
 
-(define prof_profiler
-  (lambda (message profile)
-    "Returns profile challenge data by evaluating the scores stored in
-the profile."
-    (cond ((eq? message 'get-gset-tag)
-	   ;; Return the lowest scoring gset-tag from all active modules
-	   (return-lowest-scoring-tag profile))
-	  ((eq? message 'get-gset-gmodule)
-	   ;; Return gmodule name of lowest scoring gset-tag
-	   (return-lowest-scoring-gmodule profile))
-	  (else (error "prof_profiler: unknown message: " message)))))
-
-(define return-lowest-scoring-tag
+(define profiler
   (lambda (profile)
-    (define (gset-blob-tag-from-gmod-blob score-gmod-blob)
-      (gset-blob-tag (gmod-blob-data score-gmod-blob)))
-    "Convenience function to return the lowest scoring tag from a
-given profile"
-    (return-lowest-scoring-tag-or-gmodule gset-blob-tag-from-gmod-blob profile)))
+    "Returns lowest scoring gmod-blob."
+    (lowest-module-blob profile)))
 
-(define return-lowest-scoring-gmodule
-  (lambda (profile)
-    "Convenience function to return the lowest scoring gmodule from a
-given profile"
-    (return-lowest-scoring-tag-or-gmodule gmod-blob-id profile)))
+(define (lowest-module-blob profile)
+  "Returns the lowest scoring module blob from PROFILE, taking into
+account its list of active modules.
 
-;; Function below carries out meat of computation. It relies on
-;; properly exposed data structures defined in the gprofiles module,
-;; to access the data stored within it.
+Returns false if no active modules exist in profile.
 
-(define (return-lowest-scoring-tag-or-gmodule proc profile)
-  "Returns/extracts the lowest scoring tag or gmodule from the given
-profile."
+Returns an error if there is no data PROFILE's scorecard."
 
-  ;; return scorecard data for active gmodules
-  (define (iter active-modules scorecard lowest-scoring-gmod-blob)
-    (let ([scorecard-data (scorecard-data scorecard)])
-      (cond ((empty-active-modules? active-modules)
-	     (error "return-lowest-scoring-tag-or-gmodule: Profile
-contains no active modules: " profile))
+  (let ((active-modules (get-active-modules profile))
+	(scorecard (get-scorecard profile)))
 
-	    ;; reached end of profile scorecard, call
-	    ;; gset-blobs-worker to scan tmp- lowest scoring blob
-	    ((null-gmod-blobs? scorecard-data)
-	     lowest-scoring-gmod-blob)
+    (cond ((empty-active-modules? active-modules)
+	   #f)
+	  ((null-scorecard? scorecard)
+	   (error "profiler: No data in scorecard!"))
+	  (else (reduce (lambda (module-blob previous)
+			  (if (and (active-module? module-blob
+						   active-modules)
+				   (lower-score?
+				    (lowest-scoring-gset module-blob)
+				    (lowest-scoring-gset previous)))
+			      module-blob
+			      previous))
+			'bogus-option
+			(scorecard-data scorecard))))))
 
-	    ;; if first gmodule blob is an active module, test whether
-	    ;; its lowest scoring gset blob is lower scoring than the
-	    ;; current lowest scoring gset blob.
-	    ((active-module? (car-gmod-blobs scorecard-data)
-			     active-modules)
-	     (let ([lowest-scoring-in-gmod-blob
-		    (lowest-in-gmod-blob (car-gmod-blobs scorecard-data))])
-	       (cond ((lower-score? lowest-scoring-in-gmod-blob
-				    (car (gmod-blob-data lowest-scoring-gmod-blob)))
-		      ;; If so, save current gmod blob id and current
-		      ;; gset blob id, and recurse onwards
-		      (iter active-modules
-			    (make-scorecard (cdr-gmod-blobs scorecard-data))
-			    (make-gmod-blob
-			     (gmod-blob-id
-			      (car-gmod-blobs scorecard-data))
-			     lowest-scoring-in-gmod-blob)))
-		     ;; Else, recurse onwards.
-		     (else (iter active-modules
-				 (make-scorecard (cdr-gmod-blobs scorecard-data))
-				 lowest-scoring-gmod-blob)))))
-	    (else (iter active-modules
-			(make-scorecard (cdr-gmod-blobs scorecard-data))
-			lowest-scoring-gmod-blob)))))
+(define (lowest-scoring-gset gmod-blob)
+  "Return the lowest scoring gset-blob in the given
+gmod-blob.
 
-  ;; Call iter with populated list, and return blob applied to proc.
-  ;; Proc should retrieve data field in blob, else will cause
-  ;; problems.
-  (proc (iter (get-active-modules profile)
-	      (get-scorecard profile)
-	      (make-dummy-gmod-blob))))
-
-(define (lowest-in-gmod-blob gmod-blob)
-  "Return the lowest scoring score-gset-blob in the given
-gmod-blob."
-  (define (iter tmp-gset-blobs lowest-scoring-gset-blob)
-    (cond ((null? tmp-gset-blobs)
-	   lowest-scoring-gset-blob)
-	  ((lower-score? (car-gset-blobs tmp-gset-blobs)
-			 lowest-scoring-gset-blob)
-	   (iter (cdr-gset-blobs tmp-gset-blobs)
-		 (car-gset-blobs tmp-gset-blobs)))
-	  (else (iter (cdr-gset-blobs tmp-gset-blobs)
-		      lowest-scoring-gset-blob))))
-
-  (iter (gmod-blob-data gmod-blob)
-	(make-dummy-gset-blob)))
+Raise an error if GMOD-BLOB contains no gset-blobs."
+  (if (null-gmod-blob? gmod-blob)
+      (error "lowest-scoring-gset: No data in gset!")
+      (reduce (lambda (gset-blob previous)
+		(if (lower-score? gset-blob
+				  previous)
+		    gset-blob
+		    previous))
+	      'bogus-option
+	      (gmod-blob-data gmod-blob))))

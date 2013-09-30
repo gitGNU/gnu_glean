@@ -38,13 +38,13 @@
    (id 'test)
    (name "Test Gmodule")
    (version "0.1")
-   (description "Test Description")
-   (long-description "Long Description:")
+   (synopsis "Test Description")
+   (description "Long Description:")
    (creators "Alex Sassmannshausen")
    (derivation-source "None")
    (parts
     (list
-     (gset_make-gset
+     (make-gset
       'gset-tag
       (list (make-open-problem "question?"
 			       "solution")

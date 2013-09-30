@@ -4,8 +4,30 @@
   #:use-module (srfi srfi-1)
   #:use-module (srfi srfi-9)
   #:use-module (ice-9 match)
+  #:use-module (guilecraft config)
 
-  #:export (define-record-type*))
+  #:export (define-record-type*)
+  #:export (gmsg))
+
+(define* (gmsg #:key (priority 10) . args)
+  "Provide a simple debugging message system."
+  (define (indent length)
+    (define (i l s)
+      (if (zero? l)
+	  s
+	  (i (1- l) (string-append " " s))))
+    
+    (if (zero? length)
+	""
+	(i (1- length) " ")))
+  (define (gm args format-string)
+    (cond ((null? args) format-string)
+	  (else (gm (cdr args) (string-append format-string " ~S")))))
+  (if (< priority %debug%)
+      (begin
+	(simple-format #t "~a* Debug:" (indent (1- priority)))
+	(apply simple-format #t (gm args " ") args)
+	(newline))))
 
 ;;; Definition shamelessly stolen from Ludovic Courtes utils.scm for the Guix project
 (define-syntax define-record-type*

@@ -29,8 +29,8 @@
   (id   gmodule-id)                   ; string
   (name gmodule-name)		  ; string
   (version gmodule-version)		       ; number
-  (description gmodule-description)		; one-line descriptive string
-  (long-description gmodule-long-description) ; Space for teaching material text
+  (synopsis gmodule-description)		; one-line descriptive string
+  (description gmodule-long-description) ; Space for teaching material text
   (creators gmodule-creators)           ; <credit> instance
   (parts gmodule-parts)                 ; list of variables
 

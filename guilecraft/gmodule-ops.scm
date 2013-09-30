@@ -8,7 +8,8 @@
 
 	    car-gsets
 	    cdr-gsets
-	    null-gsets?))
+	    null-gsets?
+	    trad-make-gmodule))
 
 ;;; Commentary:
 ;;;
@@ -36,4 +37,16 @@
 (define gmodule-tags
   (lambda (gmodule)
     "Return the tags in use in a given guilecraft module."
-    (map gset_get-tag (gmodule-parts gmodule))))
+    (map get-tag (gmodule-parts gmodule))))
+
+(define (trad-make-gmodule i n v d l-d c p f-o-m d-s)
+  (gmodule
+   (id i)
+   (name n)
+   (version v)
+   (synopsis d)
+   (description l-d)
+   (creators c)
+   (parts p)
+   (find-out-more f-o-m)
+   (derivation-source d-s)))

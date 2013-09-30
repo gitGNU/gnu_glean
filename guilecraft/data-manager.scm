@@ -43,12 +43,11 @@ gmodules)."
 data-object-prototype) installs a data-type (e.g. gmodule,
 problem-type) into the table, or, when called with 'get and an indexed
 data-type identifier returns content or a content provider for that
-data-type:
-dman_data-manager 'put data-type -> appends data-type object,
-indexed by its data-type-id to the data-type-table and returns 'done or
-#f. 
-dman_data-manager 'get data-type-id -> returns a data-type object
-associated with data-type-id or #f if no data-type object can be found.
+data-type: dman_data-manager 'put data-type -> appends data-type
+object, indexed by its data-type-id to the data-type-table and returns
+'done or #f.  dman_data-manager 'get data-type-id -> returns a
+data-type object associated with data-type-id or #f if no data-type
+object can be found.
 
 data-type-table is the central, canonical repository of known data-types. All
 data-types should implement a call to their respective data-manager's
@@ -81,28 +80,28 @@ is an index in the table. Return #f otherwise."
 	    "Returns a new table with the new content,
 data-type-interface, added by index id, retrieved through applying
 identifier-getter to the data-type-prototype."
-	    ;; identifier-getter is assigned in a let to be able to apply identifier-getter,
-	    ;; which is normally a record-type accessor, and hence generated through
-	    ;; syntax-transformation.
-	    ;; I'm not sure why I need to do this - I cannot reproduce it outside of data-manager.
+	    ;; identifier-getter is assigned in a let to be able to
+	    ;; apply identifier-getter, which is normally a
+	    ;; record-type accessor, and hence generated through
+	    ;; syntax-transformation.  I'm not sure why I need to do
+	    ;; this - I cannot reproduce it outside of data-manager.
 	    (let ([data-interface (car args)] [data-prototype (cadr args)]
 		  [proc identifier-getter])
 	      (cons (cons (proc data-prototype) data-interface)
 		    old-data-type-table))))
 
 
-	(cond ((eq? message 'get)
+	(cond ((eq? message 'get)       ; Retrieving an entry
 	       (let ([result (data-type-getter (car args)
 					       data-type-table)])
-		 (if result
-		     result
-		     (error "data-manager 'get: index not found: "
-			    (car args)))))
-	      ((eq? message 'put)
+		 (if result		; If index exists…
+		     result		; Return profile
+		     #f)))		; Else #f
+	      ((eq? message 'put)	; Storing an entry
 	       (begin
 		 (set! data-type-table (data-type-putter args identifier-getter data-type-table))
 		 #t))
-	      ((eq? message 'list)
+	      ((eq? message 'list)	; Returning all known data
 	       data-type-table)
 
 	      (else (error "data-manager: unknown message: "

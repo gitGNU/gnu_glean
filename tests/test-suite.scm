@@ -27,14 +27,36 @@
 
 (define-module (tests test-suite)
   #:use-module (guilecraft config)
-  #:export (run-test-suite))
+  #:export (run-test-suite)
+  #:export (run-server-tests))
 
 (define (run-test-suite)
   (begin
     (chdir (string-append %guilecraft-dir% "/logs/"))
-    (use-modules (tests scorecards)		 
+    (use-modules (tests scorecards)
+		 (tests profiler)
 		 (tests gmodules)
 		 (tests gmodule-manager)
 		 (tests gprofile-manager)
-		 (tests portal))
-    (exit 0)))
+		 (tests portal)
+		 (tests comtools-offline))
+    (let* ((path (string-append %guilecraft-dir% "/socket")))
+      (if (and (access? path W_OK)
+	       (catch #t
+		 (lambda ()
+		   (let ((s (socket PF_UNIX SOCK_STREAM 0)))
+		     (connect s AF_UNIX path)
+		     (write "alive?" s)
+		     (read s)
+		     (close s)))
+		 (lambda (k . args) #f)))
+	  (use-modules (tests comtools-online)
+		       (tests server-responses))
+	  (begin (simple-format #t "No server is running; we will skip
+communication tests.")
+		 (newline))))))
+
+(define (run-server-tests)
+  (begin
+    (chdir (string-append %guilecraft-dir% "/logs/"))
+    (use-modules (tests server))))

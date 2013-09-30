@@ -40,30 +40,11 @@
   #:use-module (guilecraft gprofile-manager)
 
   #:export (portal
-	    make-challenge-request
-	    make-eval-request
 	    list-profiles
-	    select-profile))
-
-(define-record-type <challenge-request>
-  (make-challenge-request profile)
-  challenge-request?
-  (profile challenge-request-profile))
-
-(define-record-type <evaluation-request>
-  (make-eval-request answer profile)
-  eval-request?
-  (answer get-eval-answer)
-  (profile eval-request-profile))
-
-(define (request-profile request)
-  "Generic procedure to retrieve the profile in a given request. Takes
-any request object and returns the profile associated with it."
-  (cond ((challenge-request? request)
-	 (challenge-request-profile request))
-	((eval-request? request)
-	 (eval-request-profile request))
-	(else (error "request-profile: Unknown Request:" request))))
+	    select-profile
+	    generate-challenge
+	    generate-evaluation
+	    check-profile))
 
 ;;; Currently returns a new profile only.
 ;;; portal should return evaluation, as well as correct answer
@@ -128,61 +109,32 @@ scorecard."
 ;;       (cond ((not (eq? next-scorecard-datum next-module-datum))
 ;; 	     (member? next-scorecard-datum gmodule-object))))))
 
-(define portal
-  (lambda (request)
-    "Returns either the next question for a given profile, or a list
-containing the result of the evaluation of the player's answer and the
-player's new profile."
-    ;; TODO: introduce low-overhead
-    ;; profile save, just in case profile in use is replaced with a new
-    ;; one below.
-    ;; Ensure profile-scorecard is commensurate with
-    ;; active-modules
-    (let ([profile (check-profile (request-profile request))])
-      ;; If challenge request, return new challenge
-      (cond ((challenge-request? request)
-	     ;; generate challenge
-	     (generate-challenge profile))
-	    ;; if evaluation request, evaluate and return new profile
-	    ;; & evaluation result.
-	    ((eval-request? request)
-	     (let ([answer (get-eval-answer request)])
-	       (generate-evaluation answer profile)))
-
-	    ;; if not challenge or eval, currently unknown request.
-	    (else  (error "portal: Unknown Request:" request))))))
-
 (define (generate-challenge profile)
   "Return profile and the next challenge object."
-  (cons profile
-	(ptm_get-challenge
-	 (whirl_hangar 'next
-		       (prof_profiler 'get-gset-tag
-				      profile)
-		       (prof_profiler 'get-gset-gmodule
-				      profile)))))
+  (let ((lowest-gmod-blob (profiler profile)))
+    (cons profile
+	  (ptm_get-challenge
+	   (hangar (lowest-scoring-gset lowest-gmod-blob)
+		   (gmod-blob-id lowest-gmod-blob))))))
 
 (define (generate-evaluation answer profile)
-  "Return  updated profile and evaluation result."
-  (let ([current-problem (whirl_hangar 'current
-				       (prof_profiler 'get-gset-tag
-						      profile)
-				       (prof_profiler 'get-gset-gmodule
-						      profile))])
-    (let ([evaluation-result (ptm_assess-answer answer
-						current-problem)])
-      (cons
-       ;; return new profile after score evaluation
-       (update-profile
-	profile
-	(update-scorecard (get-scorecard profile)
-			  (prof_profiler 'get-gset-gmodule
-					 profile)
-			  (prof_profiler 'get-gset-tag
-					 profile)
-			  evaluation-result))
-       ;; append evaluation result to list to be returned.
-       evaluation-result))))
+  "Return updated profile and evaluation result."
+  (let* ((lowest-gmod-blob (profiler profile))
+	 (current-problem
+	  (hangar (lowest-scoring-gset lowest-gmod-blob)
+		  (gmod-blob-id lowest-gmod-blob)))
+	 (evaluation-result (ptm_assess-answer answer
+					       current-problem)))
+    (cons
+     ;; return new profile after score evaluation
+     (update-profile
+      profile
+      (update-scorecard (get-scorecard profile)
+			(profiler profile)
+			(profiler profile)
+			evaluation-result))
+     ;; append evaluation result to list to be returned.
+     evaluation-result)))
 
 (define (list-profiles)
   "Wrapper pointing to gprofile-manager's list-profiles function."

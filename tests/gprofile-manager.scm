@@ -46,8 +46,8 @@
 		       (and x y))
 		     #f
 		     (map (lambda (x)
-			    (and (id? (car x))
-				 (string? (cdr x))))
+			    (and (string? (car x))
+				 (id? (cdr x))))
 			  (list-gprofiles))))
 
 ;; select-gprofile is to return the gprofile object corresponding to the
@@ -55,5 +55,9 @@
 (test-assert "Return selected gprofile"
 	     (profile?
 	      (select-gprofile (get-id test-gprofile-2))))
+
+(test-assert "find-profile-by-name"
+  (equal? (find-profile-by-name "test")
+	  (select-gprofile (get-id test-gprofile))))
 
 (test-end "gprofile-selector")

@@ -32,13 +32,23 @@
 			           ; effectively
   #:use-module (tests test-suite)  ; In case of -t option: run
 				   ; test-suite
+  #:use-module (guilecraft config)
+  #:use-module (guilecraft server)
+  #:use-module (guilecraft clients cli)
+  #:use-module (guilecraft clients web)
   #:export (boot))
 
 ;; Define the list of accepted options and their special properties
-(define *option-grammar* '((listen)
+(define *option-grammar* '((client (single-char #\c))
+			   (web (single-char #\w))
+			   (listen)
                            (usage (single-char #\u))
-			   (config (value #t) (single-char #\c))
+			   (config (value #t))
+			   (server (single-char #\s))
 			   (test-suite (single-char #\t))
+			   ;; Currently no need for sparate server
+			   ;; tests.
+			   ;;(test-server (single-char #\e))
                            (version (single-char #\v))
                            (help (single-char #\h))))
 
@@ -50,9 +60,8 @@
 	"Return, as string the car of OPT.
 Options will be surrounded by square brackets if optional."
 	(string-append "[--" (object->string (car opt)) "]")))
-    (format #t (string-append "usage: guilecraft "
-			      (string-join (map repr-option *option-grammar*))
-			      "\n"))
+    (format #t "usage: guilecraft ~a \n"
+	    (string-join (map repr-option *option-grammar*)))
     (format #t "For now you should run guilecraft with the --listen flag, or one of the other flags — else guilecraft will return a read prompt and exit.\n")))
   
   
@@ -72,7 +81,12 @@ Options will be surrounded by square brackets if optional."
           (usage)
           (exit 0)))
     (if (option-ref opts 'test-suite #f)
-	(run-test-suite))
+	(begin (run-test-suite)
+	       (exit 0)))
+    (if (option-ref opts 'test-server #f)
+	(begin
+	  (run-server-tests)
+	  (exit 0)))
     (if (option-ref opts 'version #f)
         (begin
           (version)
@@ -92,8 +106,20 @@ Options will be surrounded by square brackets if optional."
             (save-module-excursion
              (lambda ()
                (set-current-module config-module)
-               (primitive-load config))))))
-    (main-loop)))
+               (primitive-load config)))))
+      (cond ((option-ref options 'server #f)
+	     (main-server %guilecraft-dir%))
+	    ((option-ref options 'web #f)
+	     (web))
+	    (else (client))))))
+
+(define (main-server dir)
+  (begin (server dir)))
+
+(define (client)
+  (cli-client))
+(define (web)
+  (web-client))
 
 ;;; Just a place-holder
 (define (main-loop)

@@ -24,36 +24,8 @@
   #:use-module (tests test-utils)  ; Provide test-profiles, etc.
   #:use-module (guilecraft data-types gprofiles) ; Provide gprof
 					; introspection 
-
   #:use-module (guilecraft portal)) ; Provide functions to be tested.
 
 (test-begin "portal-tests")
-
-;; Dummy objects for procedures used by "challenge request" and "eval
-;; request".
-(define (ptm_get-challenge profile)
-  "Dummy object returning a challenge."
-  "Challenge")
-(define (whirl_hangar message tag gmodule)
-  "Dummy object returning a problem."
-  (make-open-problem "Challenge" "Solution"))
-(define (ptm_assess-answer answer current-problem)
-  "Dummy object returning a problem evaluation."
-  #t)
-
-(test-assert "challenge request"
-  (profile?
-   (car
-    (portal
-     (make-challenge-request
-      test-gprofile)))))
-
-(test-assert "eval request"
-  (profile?
-   (car
-    (portal
-     (make-eval-request
-      "solution"
-      test-gprofile)))))
 
 (test-end "portal-tests")

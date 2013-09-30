@@ -2,10 +2,10 @@
 
 (define-module (guilecraft data-types gsets)
   #:use-module (srfi srfi-9)
-  #:export (gset_gset?
-	    gset_make-gset
-	    gset_get-tag
-	    gset_get-problems))
+  #:export (gset?
+	    make-gset
+	    get-tag
+	    get-problems))
 
 ;;; 
 ;; Define gsets
@@ -21,7 +21,7 @@
 ;; select problems.
 
 (define-record-type <gset>
-  (gset_make-gset tag problems)
-  gset_gset?
-  (tag gset_get-tag)
-  (problems gset_get-problems))
+  (make-gset tag problems)
+  gset?
+  (tag get-tag)
+  (problems get-problems))

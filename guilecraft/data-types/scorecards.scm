@@ -15,13 +15,15 @@
 	    make-gset-blob
 	    gset-blob?
 	    gset-blob-tag
-	    gset-blob-score))
+	    gset-blob-score
+	    gset-blob-counter))
 
 (define-record-type <score-gset-blob>
-  (make-gset-blob set-tag score)
+  (make-gset-blob set-tag score counter)
   gset-blob?
   (set-tag gset-blob-tag)
-  (score gset-blob-score))
+  (score gset-blob-score)
+  (counter gset-blob-counter))
 
 (define-record-type <score-gmod-blob>
   (make-gmod-blob gmodule-id gset-data)

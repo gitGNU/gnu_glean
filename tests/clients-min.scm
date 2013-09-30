@@ -19,33 +19,17 @@
 ;; 59 Temple Place - Suite 330        Fax:    +1-617-542-2652
 ;; Boston, MA  02111-1307,  USA       gnu@gnu.org
 
-(define-module (tests gmodules)
-  #:use-module (srfi srfi-64)
-  #:use-module (tests test-utils)
+(define-module (tests clients-min)
+  #:use-module (srfi srfi-64)      ; Provide test suite
+  #:use-module (guilecraft clients min))
 
-  #:use-module (guilecraft data-types gsets)
-  #:use-module (guilecraft data-types gmodules)
-  #:use-module (guilecraft gmodule-ops))
+(test-begin "min-tests")
 
-(test-begin "gmodule-tests")
+(test-assert "server"
+	     (let ((s (server)))
+	       (close s)))
 
-(test-assert "Checking a gmodule"
-	     (gmodule? test-gmodule))
+(test-assert "exchange"
+	     (exchange 'random))
 
-(test-eq "Checking a gmodule ID"
-	 'test
-	 (gmodule-id test-gmodule))
-
-(test-equal "Checking a gmodule name"
-  "Test Gmodule"
-  (gmodule-name test-gmodule))
-
-(test-assert "Retrieving first gset"
-  (let ([gmod-parts (gmodule-parts test-gmodule)])
-    (gset? (car-gsets gmod-parts))))
-
-(test-assert "Recognising empty gmodule-parts"
-  (let ([empty-gmod-parts (cdr-gsets (gmodule-parts test-gmodule))])
-    (null-gsets? empty-gmod-parts)))
-
-(test-end "gmodule-tests")
+(test-end "min-tests")

@@ -31,20 +31,30 @@
   #:use-module (guilecraft data-manager)
   #:use-module (guilecraft data-types gprofiles)
   #:export  (add-gprofile
+	     find-profile-by-name
 	     select-gprofile
 	     list-gprofiles))
 
 ; define a data-manager instance using the result of gprofile-id as
 ; key
-(define gprofile-manager (dman_data-manager gprof_get-id))
+(define gprofile-manager (dman_data-manager get-id))
 
 (define (list-gprofiles)
   (map cons
-       (map car
-	    (gprofile-manager 'list))
        (map (lambda (x)
-	      (gprof_get-name (select-gprofile (car x))))
+	      (get-name (select-gprofile (car x))))
+	    (gprofile-manager 'list))
+       (map car
 	    (gprofile-manager 'list))))
+
+(define (find-profile-by-name name)
+  (call/cc (lambda (k)
+	     (begin
+	       (map (lambda (pair)
+		      (if (equal? name (get-name (cdr pair)))
+			  (k (cdr pair))))
+		    (gprofile-manager 'list))
+	       #f))))
 
 (define (add-gprofile gprofile-object)
   "Convenience procedure to add a given gprofile to the
