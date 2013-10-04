@@ -31,7 +31,7 @@
 ;;;;; Primitive Operations
 
 ;;;;; Module Definition
-(define-module (guilecraft data-types gsets)
+(define-module (guilecraft data-types sets)
 ;;  #:use-module (srfi srfi-9)
   #:use-module (rnrs records syntactic)
   #:export (
@@ -82,7 +82,15 @@
 ;;;;; Set Structure
 
 (define-record-type (gset set set?)
-  (fields id contents info)
+  (fields (immutable id set-id)
+	  (immutable contents set-contents)
+	  (immutable name set-name)
+	  (immutable version set-version)
+	  (immutable synopsis set-synopsis)
+	  (immutable description set-description)
+	  (immutable creator set-creator)
+	  (immutable attribution set-attribution)
+	  (immutable resources set-resources))
   (protocol
    (lambda (new)
      (lambda* (id #:key (contents #f) (name #f) (version #f)
@@ -103,36 +111,59 @@
 		       resources
 		       (list resources)))))))
 
-(define-record-type (problm problem problem?)
-  (fields q s o p)
+(define-record-type (prob problem problem?)
+  (fields (immutable q problem-q)
+	  (immutable s problem-s)
+	  (immutable o problem-o)
+	  (immutable p problem-p))
   (protocol
    (lambda (new)
-     (lambda* (#:key (q #f) (s #f) (o #f) (p 'equal?))
-	      (new q s o p)))))
+     (lambda (q s . args)
+
+       (define (parse-args options predicate remaining)
+	 (cond ((null? remaining)
+		(list options predicate))
+	       ((list? (car remaining))
+		(parse-args (append options (car remaining))
+			    predicate
+			    (cdr remaining)))
+	       ((procedure? (car remaining))
+		(parse-args options
+			    (car remaining)
+			    (cdr remaining)))))
+
+       (apply new q s (parse-args '() 'equal? args))))))
 
 (define-record-type (question q q?)
-  (fields text media)
+  (fields (immutable text q-text)
+	  (immutable media q-media))
   (protocol
    (lambda (new)
      (lambda* (text #:key (media #f))
 	      (new text media)))))
 
-(define-record-type (question s s?)
-  (fields text media)
+(define-record-type (solution s s?)
+  (fields (immutable text s-text)
+	  (immutable media s-media))
   (protocol
    (lambda (new)
      (lambda* (text #:key (media #f))
 	      (new text media)))))
 
-(define-record-type (question o o?)
-  (fields text media)
+(define-record-type (option o o?)
+  (fields (immutable text o-text)
+	  (immutable media o-media))
   (protocol
    (lambda (new)
      (lambda* (text #:key (media #f))
 	      (new text media)))))
 
 (define-record-type (medium media media?)
-  (fields urls books images videos audio)
+  (fields (immutable urls media-urls)
+	  (immutable books media-books)
+	  (immutable images media-images)
+	  (immutable videos media-videos)
+	  (immutable audio media-audio))
   (protocol
    (lambda (new)
      (lambda* (#:key (urls #f) (books #f) (images #f) (videos #f)
