@@ -22,11 +22,18 @@
 (define-module (tests scorecards)
   #:use-module (srfi srfi-64)
   #:use-module (tests test-utils)
+  #:use-module (quickcheck quickcheck)
+  #:use-module (tests quickcheck-defs)
 
   #:use-module (guilecraft data-types scorecards)
   #:use-module (guilecraft scorecard-ops))
 
 (test-begin "scorecard-tests")
+
+(quickname "scorecard-skeleton")
+(quickcheck (lambda (x)
+	      (scorecard? (make-scorecard-skeleton x)))
+	    ($short-list $set))
 
 (test-assert "dummy-set-blob"
   (and (set-blob? (make-dummy-set-blob))
@@ -38,10 +45,6 @@
 
 (test-assert "The empty scorecard"
   (null-scorecard? (make-empty-scorecard)))
-
-(test-assert "skeleton-scorecard"
-  (scorecard? (make-scorecard-skeleton
-	       (list test-gmodule))))
 
 (test-equal "first in scorecard"
   (make-mod-blob

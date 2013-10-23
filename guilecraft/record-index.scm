@@ -53,7 +53,7 @@ known-rcs."
     (option . ,make-o)
     (medii . ,make-media)
     (prob . ,make-problem)
-    (option . ,p)
+    (predicate . ,p)
 
     (scorecard . ,make-scorecard)
     (set-blob . ,make-set-blob)
@@ -66,8 +66,6 @@ known-rcs."
     (response . ,response)
 
     (alive-rq . ,alive-rq)
-    (profs-rq . ,profs-rq)
-    (profs-rs . ,profs-rs)
     (auth-rq . ,auth-rq)
     (auth-rs . ,auth-rs)
     (quit-rq . ,quit-rq)
