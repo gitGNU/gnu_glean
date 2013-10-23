@@ -2,7 +2,7 @@
 
 (define-module (guilecraft profiler)
   #:use-module (srfi srfi-1)
-  #:use-module (srfi srfi-9)
+  #:use-module (rnrs)
   #:use-module (guilecraft data-types gprofiles)	; For profile data-struct
   #:use-module (guilecraft data-types scorecards)
   #:use-module (guilecraft gprofile-ops)
@@ -21,26 +21,29 @@
 ;;
 ;;; Code:
 
-(define profiler
-  (lambda (profile)
-    "Returns lowest scoring gmod-blob."
-    (lowest-module-blob profile)))
+(define (profiler profile)
+  "Returns lowest scoring mod-blob."
+  (if (and (profile? profile)
+	   (not (null-scorecard? (profile-scorecard profile))))
+      (lowest-module-blob profile)
+      (assertion-violation
+       'profiler
+       "PROFILE is not a profile, or contains a null-scorecard."
+       profile (scorecard-data profile))))
 
 (define (lowest-module-blob profile)
   "Returns the lowest scoring module blob from PROFILE, taking into
 account its list of active modules.
 
-Returns false if no active modules exist in profile.
+Returns false if no active modules exist in profile, or if the
+scorecard is empty."
 
-Returns an error if there is no data PROFILE's scorecard."
+  (let ((active-modules (profile-active-modules profile))
+	(scorecard (profile-scorecard profile)))
 
-  (let ((active-modules (get-active-modules profile))
-	(scorecard (get-scorecard profile)))
-
-    (cond ((empty-active-modules? active-modules)
+    (cond ((or (empty-active-modules? active-modules)
+	       (null-scorecard? scorecard))
 	   #f)
-	  ((null-scorecard? scorecard)
-	   (error "profiler: No data in scorecard!"))
 	  (else (reduce (lambda (module-blob previous)
 			  (if (and (active-module? module-blob
 						   active-modules)
@@ -52,17 +55,20 @@ Returns an error if there is no data PROFILE's scorecard."
 			'bogus-option
 			(scorecard-data scorecard))))))
 
-(define (lowest-scoring-gset gmod-blob)
-  "Return the lowest scoring gset-blob in the given
-gmod-blob.
+(define (lowest-scoring-gset mod-blob)
+  "Return the lowest scoring set-blob in the given
+mod-blob.
 
-Raise an error if GMOD-BLOB contains no gset-blobs."
-  (if (null-gmod-blob? gmod-blob)
-      (error "lowest-scoring-gset: No data in gset!")
-      (reduce (lambda (gset-blob previous)
-		(if (lower-score? gset-blob
+Raise an error if MOD-BLOB contains no set-blobs."
+  (if (null-mod-blob? mod-blob)
+      (assertion-violation
+       'lowest-scoring-gset
+       "MOD-BLOB contains no data!"
+       mod-blob)
+      (reduce (lambda (set-blob previous)
+		(if (lower-score? set-blob
 				  previous)
-		    gset-blob
+		    set-blob
 		    previous))
 	      'bogus-option
-	      (gmod-blob-data gmod-blob))))
+	      (mod-blob-data mod-blob))))

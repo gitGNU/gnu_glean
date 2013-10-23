@@ -1,8 +1,7 @@
 ;;; guilecraft --- Fast learning tool.         -*- coding: utf-8 -*-
 
 (define-module (guilecraft gmodule-ops)
-  #:use-module (guilecraft data-types gmodules)
-  #:use-module (guilecraft data-types gsets)
+  #:use-module (guilecraft data-types sets)
   #:export (gmodule-full-name
 	    gmodule-tags
 
@@ -17,36 +16,38 @@
 ;;;
 ;;; Code:
 
-(define (car-gsets gmodule-parts-object)
+(define (car-gsets set-contents)
   "Return the first gset in a gmodule-parts object."
-  (car gmodule-parts-object))
-(define (cdr-gsets gmodule-parts-object)
+  (car set-contents))
+(define (cdr-gsets set-contents)
   "Return all but the first gset in a gmodule-parts-object."
-  (cdr gmodule-parts-object))
-(define (null-gsets? gmodule-parts-object)
+  (cdr set-contents))
+(define (null-gsets? set-contents)
   "Return #t if there are no gsets left in the gmodule-parts-object."
-  (if (eq? '() gmodule-parts-object)
-      #t
-      #f))
+  (null? set-contents))
 
-(define gmodule-full-name
-  (lambda (gmodule)
-  "Return the full name of GMODULE--i.e., `NAME — version VERSION'."
-    (string-append (gmodule-name gmodule) " — version " (gmodule-version gmodule))))
+(define (gmodule-full-name set)
+  "Return the human-friendly, full name of a SET, normally a module,
+or 'unnamed' if no name exists."
+  (let ((name (set-name set))
+	(version (set-version set)))
+    (cond ((and name version)
+	   (string-append name " — version " version))
+	  (name name)
+	  (else "unnamed"))))
 
-(define gmodule-tags
-  (lambda (gmodule)
-    "Return the tags in use in a given guilecraft module."
-    (map get-tag (gmodule-parts gmodule))))
+(define (gmodule-tags set)
+  "Return the IDs in use in a given guilecraft set's contents, or #f
+if no contents are present."
+  (map set-id (set-contents set)))
 
 (define (trad-make-gmodule i n v d l-d c p f-o-m d-s)
-  (gmodule
-   (id i)
-   (name n)
-   (version v)
-   (synopsis d)
-   (description l-d)
-   (creators c)
-   (parts p)
-   (find-out-more f-o-m)
-   (derivation-source d-s)))
+  (module i
+    #:contents p
+    #:name n
+    #:version v
+    #:synopsis d
+    #:description l-d
+    #:creator c
+    #:attribution d-s
+    #:resources f-o-m))

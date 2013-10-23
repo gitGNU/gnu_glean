@@ -92,13 +92,15 @@
 		 (close s)
 		 result)))
 
-(test-assert "server"
+;; Use server as abstraction for port connection
+(test-assert "server-write"
 	     (let ((s (server)))
 	       (and (gwrite 'test s)
 		    (gread s)
 		    (close s))))
 
-(test-assert "exchange"
+;; Use exchange as abstraction for port connection
+(test-assert "exchange-raw"
 	     (exchange 'test))
 
 (test-assert "alive?"

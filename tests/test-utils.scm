@@ -20,10 +20,7 @@
 ;; Boston, MA  02111-1307,  USA       gnu@gnu.org
 
 (define-module (tests test-utils)
-  #:use-module (guilecraft data-types gsets)
-  #:use-module (guilecraft data-types gmodules)
-  #:use-module (guilecraft problem-types open-problems)
-  #:use-module (guilecraft problem-types multi-choice-problems)
+  #:use-module (guilecraft data-types sets)
 
   #:use-module (guilecraft data-types gprofiles)
   #:use-module (guilecraft data-types scorecards)
@@ -34,35 +31,37 @@
 	    test-gprofile-2))
 
 (define test-gmodule
-  (gmodule
-   (id 'test)
-   (name "Test Gmodule")
-   (version "0.1")
-   (synopsis "Test Description")
-   (description "Long Description:")
-   (creators "Alex Sassmannshausen")
-   (derivation-source "None")
-   (parts
-    (list
-     (make-gset
-      'gset-tag
-      (list (make-open-problem "question?"
-			       "solution")
-	    (make-multi-choice-problem "question?"
-				       (cons "b" "option b")
-				       (cons "a" "option a")
-				       (cons "b" "option b")
-				       (cons "c" "option c"))))))
-   (find-out-more "http://some.url")))
+  (module
+    'test
+    #:name "Test Gmodule"
+    #:version "0.1"
+    #:synopsis "Test Description"
+    #:description "Long Description:"
+    #:creator "Alex Sassmannshausen"
+    #:attribution (list (media #:urls '("None")))
+    #:contents (list
+		(set
+		 'gset-tag
+		 #:contents (list
+			     (problem
+			      (q "question?")
+			      (s "solution"))
+			     (problem
+			      (q "question?")
+			      (s "option b")
+			      (o "option a")
+			      (o "option b")
+			      (o "option c")))))
+    #:resources (list (media #:urls '("http://some.url")))))
 
 (define test-gprofile
-  (make-profile (name "test")
-		      (id (make-id "test" 1366787517))
-		      (active-modules '(test))
-		      (scorecard (make-scorecard '()))))
+  (make-profile "test"
+		(make-id "test" 1366787517)
+		'(the-test)
+		(make-scorecard '())))
 
 (define test-gprofile-2
-  (make-profile (name "test2")
-		      (id (make-id "test2" 1366787517))
-		      (active-modules '(test2))
-		      (scorecard (make-scorecard '()))))
+  (make-profile  "test2"
+		 (make-id "test2" 1366787517)
+		 '(test)
+		 (make-scorecard '())))

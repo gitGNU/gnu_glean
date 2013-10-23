@@ -29,16 +29,15 @@
 (define-module (guilecraft server)
   #:use-module (ice-9 rdelim)
   #:use-module (srfi srfi-26)
-  #:use-module (guilecraft known-rtd-manager)
-  #:use-module (guilecraft record-index)
-  #:use-module (guilecraft gprofile-manager)
   #:use-module (guilecraft gmodule-manager)
   #:use-module (guilecraft data-types requests)
   #:use-module (guilecraft data-types gprofiles)
+  #:use-module (guilecraft data-types scorecards)
   #:use-module (guilecraft comtools)
   #:use-module (guilecraft portal)
   #:use-module (guilecraft utils)
   #:use-module (guilecraft store)
+  #:use-module (rnrs)
   #:export (server))
 
 (define %gettext-domain
@@ -62,14 +61,12 @@
 	  (state (cadddr args)))
       (server-quit socket client path state)))
   
-  ;; Register the record types
-  (register-rtds records)
   ;; Register the known modules
   (store-modules)
-  ;; Register the known profiles
-  (store-profiles)
   ;; start the server
-  (catch #t thunk h))
+  ;;(catch #t thunk h)
+  (thunk)
+  )
 
 (define (prepare-port path)
   "Checks whether PATH exists, and if so, offers to delete and
@@ -160,42 +157,52 @@ As scheme readers/writers currently don't handle records, objects(?)
 or symbols, these need to be decomposed into lists before transmission
 and recomposed upon receipt."
 
-  (define (auth-provider rq)
-    (let ((id (auth-id rq)))
-      (if (id? id)
-	  (let ((profile (select-gprofile id)))
-	    (if profile
-		(auth-rs profile)
-		(neg-rs rq)))
-	  (neg-rs rq))))
-
   (define (challenge-provider rq)
-    (if (profile? (chall-rq-profile rq))
-	(let* ((result (generate-challenge
-			(check-profile (chall-rq-profile rq))))
-	       (profile (car result))
-	       (challenge (cdr result)))
-	  (chall-rs profile challenge))
-	(neg-rs rq)))
+    (guard (err ((or (eqv? err 'no-profile)
+		     (eqv? err 'no-modules))
+		 (begin (clog err)
+			(neg-rs rq)))
+		((eqv? err 'false-result)
+		 (begin (llog err)
+			(assertion-violation
+			 'challenge-provider
+			 "We were returned a #f chall result!"
+			 err))))
+	   (if (profile? (chall-rq-profile rq))
+	       (let ((result (generate-challenge (chall-rq-profile rq))))
+		 (if result
+		     (chall-rs result)
+		     (raise 'false-result)))
+	       (raise 'no-profile))))
 
   (define (eval-provider rq)
-    (let* ((result (generate-evaluation
-		    (eval-rq-answer rq)
-		    (check-profile (eval-rq-profile rq))))
-	   (profile (car result))
-	   (eval-result (cdr result)))
-      (eval-rs profile eval-result)))
+    (guard (err ((or (eqv? err 'no-profile)
+		     (eqv? err 'no-modules))
+		 (begin (clog err)
+			(neg-rs rq)))
+		((eqv? err 'false-result)
+		 (begin (llog err)
+			(assertion-violation
+			 'eval-provider
+			 "We were returned a #f eval result!"
+			 err))))
+	   (let ((profile (eval-rq-profile rq)))
+	     (if (profile? profile)
+		 (let ((result (generate-evaluation
+				(eval-rq-answer rq)
+				(eval-rq-profile rq))))
+		   (if result
+		       (eval-rs result)
+		       (raise 'false-result)))
+		 (raise 'no-profile)))))
 
   (cond ((eof-object? request)
 	 #f)
 	((request? request)
 	 (let ((rq (rq-content request)))
+	   (gmsg #:priority 8 "server-dispatcher: rq-content:" rq)
 	   (cond ((alive-rq? rq)
 		  (ack-rs rq))
-		 ((profs-rq? rq)
-		  (profs-rs (list-gprofiles)))
-		 ((auth-rq? rq)
-		  (auth-provider rq))
 		 ((chall-rq? rq)
 		  (challenge-provider rq))
 		 ((eval-rq? rq)

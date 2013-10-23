@@ -1,37 +1,51 @@
 ;;; guilecraft --- Fast learning tool.         -*- coding: utf-8 -*-
 
 (define-module (guilecraft data-types scorecards)
-  #:use-module (srfi srfi-1)
-  #:use-module (srfi srfi-9)
+  #:use-module (rnrs records procedural)
   #:export (make-scorecard
 	    scorecard?
 	    scorecard-data
 
-	    make-gmod-blob
-	    gmod-blob?
-	    gmod-blob-id
-	    gmod-blob-data
+	    make-mod-blob
+	    mod-blob?
+	    mod-blob-id
+	    mod-blob-data
 
-	    make-gset-blob
-	    gset-blob?
-	    gset-blob-tag
-	    gset-blob-score
-	    gset-blob-counter))
+	    make-set-blob
+	    set-blob?
+	    set-blob-id
+	    set-blob-score
+	    set-blob-counter))
 
-(define-record-type <score-gset-blob>
-  (make-gset-blob set-tag score counter)
-  gset-blob?
-  (set-tag gset-blob-tag)
-  (score gset-blob-score)
-  (counter gset-blob-counter))
+(define set-blob-rtd
+  (make-record-type-descriptor 'set-blob #f #f #f #f
+			       '#((immutable set-id)
+				  (immutable score)
+				  (immutable counter))))
+(define set-blob-rcd
+  (make-record-constructor-descriptor set-blob-rtd #f #f))
+(define make-set-blob (record-constructor set-blob-rcd))
+(define set-blob? (record-predicate set-blob-rtd))
+(define set-blob-id (record-accessor set-blob-rtd 0))
+(define set-blob-score (record-accessor set-blob-rtd 1))
+(define set-blob-counter (record-accessor set-blob-rtd 2))
 
-(define-record-type <score-gmod-blob>
-  (make-gmod-blob gmodule-id gset-data)
-  gmod-blob?
-  (gmodule-id gmod-blob-id)
-  (gset-data gmod-blob-data))
+(define mod-blob-rtd
+  (make-record-type-descriptor 'mod-blob #f #f #f #f
+			       '#((immutable mod-id)
+				  (immutable mod-data))))
+(define mod-blob-rcd
+  (make-record-constructor-descriptor mod-blob-rtd #f #f))
+(define make-mod-blob (record-constructor mod-blob-rcd))
+(define mod-blob? (record-predicate mod-blob-rtd))
+(define mod-blob-id (record-accessor mod-blob-rtd 0))
+(define mod-blob-data (record-accessor mod-blob-rtd 1))
 
-(define-record-type <scorecard>
-  (make-scorecard data)
-  scorecard?
-  (data scorecard-data))
+(define scorecard-rtd
+  (make-record-type-descriptor 'scorecard #f #f #f #f
+			       '#((immutable data))))
+(define scorecard-rcd
+  (make-record-constructor-descriptor scorecard-rtd #f #f))
+(define make-scorecard (record-constructor scorecard-rcd))
+(define scorecard? (record-predicate scorecard-rtd))
+(define scorecard-data (record-accessor scorecard-rtd 0))

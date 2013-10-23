@@ -26,54 +26,55 @@
 ;;; Code:
 
 (define-module (guilecraft record-index)
+  #:use-module (rnrs records procedural)
   #:use-module (guilecraft data-types gprofiles)
-  #:use-module (guilecraft data-types gmodules)
-  #:use-module (guilecraft data-types gsets)
+  #:use-module (guilecraft data-types sets)
   #:use-module (guilecraft data-types scorecards)
   #:use-module (guilecraft data-types requests)
-  #:export (records))
+  #:export (get-rc
+	    known-rc?))
 
-(define records
-  (list (request 'content)
-	(response 'content)
+(define (get-rc rec-name)
+  "Syntactic sugar. Populate cache if necessary and get REC-NAME's
+constructor."
+  (assv-ref record-kv-pairs rec-name))
 
-	(alive-rq)
-	(auth-rq 'id)
-	(profs-rq)
-	(quit-rq)
+(define (known-rc? rec-name)
+  "Syntactic sugar. Return false if rec-name is not yet known by
+known-rcs."
+  (if (get-rc rec-name)
+      #t
+      #f))
 
-	(chall-rq 'profile)
-	(chall-rs 'profile 'challenge)
-	(eval-rq 'profile 'answer)
-	(eval-rs 'profile 'eval-result)
+(define record-kv-pairs
+  `((set . ,make-set)
+    (question . ,make-q)
+    (solution . ,make-s)
+    (option . ,make-o)
+    (medii . ,make-media)
+    (prob . ,make-problem)
+    (option . ,p)
 
-	(ack-rs 'original)
-	(neg-rs 'original)
-	(auth-rs 'profile)
-	(profs-rs 'list)
-	(unk-rs 'original)
-	
-	(gmodule 
-	 (id 'id)
-	 (name 'name)
-	 (version 'version)
-	 (synopsis 'description)
-	 (description 'long-description)
-	 (creators 'creators)
-	 (parts 'parts)
-	 (find-out-more 'find-out-more)
-	 (derivation-source 'get-derivation-source))
-	
-	(make-id 'name 'timestamp)
-	
-	(make-profile
-	 (name 'name)
-	 (id 'id)
-	 (active-modules 'active-modules)
-	 (scorecard 'scorecard))
-	
-	(make-gset 'tag 'problems)
-	
-	(make-gset-blob 'set-tag 'score 'counter)
-	(make-gmod-blob 'gmodule-id 'gset-data)
-	(make-scorecard 'data)))
+    (scorecard . ,make-scorecard)
+    (set-blob . ,make-set-blob)
+    (mod-blob . ,make-mod-blob)
+
+    (profile . ,make-profile)
+    (id . ,make-id)
+
+    (request . ,request)
+    (response . ,response)
+
+    (alive-rq . ,alive-rq)
+    (profs-rq . ,profs-rq)
+    (profs-rs . ,profs-rs)
+    (auth-rq . ,auth-rq)
+    (auth-rs . ,auth-rs)
+    (quit-rq . ,quit-rq)
+    (chall-rq . ,chall-rq)
+    (chall-rs . ,chall-rs)
+    (eval-rq . ,eval-rq)
+    (eval-rs . ,eval-rs)
+    (ack-rs . ,ack-rs)
+    (neg-rs . ,neg-rs)
+    (unk-rs . ,unk-rs)))

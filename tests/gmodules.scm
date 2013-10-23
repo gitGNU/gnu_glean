@@ -23,29 +23,28 @@
   #:use-module (srfi srfi-64)
   #:use-module (tests test-utils)
 
-  #:use-module (guilecraft data-types gsets)
-  #:use-module (guilecraft data-types gmodules)
+  #:use-module (guilecraft data-types sets)
   #:use-module (guilecraft gmodule-ops))
 
 (test-begin "gmodule-tests")
 
 (test-assert "Checking a gmodule"
-	     (gmodule? test-gmodule))
+	     (set? test-gmodule))
 
 (test-eq "Checking a gmodule ID"
 	 'test
-	 (gmodule-id test-gmodule))
+	 (set-id test-gmodule))
 
 (test-equal "Checking a gmodule name"
   "Test Gmodule"
-  (gmodule-name test-gmodule))
+  (set-name test-gmodule))
 
 (test-assert "Retrieving first gset"
-  (let ([gmod-parts (gmodule-parts test-gmodule)])
-    (gset? (car-gsets gmod-parts))))
+	     (let ([module-parts (set-contents test-gmodule)])
+	       (set? (car-gsets module-parts))))
 
 (test-assert "Recognising empty gmodule-parts"
-  (let ([empty-gmod-parts (cdr-gsets (gmodule-parts test-gmodule))])
+  (let ([empty-gmod-parts (cdr-gsets (set-contents test-gmodule))])
     (null-gsets? empty-gmod-parts)))
 
 (test-end "gmodule-tests")

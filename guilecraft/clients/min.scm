@@ -30,12 +30,9 @@
   #:use-module (guilecraft config)
   #:use-module (guilecraft comtools)
   #:use-module (guilecraft data-types requests)
-  #:use-module (guilecraft data-types gmodules)
   #:use-module (guilecraft data-types gprofiles)
-  #:use-module (guilecraft data-types gsets)
+  #:use-module (guilecraft data-types sets)
   #:use-module (guilecraft data-types scorecards)
-  #:use-module (guilecraft record-index)
-  #:use-module (guilecraft known-rtd-manager) 
   #:use-module (srfi srfi-26)
   #:export (
 	    call/startup
@@ -63,11 +60,9 @@
   "Perform routine checks, and initial setup.  If all is well, call
 client-handler a thunk, which should implement the actual client
 functionality."
-  (if (register-rtds records)
-      (if (alive?)
-	  (client-handler)
-	  (throw 'alive?))
-      (throw 'register-rtds)))
+  (if (alive?)
+      (client-handler)
+      (throw 'alive?)))
 
 (define (resolve-id username usernames)
   (define (ri remaining)

@@ -1,33 +1,36 @@
 ;;; guilecraft --- learning the world using Guile.         -*- coding: utf-8 -*-
 
 (define-module (modules git)
-  #:use-module (guilecraft data-types gmodules)
-  #:use-module (guilecraft data-types gsets)
-  #:use-module (guilecraft problem-types open-problems)
-  #:use-module (guilecraft problem-types multi-choice-problems)
+  #:use-module (guilecraft data-types sets)
   #:export (git-gmodule))
 
 (define git-init
-  (make-gset 'git-init
-		  `(,(make-open-problem "What git command would you use to initiate a new project in the current directory?"
-					   "git init")
-		    ,(make-multi-choice-problem "In order to create a new git repository, would you:"
-						    (cons "b" "type git init")
-						    (cons "a" "type git test")
-						    (cons "b" "type git init")
-						    (cons "c" "type rm -r *")))))
+  (set 'git-init
+	#:contents
+	(list
+	 (problem (q "What git command would you use to initiate a new project in the current directory?")
+		  (s "git init"))
+	 (problem (q "In order to create a new git repository, would you:")
+		  (s "type git init")
+		  (o "type git test")
+		  (o "type git init")
+		  (o "type rm -r *")))))
 (define git-status
-  (make-gset 'git-status
-		  `(,(make-open-problem "How would you get a quick overview of the current status of the project in your current directory?"
-					   "git status"))))
+  (set 'git-status
+	#:contents
+	(list
+	 (problem (q "How would you get a quick overview of the current status of the project in your current directory?")
+		  (s "git status")))))
 (define git-add
-  (make-gset 'git-add
-		  `(,(make-open-problem "How would you add all newly created files & folders to the index of your project in the current directory?"
-					   "git add .")
-		    ,(make-open-problem "How would you add foo to the index of your project in the current directory?"
-					   "git add foo")
-		    ,(make-open-problem "How would you add foo/bar to index of your project in the current directory?"
-					   "git add foo/bar"))))
+  (set 'git-add
+	#:contents
+	(list
+	 (problem (q "How would you add all newly created files & folders to the index of your project in the current directory?")
+		  (s "git add ."))
+	 (problem (q "How would you add foo to the index of your project in the current directory?")
+		  (s "git add foo"))
+	 (problem (q "How would you add foo/bar to index of your project in the current directory?")
+		  (s "git add foo/bar")))))
 ;; Many revision control systems provide an add command that tells the system to start
 ;; tracking changes to a new file. Git’s add command does something simpler and more
 ;; powerful: git add is used both for new and newly modified files, and in both cases it
@@ -35,11 +38,17 @@
 ;; inclusion in the next commit.
 
 (define git-commit
-  (make-gset 'git-commit
-		  `(,(make-open-problem "How would you commit your changes to the git repository for your current project?"
-					   "git commit")
-		    ,(make-open-problem "What is a git shortcut for both adding your recent changes to the index and committing the index to the repository? (this will not add any newly createy files in the project structure to the repository!)"
-					   "git commit -a"))))
+  (set 'git-commit
+	#:contents
+	(list
+	 (problem (q "How would you commit your changes to the git
+repository for your current project?")
+		  (s "git commit"))
+	 (problem (q "What is a git shortcut for both adding your
+recent changes to the index and committing the index to the
+repository? (this will not add any newly createy files in the project
+structure to the repository!)")
+		  (s "git commit -a")))))
 
 ;; A note on commit messages: Though not required, it's a good idea to
 ;; begin the commit message with a single short (less than 50 character)
@@ -49,46 +58,61 @@
 ;; the body.
 
 (define git-diff
-  (make-gset 'git-diff
-		  `(,(make-open-problem "How can you tell what you are ready to commit to your git repository in the current directory?"
-					   "git diff --cached")
-		    ,(make-open-problem "How can you tell what changes have been made since your last commit/add?"
-					   "git diff"))))
+  (set 'git-diff
+	#:contents
+	(list
+	 (problem (q "How can you tell what you are ready to commit to
+your git repository in the current directory?")
+		  (s "git diff --cached"))
+	 (problem (q "How can you tell what changes have been made
+since your last commit/add?")
+		  (s "git diff")))))
 
 (define git-log
-  (make-gset 'git-log
-		  `(,(make-open-problem "How can you view the history of your changes?"
-					   "git log")
-		    ,(make-open-problem "How can you vie the complete diffs at each step of your history?"
-					   "git log -p")
-		    ,(make-open-problem "How can you get an overview of the changes of each step?"
-					   "git log --stat --summary")
-		    )))
+  (set 'git-log
+	#:contents
+	(list
+	 (problem (q "How can you view the history of your changes?")
+		  (s "git log"))
+	 (problem (q "How can you vie the complete diffs at each step
+of your history?")
+		  (s "git log -p"))
+	 (problem (q "How can you get an overview of the changes of
+each step?")
+		  (s "git log --stat --summary")))))
 
 (define git-branch
-  (make-gset 'git-branch
-		  `(,(make-open-problem "How would you branch your current project to create a new branch named 'experimental'?"
-					   "git branch experimental")
-		    ,(make-open-problem "How can you tell what different branches exist as part of the same project?"
-					   "git branch")
-		    ,(make-open-problem "How would you switch to the 'experimental' branch in your project?"
-					   "git checkout experimental")
-		    ,(make-open-problem "How would you merge the changes
-made in 'experimental' branch back into main branch?"
-					   "git merge experimental")
-		    ,(make-open-problem "How would you delete the 'experimental' branch of your project, ensuring that its changes have been committed to the 'master' branch?"
-					   "git branch -d experimental")
-		    ,(make-open-problem "How would you delete the 'crazy-idea' branch of your project, without adding it to the 'master' branch?"
-					   "git branch -D crazy-idea"))))
+  (set 'git-branch
+	#:contents
+	(list
+	 (problem (q "How would you branch your current project to
+create a new branch named 'experimental'?")
+		  (s "git branch experimental"))
+	 (problem (q "How can you tell what different branches exist as
+part of the same project?")
+		  (s "git branch"))
+	 (problem (q "How would you switch to the 'experimental' branch
+in your project?")
+		  (s "git checkout experimental"))
+	 (problem (q "How would you merge the changes
+made in 'experimental' branch back into main branch?")
+		  (s "git merge experimental"))
+	 (problem (q "How would you delete the 'experimental' branch of
+your project, ensuring that its changes have been committed to the
+'master' branch?")
+		  (s "git branch -d experimental"))
+	 (problem (q "How would you delete the 'crazy-idea' branch of
+your project, without adding it to the 'master' branch?")
+		  (s "git branch -D crazy-idea")))))
 
 (define git-gmodule
-  (gmodule
-   (id 'git)
-   (name "Git: fast version control")
-   (version "0.1")
-   (synopsis "Learn to use git to manage your projects.")
-   (description "Long Description: background on git, introductory text")
-   (creators "Alex Sassmannshausen")
-   (derivation-source "Git man pages & website")
-   (parts `(,git-init ,git-status ,git-add ,git-commit ,git-diff ,git-log ,git-branch))
-   (find-out-more "http://www.git-scm.com")))
+  (module
+    'git
+    #:name "Git: fast version control"
+    #:version "0.1"
+    #:synopsis "Learn to use git to manage your projects."
+    #:description "Long Description: background on git, introductory text"
+    #:creator "Alex Sassmannshausen"
+    #:attribution (list (media #:text "Git man pages & website"))
+    #:contents `(,git-init ,git-status ,git-add ,git-commit ,git-diff ,git-log ,git-branch)
+    #:resources (list (media #:urls '("http://www.git-scm.com")))))

@@ -30,11 +30,11 @@
 (define update-id
   (lambda (profile)
     "Convenience procedure to generate new ID for existing profile."
-    (create-profile-id (get-name profile))))
+    (create-profile-id (profile-name profile))))
 
 (define (trad-make-profile n i a-m sc)
   (make-profile
-   (name n)
-   (id i)
-   (active-modules a-m)
-   (scorecard sc)))
+   n
+   i
+   a-m
+   sc))

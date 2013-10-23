@@ -27,8 +27,8 @@
 ;;; Code:
 
 (define-module (guilecraft portal)
-  #:use-module (srfi srfi-1)
-  #:use-module (srfi srfi-9)
+  #:use-module (rnrs)
+  #:use-module (guilecraft utils)
   #:use-module (guilecraft data-types gprofiles)
   #:use-module (guilecraft data-types scorecards)
   #:use-module (guilecraft gprofile-ops)
@@ -38,60 +38,79 @@
   #:use-module (guilecraft problem-type-manager)
   #:use-module (guilecraft gmodule-manager)
   #:use-module (guilecraft gprofile-manager)
+  #:use-module (guilecraft data-types sets)
 
-  #:export (portal
-	    list-profiles
-	    select-profile
-	    generate-challenge
-	    generate-evaluation
-	    check-profile))
+  #:export (generate-challenge
+	    generate-evaluation))
 
 ;;; Currently returns a new profile only.
 ;;; portal should return evaluation, as well as correct answer
 ;;; and  new profile.
-(define check-profile
-	      ; TODO: also need to introduce clause that checks to
-	      ; make sure the scorecard contains info on all
-	      ; active-modules, not just the ones which already happen
-	      ; to be there.
+(define (check-profile profile)
+  ;; TODO: also need to introduce clause that checks to
+  ;; make sure the scorecard contains info on all
+  ;; active-modules, not just the ones which already happen
+  ;; to be there.
 
-	      ; TODO:introduce clause to determine if profile
-	      ; scorecard entry order corresponds to order in gmodule,
-	      ; to allow for gmodule updates on the fly:
-	      ; - if false, change order, or insert new value, continue process
-	      ; - if true, continue as at present.
-  (lambda (profile)
-    (let ([%name (get-name profile)]
-	  [%id (update-id profile)]
-	  [%active-modules (get-active-modules profile)])
-      ; Check whether scorecard contains data, else generate new
-      ; profile with new scorecard
-      (cond ((null-gmod-blobs? (scorecard-data (get-scorecard profile)))
-	     (make-profile
-	      (name %name)
-	      (id %id)
-	      (active-modules %active-modules)
-	      (scorecard (make-scorecard-skeleton
-			  (map gmodule-id->gmodule-object %active-modules)))))
-	    ;; Work in progress:
-	    ; Check whether scorecard is complete, else generate new
-	    ; profile and add missing scorecard data
-	    ;; ((complete-scorecard? profile)
-	    ;;  (make-profile name id active-modules
-	    ;; 		       (complement-scorecard
-	    ;; 			(get-active-modules profile))))
-	    ;; ENDS :::
-	    ; Otherwise we use the current module
-	    (else profile)))))
+  ;; TODO:introduce clause to determine if profile
+  ;; scorecard entry order corresponds to order in gmodule,
+  ;; to allow for gmodule updates on the fly:
+  ;; - if false, change order, or insert new value, continue process
+  ;; - if true, continue as at present.
+
+  (define (cleanse-active-modules active-modules)
+    (define (cleanser remaining result)
+      (cond ((null? remaining)
+	     result)
+	    (else
+	     (let ((current (car remaining)))
+	       (if current
+		   (cleanser (cdr remaining) (cons current result))
+		   (cleanser (cdr remaining) result))))))
+    (let ((result (cleanser (map set-id->gmodule-object
+				 active-modules) '())))
+      (if (null? result)
+	  (raise 'no-modules)
+	  result)))
+
+  (if (and (profile? profile)
+	   (scorecard? (profile-scorecard profile)))
+      (let ([name (profile-name profile)]
+	    [id (update-id profile)]
+	    [active-modules (profile-active-modules profile)])
+
+	;; Check whether scorecard contains data, else generate new
+	;; profile with new scorecard
+	(cond ((null-scorecard? (profile-scorecard profile))
+	       (make-profile
+		name
+		id
+		active-modules
+		(make-scorecard-skeleton
+		 (cleanse-active-modules active-modules))))
+	      ;; Work in progress:
+	      ;; Check whether scorecard is complete, else generate new
+	      ;; profile and add missing scorecard data
+	      ;; ((complete-scorecard? profile)
+	      ;;  (make-profile name id active-modules
+	      ;; 		       (complement-scorecard
+	      ;; 			(get-active-modules profile))))
+	      ;; ENDS :::
+	      ;; Otherwise we use the current module
+	      (else profile)))
+      (assertion-violation
+       'check-profile
+       "PROFILE is not a profile, or does not contain a scorecard."
+       profile (profile-scorecard profile))))
 
 (define (update-profile profile scorecard-object)
   "Take profile and scorecard and return new profile, created using
 scorecard."
   (make-profile
-   (name (get-name profile))
-   (id (get-id profile))
-   (active-modules (get-active-modules profile))
-   (scorecard scorecard-object)))
+   (profile-name profile)
+   (profile-id profile)
+   (profile-active-modules profile)
+   scorecard-object))
 
 ;; (define complete-scorecard?
 ;;   (lambda (profile)
@@ -101,7 +120,7 @@ scorecard."
 ;; We skip all data that exist in the profile but which is not part of
 ;; an active module - these could be past scores that are currently
 ;; inactive, and which might be needed in future."
-;;     (let ([%active-module-objects (map gman_gmodule-id->gmodule-object
+;;     (let ([%active-module-objects (map gman_set-id->gmodule-object
 ;; 				       %active-modules)]
 ;; 	  [%scorecard (get-scorecard profile)])
 ;;       ; Check whether the next datum in the scorecard is the same as
@@ -111,35 +130,54 @@ scorecard."
 
 (define (generate-challenge profile)
   "Return profile and the next challenge object."
-  (let ((lowest-gmod-blob (profiler profile)))
-    (cons profile
-	  (ptm_get-challenge
-	   (hangar (lowest-scoring-gset lowest-gmod-blob)
-		   (gmod-blob-id lowest-gmod-blob))))))
+  (if (profile? profile)
+      (let* ((profile (check-profile profile))
+	     (lowest-mod-blob (profiler profile)))
+	(if lowest-mod-blob
+	    (cons profile
+		  (ptm_get-challenge
+		   (hangar (mod-blob-id lowest-mod-blob)
+			   (lowest-scoring-gset lowest-mod-blob)
+			   (set-blob-id (lowest-scoring-gset
+					 lowest-mod-blob)))))
+	    #f))
+      (assertion-violation 'generate-challenge
+			   "&irritant is not a profile."
+			   profile)))
 
 (define (generate-evaluation answer profile)
   "Return updated profile and evaluation result."
-  (let* ((lowest-gmod-blob (profiler profile))
-	 (current-problem
-	  (hangar (lowest-scoring-gset lowest-gmod-blob)
-		  (gmod-blob-id lowest-gmod-blob)))
-	 (evaluation-result (ptm_assess-answer answer
-					       current-problem)))
-    (cons
-     ;; return new profile after score evaluation
-     (update-profile
-      profile
-      (update-scorecard (get-scorecard profile)
-			(profiler profile)
-			(profiler profile)
-			evaluation-result))
-     ;; append evaluation result to list to be returned.
-     evaluation-result)))
-
-(define (list-profiles)
-  "Wrapper pointing to gprofile-manager's list-profiles function."
-  (list-gprofiles))
-
-(define (select-profile gprofile-id)
-  "Wrapper pointing to gprofile-manager's select-profile function."
-  (select-gprofile gprofile-id))
+  (if (and (profile? profile)
+	   answer)
+      (let* ((profile (check-profile profile))
+	     (lowest-mod-blob (profiler profile)))
+	(if lowest-mod-blob
+	    (let* ((current-problem
+		    (hangar (mod-blob-id lowest-mod-blob)
+			    (lowest-scoring-gset lowest-mod-blob)
+			    (mod-blob-id lowest-mod-blob)))
+		   (evaluation-result (ptm_assess-answer answer
+							 current-problem)))
+	      (llog 	       (update-profile
+				profile
+				(update-scorecard (profile-scorecard profile)
+						  (profiler profile)
+						  (lowest-scoring-gset
+						   (profiler profile))
+						  evaluation-result)))
+	      (cons
+	       ;; return new profile after score evaluation
+	       (update-profile
+		profile
+		(update-scorecard (profile-scorecard profile)
+				  (profiler profile)
+				  (lowest-scoring-gset
+				   (profiler profile))
+				  evaluation-result))
+	       ;; append evaluation result to list to be returned.
+	       evaluation-result))
+	    #f))
+      (assertion-violation
+       'generate-evaluation
+       "PROFILE is not a profile, or ANSWER is #f."
+       profile answer)))

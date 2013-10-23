@@ -1,11 +1,13 @@
 ;;; guilecraft --- Fast learning tool.         -*- coding: utf-8 -*-
 
 (define-module (guilecraft comtools)
+  #:use-module (rnrs records procedural)
+  #:use-module (rnrs records inspection)
   #:use-module (guilecraft config)
   #:use-module (guilecraft gprofile-ops)
   #:use-module (guilecraft gmodule-ops)
   #:use-module (guilecraft utils)
-  #:use-module (guilecraft known-rtd-manager)
+  #:use-module (guilecraft record-index)
   #:use-module (guilecraft data-types requests)
   
   #:export (record->list
@@ -72,32 +74,26 @@ as scheme objects."
       (robowrite (list object))
       (robowrite object)))
 
-;; Turn an arbitrary record into a tagged-list (tl).
 (define (record->list record)
   "Return a list consing RECORD's field-values together, and prepend
 with RECORD's record-type-descriptor."
-  (define (rec-field-values ras)
-    "Return the values of the different fields in RECORD, by using the
-list of record-accessors RAS."
-    (define (rfv ra)
-      "Return the value of record-field accessed through
-record-accessor ra."
-      (ra record))
-    (map rfv ras))
-  (define (rec-accessors rtd)
-    "Return a list of record-accessors for the record of type RTD."
-    (define (this-ra)
-      "Return a procedure that, given a record-type-field, would
-return the record accessor for a record of type RTD."
-      (lambda (record-type-field)
-	(record-accessor rtd record-type-field)))
-    (map (this-ra) (record-type-fields rtd)))
+  (define (get-accessors rtd)
+    (define (accessors field-ref collected)
+      (let ((collected (cons (record-accessor rtd field-ref)
+			     collected)))
+	(cond ((zero? field-ref)
+	       collected)
+	      (else (accessors (1- field-ref) collected)))))
+    (let ((nr-fields (vector-length (record-type-field-names rtd))))
+      (if (zero? nr-fields)
+	  '()
+	  (accessors (1- nr-fields) '()))))
+  (define (get-field-value accessor)
+    (accessor record))
 
-  (let* ((rtd (record-type-descriptor record))
-	 (rtn (record-type-name rtd)))
-    (begin (known-rtds 'put rtn rtd)  ; Side-effect: update known-rtds
-	   (cons rtn		      ; tlist: rtn + rtvs
-		 (rec-field-values (rec-accessors rtd))))))
+  (let ((rtd (record-rtd record)))
+    (cons (record-type-name rtd)
+	  (map get-field-value (get-accessors rtd)))))
 
 ;; Recurse through a record, turning each contained record into a list
 ;; to pump it through sockets.
@@ -121,21 +117,12 @@ generated list to reduce further records into lists."
 OBJECT.
 
 Return OBJECT if OBJECT is not a list."
-  ;; Normally the record-constructor is derived from known-rtds, but the
-  ;; define-record-type* procedure used for gmodules and gprofiles in
-  ;; particular do not allow for this (record-constructor does not work
-  ;; for them). As a result I've added clauses for these data-types
-  ;; for now. Instead of this hack, the define-record-type* macro
-  ;; should be expanded to handle record-constructor gracefully.
   (if (list? object)
-      (let ([rn (car object)]		; Record-Type-Name
-	    [rv (cdr object)])		; Record-Type-Values
-	(cond ((eqv? rn '<profile>)
-	       (apply trad-make-profile rv)) ; Profiles hack
-	      ((eqv? rn '<gmodule>)
-	       (apply trad-make-gmodule rv)) ; Gmodules hack
-	      (else
-	       (apply (record-constructor (known-rtds 'get rn)) rv))))
+      (let* ([rn (car object)]		; Record Name
+	     [rv (cdr object)])		; Record Values
+	(if (known-rc? rn)
+	    (apply (get-rc rn) rv)
+	    #f))
       object))
 
 (define (list->record* object)
@@ -177,7 +164,7 @@ Return #f if object is not a list."
 	  ((pair? (car l))
 	   (cons (p->r* (car l))
 		 (l->r* (cdr l))))
-	  ((known-rtd? (car l))		; embedded tagged list?
+	  ((known-rc? (car l))		; embedded tagged list?
 	   (list->record
 	    (cons (car l)
 		  (l->r* (cdr l)))))	; recurse only on cdr

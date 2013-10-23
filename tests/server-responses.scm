@@ -23,16 +23,10 @@
   #:use-module (srfi srfi-1)      ; Provide fold
   #:use-module (srfi srfi-64)      ; Provide test suite
   #:use-module (guilecraft comtools)
-  #:use-module (guilecraft record-index)
-  #:use-module (guilecraft known-rtd-manager)
   #:use-module (guilecraft data-types requests)
-  #:use-module (guilecraft data-types gprofiles)
-  #:use-module (profiles tester))
+  #:use-module (tests test-utils))
 
 (test-begin "server-tests")
-
-(if (register-rtds records)
-    (known-rtds 'check))
 
 ;; Test a well behaving symbol message (it uses gwrite)
 (test-assert "server-random-data"
@@ -44,35 +38,43 @@
 (test-assert "server-alive"
   (ack-rs? (rs-content (exchange (request (alive-rq))))))
 
-(test-assert "get-profs"
-  (fold (lambda (prof-list result)
-	  (if result
-	      (and (id? (cdr prof-list))
-		   (string? (car prof-list)))
-	      #f))
-	#t
-	(profs-list (rs-content (exchange (request (profs-rq)))))))
+;; (test-assert "get-profs"
+;;   (fold (lambda (prof-list result)
+;; 	  (if result
+;; 	      (and (id? (cdr prof-list))
+;; 		   (string? (car prof-list)))
+;; 	      #f))
+;; 	#t
+;; 	(profs-list (rs-content (exchange (request (profs-rq)))))))
 
-(test-assert "server-auth"
-  (and (neg-rs? (rs-content (exchange (request (auth-rq
-						'random)))))
-       (auth-rs?
-	(rs-content
-	 (exchange
-	  (request (auth-rq (get-id tester-profile))))))))
+;; (test-assert "server-auth"
+;;   (and (neg-rs? (rs-content (exchange (request (auth-rq
+;; 						'random)))))
+;;        (auth-rs?
+;; 	(rs-content
+;; 	 (exchange
+;; 	  (request (auth-rq (get-id tester-profile))))))))
+
+(test-assert "server-#f-challenge"
+	     (neg-rs?
+	      (rs-content
+	       (exchange (request (chall-rq test-gprofile)))))) ; bogus active-modules
 
 (test-assert "server-challenge"
-  (and
-   (neg-rs? (rs-content (exchange (request (chall-rq 'no-profile)))))
-   (chall-rs?
-    (rs-content
-     (exchange (request (chall-rq tester-profile)))))))
+	     (chall-rs?
+	      (rs-content
+	       (exchange (request (chall-rq test-gprofile-2)))))) ; real module
 
+(test-assert "server-#f-eval"
+	     (and (neg-rs?
+		   (rs-content
+		    (exchange (request (eval-rq test-gprofile
+						"random"))))))) ; bogus active-modules
 (test-assert "server-eval"
-  (and (not
-	(eval-rs-result
-	 (rs-content
-	  (exchange (request (eval-rq tester-profile "random"))))))))
+	     (eval-rs?
+	      (rs-content
+	       (exchange (request (eval-rq test-gprofile-2
+					   "random"))))))
 
 (test-assert "server-quit"
   (and (exchange (request (quit-rq)))

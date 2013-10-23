@@ -9,6 +9,9 @@
 
 (define-module (guilecraft problem-type-manager)
   #:use-module (guilecraft data-manager)
+  #:use-module (guilecraft utils)
+  #:use-module (guilecraft data-types sets)
+    #:use-module (rnrs)
   #:export (ptm_add-problem-type
 	    ptm_get-problem-type
 
@@ -24,21 +27,27 @@
     "Currently returns #t if @var{player-answer} is assessed
 successfully against @var{whirligig}'s current problem's solution.
 This is a high-level function, called directly from the UI."
-    ; Return the problem type, which is also the exposed procedure
-    ; accepting the 'assess message
-    (if (get-problem-type-provider problem)
-	((get-problem-type-provider problem) 'assess-answer problem player-answer)
-	'unknown-problem-type)))
+    ;; Return the problem type, which is also the exposed procedure
+    ;; accepting the 'assess message
+    (if (and player-answer
+	     (problem? problem))
+	((p-function (problem-p problem))
+	 player-answer
+	 (s-text (problem-s problem)))
+	(assertion-violation
+	 'assess-answer
+	 "PLAYER-ANSWER is #f or PROBLEM is not a problem!"
+	 player-answer problem))))
 
-(define ptm_get-challenge
-  (lambda (problem)
-    "Return a challenge, depending on the type of problem."
-    ; Return and apply the problem-type-provider if it exists, which
-    ; is also the exposed procedure accepting the 'get-challenge
-    ; message 
-    (if (get-problem-type-provider problem)
-	((get-problem-type-provider problem) 'get-challenge problem)
-	'ptm_get-challenge-unknown-problem-type)))
+(define (ptm_get-challenge problem)
+  "Return a challenge, depending on the type of problem."
+  ;; Return and apply the problem-type-provider if it exists, which
+  ;; is also the exposed procedure accepting the 'get-challenge
+  ;; message 
+  (q-text (problem-q problem)))
+  ;; (if (get-problem-type-provider problem)
+  ;;     ((get-problem-type-provider problem) 'get-challenge problem)
+  ;;     'ptm_get-challenge-unknown-problem-type))
 
 (define ptm_add-problem-type
   (lambda (problem-type-provider prototype-problem-type)
@@ -56,5 +65,5 @@ from the problem-type-manager table."
   (lambda (problem)
     (record-type-name (record-type-descriptor problem))))
 
-; define a data-manager table using the result of record-type-name as key
+;; define a data-manager table using the result of record-type-name as key
 (define problem-type-manager (dman_data-manager ptm_get-problem-type))

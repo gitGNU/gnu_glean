@@ -22,8 +22,8 @@
 (define-module (tests comtools-offline)
   #:use-module (srfi srfi-64)		; Provide test suite
   #:use-module (tests test-utils)	; Provide test-profiles, etc.
+  #:use-module (guilecraft data-types sets)
   #:use-module (guilecraft data-types scorecards)
-  #:use-module (guilecraft known-rtd-manager)
   #:use-module (guilecraft comtools)) ; Provide functions to be
 				      ; tested.
 
@@ -34,75 +34,23 @@
 (define test-scorecard
   (make-scorecard
    (list
-    (make-gmod-blob 'git (list
-			  (make-gset-blob 'status 0 0)
-			  (make-gset-blob 'branch 50 5)))
-    (make-gmod-blob 'bzr (list
-			  (make-gset-blob 'st 0 3)
-			  (make-gset-blob 'commit 50 7)))
-    test-gmodule
-    test-gprofile
-    test-gprofile-2)))
-(define rtd
-  (record-type-descriptor test-scorecard))
-(define rtn
-  (record-type-name rtd))
-
-(test-assert "known-rtds-put"
-	     (known-rtds 'put rtn rtd))
-
-(test-assert "known-rtds-get"
-	     (and (eq? (known-rtds 'get '<scorecard>) rtd)))
+    (make-mod-blob 'git (list
+			  (make-set-blob 'status 0 0)
+			  (make-set-blob 'branch 50 5)))
+    (make-mod-blob 'bzr (list
+			  (make-set-blob 'st 0 3)
+			  (make-set-blob 'commit 50 7))))))
 
 (test-assert "record->list*"
 	     (equal? (record->list* test-scorecard)
-		     '(<scorecard> 
-		       ((<score-gmod-blob> 
-			 git 
-			 ((<score-gset-blob> status 0)
-			  (<score-gset-blob> branch 50)))
-			(<score-gmod-blob>
-			 bzr
-			 ((<score-gset-blob> st 0)
-			  (<score-gset-blob> commit 50)))
-			(<gmodule>
-			 test
-			 "Test Gmodule"
-			 "0.1"
-			 "Test Description"
-			 "Long Description:"
-			 "Alex Sassmannshausen"
-			 ((<gset>
-			   gset-tag
-			   ((<open-problem> "question?" "solution")
-			    (<multi-choice-problem>
-			     "question?"
-			     ("b" . "option b")
-			     (("a" . "option a")
-			      ("b" . "option b")
-			      ("c" . "option c"))))))
-			 "http://some.url" "None")
-			(<profile> "test"
-				   (<id> "test" 1366787517)
-				   (test) (<scorecard> ()))
-			(<profile> "test2"
-				   (<id> "test2" 1366787517)
-				   (test2) (<scorecard> ()))))))
+		     '(scorecard
+		       ((mod-blob git ((set-blob status 0 0)
+				       (set-blob branch 50 5)))
+			(mod-blob bzr ((set-blob st 0 3)
+				       (set-blob commit 50 7)))))))
 
 (test-assert "list->record*"
-	     (scorecard? (list->record* (record->list*
-					 test-scorecard))))
-
-(test-assert "full-known-rtds"
-	     (and (known-rtds 'get '<scorecard>)
-		  (known-rtds 'get '<gset>)
-		  (known-rtds 'get '<profile>)
-		  (known-rtds 'get '<gmodule>)
-		  (known-rtds 'get '<score-gset-blob>)
-		  (known-rtds 'get '<score-gmod-blob>)
-		  (known-rtds 'get '<id>)))
-
-(test-assert "not-random-known-rtd"
-	     (not (known-rtds 'get '<blah>)))
+	     (equal? (list->record* (record->list*
+				     test-scorecard))))
 
 (test-end "transformation-tests")

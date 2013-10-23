@@ -28,42 +28,42 @@
 
 (test-begin "scorecard-tests")
 
-(test-assert "dummy-gset-blob"
-  (and (gset-blob? (make-dummy-gset-blob))
-       (dummy-gset-blob? (make-dummy-gset-blob))))
+(test-assert "dummy-set-blob"
+  (and (set-blob? (make-dummy-set-blob))
+       (dummy-set-blob? (make-dummy-set-blob))))
 
-(test-assert "dummy-gmod-blob"
-  (and (gmod-blob? (make-dummy-gmod-blob))
-       (dummy-gmod-blob? (make-dummy-gmod-blob))))
+(test-assert "dummy-mod-blob"
+  (and (mod-blob? (make-dummy-mod-blob))
+       (dummy-mod-blob? (make-dummy-mod-blob))))
 
 (test-assert "The empty scorecard"
-  (null-scorecard? (make-scorecard '())))
-
-(test-equal "first in scorecard"
-  (make-gmod-blob
-   'test (list (make-gset-blob 'gset-tag 0 0)))
-  (car-gmod-blobs (scorecard-data (make-scorecard-skeleton
-				   (list test-gmodule)))))
-
-(test-equal "rest of scorecard"
-  '()
-  (cdr-gmod-blobs (scorecard-data (make-scorecard-skeleton
-				   (list test-gmodule)))))
+  (null-scorecard? (make-empty-scorecard)))
 
 (test-assert "skeleton-scorecard"
   (scorecard? (make-scorecard-skeleton
 	       (list test-gmodule))))
 
+(test-equal "first in scorecard"
+  (make-mod-blob
+   'test (list (make-set-blob 'gset-tag 0 0)))
+  (car-mod-blobs (scorecard-data (make-scorecard-skeleton
+				   (list test-gmodule)))))
+
+(test-equal "rest of scorecard"
+  '()
+  (cdr-mod-blobs (scorecard-data (make-scorecard-skeleton
+				   (list test-gmodule)))))
+
 (test-assert "lower score"
-  (lower-score? (make-gset-blob 'foo 1 3)
-		(make-gset-blob 'bar 4 1)))
+  (lower-score? (make-set-blob 'foo 1 3)
+		(make-set-blob 'bar 4 1)))
 
 (test-eq "update-scorecard"
 	 1
-	 (gset-blob-score
-	  (car-gset-blobs
-	   (gmod-blob-data
-	    (car-gmod-blobs
+	 (set-blob-score
+	  (car-set-blobs
+	   (mod-blob-data
+	    (car-mod-blobs
 	     (scorecard-data
 	      (update-scorecard (make-scorecard-skeleton (list test-gmodule))
 				'test

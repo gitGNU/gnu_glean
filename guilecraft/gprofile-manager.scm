@@ -37,12 +37,12 @@
 
 ; define a data-manager instance using the result of gprofile-id as
 ; key
-(define gprofile-manager (dman_data-manager get-id))
+(define gprofile-manager (dman_data-manager profile-id))
 
 (define (list-gprofiles)
   (map cons
        (map (lambda (x)
-	      (get-name (select-gprofile (car x))))
+	      (profile-name (select-gprofile (car x))))
 	    (gprofile-manager 'list))
        (map car
 	    (gprofile-manager 'list))))
@@ -51,7 +51,7 @@
   (call/cc (lambda (k)
 	     (begin
 	       (map (lambda (pair)
-		      (if (equal? name (get-name (cdr pair)))
+		      (if (equal? name (profile-name (cdr pair)))
 			  (k (cdr pair))))
 		    (gprofile-manager 'list))
 	       #f))))

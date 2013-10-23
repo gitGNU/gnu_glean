@@ -54,10 +54,10 @@
 ;; gprofile ID supplied as parameter.
 (test-assert "Return selected gprofile"
 	     (profile?
-	      (select-gprofile (get-id test-gprofile-2))))
+	      (select-gprofile (profile-id test-gprofile-2))))
 
 (test-assert "find-profile-by-name"
   (equal? (find-profile-by-name "test")
-	  (select-gprofile (get-id test-gprofile))))
+	  (select-gprofile (profile-id test-gprofile))))
 
 (test-end "gprofile-selector")

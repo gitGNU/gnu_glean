@@ -34,13 +34,17 @@
 				   ; test-suite
   #:use-module (guilecraft config)
   #:use-module (guilecraft server)
+  #:use-module (guilecraft tools)
   #:use-module (guilecraft clients cli)
   #:use-module (guilecraft clients web)
   #:export (boot))
 
 ;; Define the list of accepted options and their special properties
-(define *option-grammar* '((client (single-char #\c))
-			   (web (single-char #\w))
+(define *option-grammar* '((client (single-char #\c) (value #f))
+			   (install (single-char #\i) (value #t))
+			   (edit (single-char #\e) (value #t))
+			   (retrieve (single-char #\r) (value #t))
+			   (web (single-char #\w) (value #f))
 			   (listen)
                            (usage (single-char #\u))
 			   (config (value #t))
@@ -111,6 +115,12 @@ Options will be surrounded by square brackets if optional."
 	     (main-server %guilecraft-dir%))
 	    ((option-ref options 'web #f)
 	     (web))
+	    ((option-ref options 'install #f)
+	     (install-module (option-ref options 'install #f)))
+	    ((option-ref options 'edit #f)
+	     (edit-module (option-ref options 'edit #f)))
+	    ((option-ref options 'retrieve #f)
+	     (retrieve-module (option-ref options 'retrieve #f)))
 	    (else (client))))))
 
 (define (main-server dir)

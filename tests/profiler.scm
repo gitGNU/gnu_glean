@@ -28,21 +28,21 @@
 (test-begin "profiler-tests")
 
 (test-equal "lowest-scoring-gset-good"
-	    (make-gset-blob 'tag
+	    (make-set-blob 'tag
 			    3
 			    1)
 	    (lowest-scoring-gset
-	     (make-gmod-blob 'gmodule-id
-			     (list (make-gset-blob 'tag-false
+	     (make-mod-blob 'gmodule-id
+			     (list (make-set-blob 'tag-false
 						   7
 						   1)
-				   (make-gset-blob 'tag-wrong
+				   (make-set-blob 'tag-wrong
 						   5
 						   1)
-				   (make-gset-blob 'tag
+				   (make-set-blob 'tag
 						   3
 						   1)
-				   (make-gset-blob 'false
+				   (make-set-blob 'false
 						   8
 						   6)))))
 
@@ -50,60 +50,43 @@
 	     (catch #t
 	       (lambda ()
 		 (lowest-scoring-gset
-		  (make-gmod-blob 'gmodule-id
+		  (make-mod-blob 'gmodule-id
 				  '())))
 	       (lambda (key . args)
 		 key args ; ignored
 		 #t)))
 
 (test-equal "profiler-good"
-	    (make-gmod-blob 'gmodule-true
-			    (list (make-gset-blob 'true
+	    (make-mod-blob 'gmodule-true
+			    (list (make-set-blob 'true
 						  3
 						  1)))
 	    (profiler
 	     (make-profile
-	      (name "test")
-	      (id (make-id 'test 123))
-	      (active-modules '(gmodule-wrong gmodule-true))
-	      (scorecard
-	       (make-scorecard
-		(list (make-gmod-blob 'gmodule-wrong
-				      (list (make-gset-blob 'tag-false
-							    7
-							    1)))
-		      (make-gmod-blob 'gmodule-true
-				      (list (make-gset-blob 'true
-							    3
-							    1)))
-		      (make-gmod-blob 'gmodule-red-herring
-				      (list (make-gset-blob 'false
-							    1
-							    1)))))))))
+	      "test"
+	      (make-id 'test 123)
+	      '(gmodule-wrong gmodule-true)
+	      (make-scorecard
+	       (list (make-mod-blob 'gmodule-wrong
+				    (list (make-set-blob 'tag-false
+							 7
+							 1)))
+		     (make-mod-blob 'gmodule-true
+				    (list (make-set-blob 'true
+							 3
+							 1)))
+		     (make-mod-blob 'gmodule-red-herring
+				    (list (make-set-blob 'false
+							 1
+							 1))))))))
 (test-assert "profiler-bad"
 	     (not
 	      (profiler
 	       (make-profile
-		(name "test")
-		(id (make-id 'test 123))
-		(active-modules '())
-		(scorecard
-		 (make-scorecard
-		  '(we never get to this)))))))
-
-(test-assert "profiler-ugly"
-	     (catch
-	       #t
-	       (lambda ()
-		 (profiler
-		  (make-profile
-		   (name "test")
-		   (id (make-id 'test 123))
-		   (active-modules '(gmodule-wrong gmodule-true))
-		   (scorecard
-		    (make-scorecard '())))))
-	       (lambda (key . args)
-		 key args		;ignore
-		 #t)))
+		"test"
+		(make-id 'test 123)
+		'()
+		(make-scorecard
+		 '(we never get to this))))))
 
 (test-end "profiler-tests")

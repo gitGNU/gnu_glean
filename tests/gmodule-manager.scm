@@ -23,7 +23,7 @@
   #:use-module (srfi srfi-1)       ; Provide map and reduce
   #:use-module (srfi srfi-64)      ; Provide test suite
   #:use-module (tests test-utils)  ; Provide test-profiles, etc.
-  #:use-module (guilecraft data-types gmodules) ; Provide gmod
+  #:use-module (guilecraft data-types sets) ; Provide gmod
 					; introspection 
 
   #:use-module (guilecraft gmodule-manager)) ; interface to be tested
@@ -41,12 +41,12 @@
 ;; object.
 (test-assert "Retrieve list of loaded gmodules"
 	     (and (symbol? (car (car (gman_list-gmodules))))
-		  (gmodule? (cdr (car (gman_list-gmodules))))))
+		  (set? (cdr (car (gman_list-gmodules))))))
 
 ;; select-gmodule is to return the gmodule object corresponding to the
 ;; gmodule ID supplied as parameter.
 (test-assert "Return selected gmodule"
-	     (gmodule?
-	      (gman_get-gmodule (gmodule-id test-gmodule))))
+	     (set?
+	      (gman_get-gmodule (set-id test-gmodule))))
 
 (test-end "gmodule-manager")
