@@ -7,4 +7,5 @@ profiles/*
 guilecraft/config.scm
 *.org
 *.ede
+*.sls
 Makefile.am
