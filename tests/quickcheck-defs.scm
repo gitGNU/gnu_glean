@@ -25,6 +25,7 @@
   #:use-module (quickcheck quickcheck)
   #:use-module (ice-9 format)
   #:use-module (srfi srfi-27)
+  #:use-module (guilecraft comtools)
   #:use-module (guilecraft data-types gprofiles)
   #:use-module (guilecraft data-types sets)
   #:use-module (guilecraft data-types scorecards)
@@ -62,6 +63,9 @@
 
 	    $quit-rq
 
+	    $datum
+	    $record
+	    $tagged-list
 	    quickname
 	    $short-list
 	    ))
@@ -167,17 +171,31 @@ GENERATOR."
   "Return is undefined. Print quickcheck intro message and NAME."
   (simple-format #t "starting quickcheck: ~a" name)
   (newline))
+
+;; FIXME: In addition, should randomly return: request, record as
+;; original
+(define ($datum)
+  "Return a random instance of one of the data enumerated in the list."
+  ((from-list (list $string $symbol $integer $profile))))
+
+(define ($record)
+  "Return a random record enumerated in the list."
+  ((from-list (list $profile $scorecard $set))))
+
+(define ($tagged-list)
+  "Return a random record enumerated in the list."
+  ((from-list (list (lambda ()
+		      (record->list* ($profile)))
+		    (lambda ()
+		      (record->list* ($scorecard)))
+		    (lambda ()
+		      (record->list* ($set)))))))
 
 ;;;;; Support Generators & Functions
 ;;;; This section contains library internal definitions that should
 ;;;; not normally be needed when writing quickcheck tests. These
 ;;;; functions are used by some of the generators in the rest of the
 ;;;; library.
-;; FIXME: In addition, should randomly return: request, record as
-;; original
-(define ($datum)
-  "Return a random instance of one of the data enumerated in the list."
-  ((from-list (list $string $symbol $integer $profile))))
 
 ;; FIXME: Challenge may well be an abstraction that includes agreed
 ;; instructions to the client on providing options etc.

@@ -6,3 +6,5 @@ profiles/*
 *.log
 guilecraft/config.scm
 *.org
+*.ede
+Makefile.am

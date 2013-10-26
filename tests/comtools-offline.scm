@@ -24,10 +24,23 @@
   #:use-module (tests test-utils)	; Provide test-profiles, etc.
   #:use-module (guilecraft data-types sets)
   #:use-module (guilecraft data-types scorecards)
+  #:use-module (quickcheck quickcheck)
+  #:use-module (tests quickcheck-defs)
+  #:use-module (rnrs)
   #:use-module (guilecraft comtools)) ; Provide functions to be
 				      ; tested.
 
 (test-begin "transformation-tests")
+
+(quickname "robustness-tests")
+(quickname "record->list")
+(quickcheck (lambda (_) (list? (record->list _))) $record)
+(quickname "list->record")
+(quickcheck (lambda (_) (record? (list->record _))) $tagged-list)
+(quickname "record->list*")
+(quickcheck (lambda (_) (list? (record->list* _))) $record)
+(quickname "list->record*")
+(quickcheck (lambda (_) (record? (list->record* _))) $tagged-list)
 
 ;; Dummy objects for procedures used by "challenge request" and "eval
 ;; request".
@@ -42,15 +55,19 @@
 			  (make-set-blob 'commit 50 7))))))
 
 (test-assert "record->list*"
-	     (equal? (record->list* test-scorecard)
-		     '(scorecard
-		       ((mod-blob git ((set-blob status 0 0)
-				       (set-blob branch 50 5)))
-			(mod-blob bzr ((set-blob st 0 3)
-				       (set-blob commit 50 7)))))))
+	     (equal?
+	      (record->list* test-scorecard)
+	      '(":symbol: scorecard"
+		((":symbol: mod-blob" ":symbol: git"
+		  ((":symbol: set-blob" ":symbol: status" 0 0)
+		   (":symbol: set-blob" ":symbol: branch" 50 5)))
+		 (":symbol: mod-blob" ":symbol: bzr"
+		  ((":symbol: set-blob" ":symbol: st" 0 3)
+		   (":symbol: set-blob" ":symbol: commit" 50 7)))))))
 
 (test-assert "list->record*"
 	     (equal? (list->record* (record->list*
-				     test-scorecard))))
+				     test-scorecard))
+		     test-scorecard))
 
 (test-end "transformation-tests")

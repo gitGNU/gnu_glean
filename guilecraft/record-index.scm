@@ -47,7 +47,7 @@ known-rcs."
       #f))
 
 (define record-kv-pairs
-  `((set . ,make-set)
+  `((set . ,mecha-set)
     (question . ,make-q)
     (solution . ,make-s)
     (option . ,make-o)

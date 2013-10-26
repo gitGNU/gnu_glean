@@ -68,9 +68,11 @@
 	   (mod-blob-data
 	    (car-mod-blobs
 	     (scorecard-data
-	      (update-scorecard (make-scorecard-skeleton (list test-gmodule))
-				'test
-				'gset-tag
-				#t)))))))
+	      (update-scorecard
+	       (make-scorecard-skeleton
+		(list test-gmodule))
+	       'test
+	       'gset-tag
+	       #t)))))))
 
 (test-end "scorecard-tests")

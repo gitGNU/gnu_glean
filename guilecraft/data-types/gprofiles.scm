@@ -11,6 +11,8 @@
 	    profile-scorecard
 
 	    make-id
+	    id-symbol
+	    id-stamp
 	    id?))
 
 (define profile-rtd

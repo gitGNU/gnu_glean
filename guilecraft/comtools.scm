@@ -1,8 +1,7 @@
 ;;; guilecraft --- Fast learning tool.         -*- coding: utf-8 -*-
 
 (define-module (guilecraft comtools)
-  #:use-module (rnrs records procedural)
-  #:use-module (rnrs records inspection)
+  #:use-module (rnrs)
   #:use-module (guilecraft config)
   #:use-module (guilecraft gprofile-ops)
   #:use-module (guilecraft gmodule-ops)
@@ -52,7 +51,10 @@ server existence."
   "Provide means to try to read from port; return error on failure."
   (catch #t
     (lambda ()
-      (read port))
+      (let ((input (read port)))
+	(if (string? input)
+	    (gc-string->symbol input)
+	    input)))
     (lambda (k . args)
       (gmsg "gread: Port closed prematurely: " k args)
       #f)))
@@ -71,8 +73,48 @@ as scheme objects."
 	(gmsg "gwrite: Port closed prematurely: " k args)
 	#f)))
   (if (symbol? object)
-      (robowrite (list object))
+      (robowrite (symbol->gc-string object))
       (robowrite object)))
+
+
+;; FIXME: these functions are necessary because the scheme (read)
+;; function has difficulty reading symbols from a socket that contain
+;; certain special characters. Nonetheless, as it stands, the symbols
+;; with these special characters will be altered during their
+;; journey, which means that their symbol equality predicates
+;; comparing the symbol before the journey and after the journey never
+;; return true. It is not quite clear to me what causes this at this stage.
+(define (symbol->gc-string symbol)
+  "Return a string whose first word is :symbol: and whose second word
+is SYMBOL.
+
+This procedure is used because the (read) procedure has difficulty
+reading symbols with certain characters in them, as tested by
+quickcheck."
+  (if  (symbol? symbol)
+       (string-append ":symbol: " (symbol->string symbol))
+       (assertion-violation
+	'symbol->gc-string
+	"SYMBOL is not actually a symbol!"
+	symbol)))
+
+(define (gc-string->symbol string)
+  "Return a symbol whose from STRING, if the string is a
+gc-string. Otherwise, return STRING.
+
+This procedure is used because the (read) procedure has difficulty
+reading symbols with certain characters in them, as tested by
+quickcheck."
+  (if (and (string? string))
+      (if (and (< 9 (string-length string))
+	       (string=? (string-take string 9) ":symbol: "))
+	  (string->symbol (string-drop string 9))
+	  string)
+      (assertion-violation
+       'gc-strinng->symbol
+       "STRING is not actually a string!"
+       string)))
+;;End
 
 (define (record->list record)
   "Return a list consing RECORD's field-values together, and prepend
@@ -89,11 +131,19 @@ with RECORD's record-type-descriptor."
 	  '()
 	  (accessors (1- nr-fields) '()))))
   (define (get-field-value accessor)
-    (accessor record))
+    (let ((value (accessor record)))
+      (if (symbol? value)
+	  (symbol->gc-string value)
+	  value)))
 
-  (let ((rtd (record-rtd record)))
-    (cons (record-type-name rtd)
-	  (map get-field-value (get-accessors rtd)))))
+  (if (record? record)
+      (let ((rtd (record-rtd record)))
+	(cons (symbol->gc-string (record-type-name rtd))
+	      (map get-field-value (get-accessors rtd))))
+      (assertion-violation
+       'record->list
+       "RECORD is not actually a record!"
+       record)))
 
 ;; Recurse through a record, turning each contained record into a list
 ;; to pump it through sockets.
@@ -110,6 +160,10 @@ generated list to reduce further records into lists."
 	((record? object)
 	 (record->list*
 	  (record->list object)))
+	((symbol? object)
+	 (if (known-rc? object)
+	     object
+	     (symbol->gc-string object)))
 	(else object)))
 
 (define (list->record object)
@@ -120,9 +174,19 @@ Return OBJECT if OBJECT is not a list."
   (if (list? object)
       (let* ([rn (car object)]		; Record Name
 	     [rv (cdr object)])		; Record Values
-	(if (known-rc? rn)
-	    (apply (get-rc rn) rv)
-	    #f))
+	(if (string? rn)
+	    (let ((rn (gc-string->symbol rn)))
+	      (if (known-rc? rn)
+		  (apply (get-rc rn)
+			 (map (lambda (rvalue)
+				(if (string? rvalue)
+				    (gc-string->symbol rvalue)
+				    rvalue)) rv))
+		  #f))
+	    (assertion-violation
+	     'list->record
+	     "RN is not a string. A symbol?"
+	     object (car object))))
       object))
 
 (define (list->record* object)
@@ -131,46 +195,76 @@ every normal list.
 
 Return #f if object is not a list."
   (define (p->r* p)
-    (cond ((list? (car p))
-	   (cond ((list? (cdr p))
-		  (cons (l->r* (car p))
-			(l->r* (cdr p))))
-		 ((pair? (cdr p))
-		  (cons (l->r* (car p))
-			(p->r* (cdr p))))
-		 (else (cons (l->r* (car p))
-			     (cdr p)))))
-	  ((pair? (car p))
-	   (cond ((list? (cdr p))
-		  (cons (p->r* (car p))
-			(l->r* (cdr p))))
-		 ((pair? (cdr p))
-		  (cons (p->r* (car p))
-			(p->r* (cdr p))))
-		 (else (cons (p->r* (car p))
-			     (cdr p)))))
-	  (else (cond ((list? (cdr p))
-		       (cons (car p)
-			     (l->r* (cdr p))))
-		      ((pair? (cdr p))
-		       (cons (car p)
-			     (p->r* (cdr p))))
-		      (else p)))))
+    (let ((first (car p))
+	  (rest (cdr p)))
+      (cond ((list? first)
+	     (cond ((list? rest)
+		    (cons (l->r* first)
+			  (l->r* rest)))
+		   ((pair? rest)
+		    (cons (l->r* first)
+			  (p->r* rest)))
+		   ((string? rest)
+		    (cons (l->r* first)
+			  (gc-string->symbol rest)))
+		   (else (cons (l->r* first)
+			       rest))))
+	    ((pair? first)
+	     (cond ((list? rest)
+		    (cons (p->r* first)
+			  (l->r* rest)))
+		   ((pair? rest)
+		    (cons (p->r* first)
+			  (p->r* rest)))
+		   ((string? rest)
+		    (cons (p->r* first)
+			  (gc-string->symbol rest)))
+		   (else (cons (p->r* first)
+			       rest))))
+	    ((string? first)
+	     (cond ((list? rest)
+		    (cons (gc-string->symbol first)
+			  (l->r* rest)))
+		   ((pair? rest)
+		    (cons (gc-string->symbol first)
+			  (p->r* rest)))
+		   ((string? rest)
+		    (cons (gc-string->symbol first)
+			  (gc-string->symbol rest)))
+		   (else (cons (p->r* first)
+			       rest))))
+	    (else (cond ((list? rest)
+			 (cons first
+			       (l->r* rest)))
+			((pair? rest)
+			 (cons first
+			       (p->r* rest)))
+			((string? rest)
+			 (cons first
+			       (gc-string->symbol rest)))
+			(else p))))))
   (define (l->r* l)			; recurse through l
-    (cond ((null? l) '())		; If l is empty, we're done
-	  ((list? (car l))		; Recurse on car & cdr?
-	   (cons (l->r* (car l))
-		 (l->r* (cdr l))))
-	  ((pair? (car l))
-	   (cons (p->r* (car l))
-		 (l->r* (cdr l))))
-	  ((known-rc? (car l))		; embedded tagged list?
-	   (list->record
-	    (cons (car l)
-		  (l->r* (cdr l)))))	; recurse only on cdr
-	  (else
-	   (cons (car l)
-		 (l->r* (cdr l))))))	; recurse only on cdr
+    (if (null? l)			; If l is null then we're done
+	'()
+	(let ((first (car l))
+	      (rest (cdr l)))
+	  (cond ((list? first)		; Recurse on car & cdr?
+		 (cons (l->r* first)
+		       (l->r* rest)))
+		((pair? first)
+		 (cons (p->r* first)
+		       (l->r* rest)))
+		((string? first)
+		 (if (known-rc? (gc-string->symbol first)) ; embedded tagged list?
+		     (list->record
+		      (cons first
+			    (l->r* rest)))
+		     (cons (gc-string->symbol first)
+			   (l->r* rest)))) ; recurse only on cdr
+		(else
+		 (cons first
+		       (l->r* rest))))))) ; recurse only on cdr)
+
   (cond ((list? object)
 	 (l->r* object))		; analyse tlist
 	((pair? object)

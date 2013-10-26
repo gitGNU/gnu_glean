@@ -47,6 +47,7 @@
 	    module
 	    
 	    make-set
+	    mecha-set
 	    set-rcd
 	    set?
 	    set-id
@@ -306,6 +307,13 @@ and the rnrs records definition."
 				  (immutable attribution)
 				  (immutable resources)
 				  (immutable module))))
+;; mecha-set is to be used for non-human set construction (e.g. when
+;; pushing through (exchange).
+(define mecha-set-rcd
+  (make-record-constructor-descriptor set-rtd #f #f))
+(define mecha-set (record-constructor mecha-set-rcd))
+;; make-set has an enhanced protocol to help humans when creating sets
+;; and modules.
 (define set-rcd
   (make-record-constructor-descriptor
    set-rtd #f
