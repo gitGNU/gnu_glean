@@ -105,6 +105,17 @@ your project, ensuring that its changes have been committed to the
 your project, without adding it to the 'master' branch?")
 		  (s "git branch -D crazy-idea")))))
 
+(define git-checkout
+  (set 'git-checkout
+	#:contents
+	(list
+	 (problem (q "How would you switch to an existing branch
+called 'experimental'?")
+		  (s "git checkout experimental"))
+	 (problem (q "How would you create a new branch, 'feature',
+and switch to it?")
+		  (s "git checkout -b feature")))))
+
 (define git-gmodule
   (module
     'git
@@ -114,5 +125,6 @@ your project, without adding it to the 'master' branch?")
     #:description "Long Description: background on git, introductory text"
     #:creator "Alex Sassmannshausen"
     #:attribution (list (media #:text "Git man pages & website"))
-    #:contents `(,git-init ,git-status ,git-add ,git-commit ,git-diff ,git-log ,git-branch)
+    #:contents `(,git-init ,git-status ,git-add ,git-commit ,git-diff
+			   ,git-log ,git-branch ,git-checkout)
     #:resources (list (media #:urls '("http://www.git-scm.com")))))
