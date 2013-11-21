@@ -53,7 +53,7 @@ set-blob-counter."
     (lambda (module-id lowest-scoring-set-blob set-id)
       "Creates new whirligigs as needed or uses them to retrieve the
 next problem for a gset tag in a module."
-      (let ((gset-tag (set-blob-id lowest-scoring-set-blob))
+      (let ((gset-tag (set-blob-hash lowest-scoring-set-blob))
 	    (counter (set-blob-counter lowest-scoring-set-blob)))
 
 	(define (helper remaining-whirligigs gmodule-object)

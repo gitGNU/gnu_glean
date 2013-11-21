@@ -17,11 +17,12 @@
   #:export  (gman_add-gmodule
 	     gman_get-gmodule
 	     gman_list-gmodules
+	     stored-modules
 	     set-id->gmodule-object
 	     set-id->set-object))
 
 ; define a data-manager instance using the result of set-id as key
-(define gmodule-manager (dman_data-manager set-id))
+(define gmodule-manager (data-manager set?))
 
 (define gman_add-gmodule
   (lambda (gmodule-object)
@@ -30,7 +31,7 @@ gmodule-manager.
 
 gmodule-manager is an instance of data-manager. It stores the
 gmodule-object indexed by its set-id, derived using set-id."
-    (gmodule-manager 'put gmodule-object gmodule-object)))
+    (gmodule-manager 'put (set-id gmodule-object) gmodule-object)))
 
 (define gman_get-gmodule
   (lambda (set-id)
@@ -39,7 +40,14 @@ gmodule-table stored in gmodule-manager."
     (gmodule-manager 'get set-id)))
 
 (define (gman_list-gmodules)
-  (gmodule-manager 'list))
+  (vector->list
+   (call-with-values (lambda ()
+		       (gmodule-manager 'list))
+     (lambda (keys values)
+       (vector-map cons keys values)))))
+
+(define (stored-modules)
+  (gmodule-manager 'values))
 
 ; set-id->gmodule-object is in this module, not gmodule-ops,
 ; because it operates at a higher level: it applies through

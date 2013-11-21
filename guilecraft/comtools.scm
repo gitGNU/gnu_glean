@@ -7,42 +7,54 @@
   #:use-module (guilecraft gmodule-ops)
   #:use-module (guilecraft utils)
   #:use-module (guilecraft record-index)
-  #:use-module (guilecraft data-types requests)
+  #:use-module (guilecraft data-types base-requests)
   
-  #:export (record->list
+  #:export (
+	    alive?
+	    server
+	    exchange
+	    record->list
 	    record->list*
 	    list->record
 	    list->record*
 	    gwrite
-	    gread
-	    alive?
-	    server
-	    exchange))
+	    gread))
 
-(define (server)
+(define (server socket-path)
   (let* ((s (socket PF_UNIX SOCK_STREAM 0))
-	 (path (string-append %guilecraft-dir% "/socket"))
+	 (path socket-path)
 	 (address (make-socket-address AF_UNIX path)))
-    (connect s address)
-    s))
+    (catch #t
+      (lambda ()
+	(connect s address)
+	s)
+      (lambda (key . args)
+	(clog (string-append "server: Problem connecting to server: "
+			     (symbol->string key) " "
+			     (object->string args)))
+	(raise (list 'server key))))))
 
-(define (exchange request)
+(define (exchange request socket-path)
   "Connect to server, send request, return response or #f if
 connection fails."
-  (let ((s (server)))
-    (gwrite (record->list* request) s)
-    (let ((result (list->record* (gread s))))
-      (close s)
-      result)))
+  (guard (err (err
+	       (begin (clog err)
+		      (raise (list 'exchange err)))))
+	 (let ((s (server socket-path)))
+	   (gwrite (record->list* request) s)
+	   (let ((result (list->record* (gread s))))
+	     (close s)
+	     result))))
 
-(define (alive?)
+(define (alive? socket-path)
   "Check whether a Guilecraft server exists. Return #t, otherwise #f.
 
 PATH is the path to the unix domain socket that will be tested for
 server existence."
   (catch #t (lambda ()
-	      (and (access? %guilecraft-socket% W_OK)
-		   (exchange (request (alive-rq)))))
+	      (and (access? socket-path W_OK)
+		   (exchange (request (alive-rq))
+			     socket-path)))
     (lambda (key . args)
       key args				; ignored
       #f)))

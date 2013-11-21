@@ -29,7 +29,9 @@
   #:use-module (guilecraft data-types gprofiles)
   #:use-module (guilecraft data-types sets)
   #:use-module (guilecraft data-types scorecards)
-  #:use-module (guilecraft data-types requests)
+  #:use-module (guilecraft data-types base-requests)
+  #:use-module (guilecraft data-types module-requests)
+  #:use-module (guilecraft data-types profile-requests)
   #:export (
 	    $set
 	    $question
@@ -133,7 +135,7 @@
   (unk-rs ($datum)))
 (define ($neg-rs)
   "Return a randomised neg-response."
-  (neg-rs ($datum)))
+  (neg-rs ($datum) ($symbol)))
 (define ($ack-rs)
   "Return a randomised ack-response."
   (ack-rs ($datum)))

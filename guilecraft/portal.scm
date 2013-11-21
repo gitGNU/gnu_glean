@@ -81,7 +81,7 @@
 
 	;; Check whether scorecard contains data, else generate new
 	;; profile with new scorecard
-	(cond ((null-scorecard? (profile-scorecard profile))
+	(cond ((empty-scorecard? (profile-scorecard profile))
 	       (make-profile
 		name
 		id
@@ -136,9 +136,9 @@ scorecard."
 	(if lowest-mod-blob
 	    (cons profile
 		  (ptm_get-challenge
-		   (hangar (mod-blob-id lowest-mod-blob)
+		   (hangar (mod-blob-hash lowest-mod-blob)
 			   (lowest-scoring-gset lowest-mod-blob)
-			   (set-blob-id (lowest-scoring-gset
+			   (set-blob-hash (lowest-scoring-gset
 					 lowest-mod-blob)))))
 	    #f))
       (assertion-violation 'generate-challenge
@@ -153,9 +153,9 @@ scorecard."
 	     (lowest-mod-blob (profiler profile)))
 	(if lowest-mod-blob
 	    (let* ((current-problem
-		    (hangar (mod-blob-id lowest-mod-blob)
+		    (hangar (mod-blob-hash lowest-mod-blob)
 			    (lowest-scoring-gset lowest-mod-blob)
-			    (mod-blob-id lowest-mod-blob)))
+			    (mod-blob-hash lowest-mod-blob)))
 		   (evaluation-result (ptm_assess-answer answer
 							 current-problem)))
 	      (llog 	       (update-profile

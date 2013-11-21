@@ -37,7 +37,7 @@
 
 ; define a data-manager instance using the result of gprofile-id as
 ; key
-(define gprofile-manager (dman_data-manager profile-id))
+(define gprofile-manager (data-manager profile-id))
 
 (define (list-gprofiles)
   (map cons

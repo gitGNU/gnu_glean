@@ -22,13 +22,14 @@
 (define-module (tests comtools-online)
   #:use-module (srfi srfi-64)		; Provide test suite
   #:use-module (guilecraft config)
+  #:use-module (guilecraft clients min)
   #:use-module (guilecraft comtools)) ; Provide functions to be
 				      ; tested.
 
 (test-begin "comms-tests")
 
 (begin
-  (define path (string-append %guilecraft-dir% "/socket"))
+  (define path %module-socket-file%)
   (define address (make-socket-address AF_UNIX path)))
 
 ;; Write and immediately close: causes a crash when server attempts to
@@ -94,16 +95,16 @@
 
 ;; Use server as abstraction for port connection
 (test-assert "server-write"
-	     (let ((s (server)))
+	     (let ((s (server %module-socket-file%)))
 	       (and (gwrite 'test s)
 		    (gread s)
 		    (close s))))
 
 ;; Use exchange as abstraction for port connection
 (test-assert "exchange-raw"
-	     (exchange 'test))
+	     (exchange 'test %module-socket-file%))
 
 (test-assert "alive?"
-	     (alive?))
+	     (alive? %module-socket-file%))
 
 (test-end "comms-tests")

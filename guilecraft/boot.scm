@@ -33,7 +33,8 @@
   #:use-module (tests test-suite)  ; In case of -t option: run
 				   ; test-suite
   #:use-module (guilecraft config)
-  #:use-module (guilecraft server)
+  #:use-module (guilecraft module-server)
+  #:use-module (guilecraft profile-server)
   #:use-module (guilecraft tools)
   #:use-module (guilecraft clients cli)
   #:use-module (guilecraft clients web)
@@ -41,22 +42,20 @@
 
 ;; Define the list of accepted options and their special properties
 (define *option-grammar* '((client (single-char #\c) (value #f))
-			   (install (single-char #\i) (value #t))
-			   (edit (single-char #\e) (value #t))
-			   (retrieve (single-char #\r) (value #t))
-			   (web (single-char #\w) (value #f))
-			   (listen)
-                           (usage (single-char #\u))
 			   (config (value #t))
-			   (server (single-char #\s))
+			   (edit (single-char #\e) (value #t))
+                           (help (single-char #\h))
+			   (install (single-char #\i) (value #t))
+			   (listen)
+			   (module-server (single-char #\m))
+			   (profile-server (single-char #\p))
+			   (retrieve (single-char #\r) (value #t))
 			   (test-suite (single-char #\t))
-			   ;; Currently no need for sparate server
-			   ;; tests.
-			   ;;(test-server (single-char #\e))
+                           (usage (single-char #\u))
                            (version (single-char #\v))
-                           (help (single-char #\h))))
+			   (web (single-char #\w) (value #f))))
 
-(define usage 
+(define usage
   (lambda ()
     "Dispatch a usage message, with permitted command-line options, to gdisplay for output."
     (define repr-option 
@@ -101,7 +100,7 @@ Options will be surrounded by square brackets if optional."
 
 (define (boot args)
   "Set the locale, parse the options, drop into the main loop."
-  (setlocale LC_ALL "") ; sets the locale to the system locale
+  (setlocale LC_ALL "")		; sets the locale to the system locale
   (let ((options (parse-options args))
 	(start-clock (current-time)))
     (let ((config (option-ref options 'config #f)))
@@ -111,8 +110,10 @@ Options will be surrounded by square brackets if optional."
              (lambda ()
                (set-current-module config-module)
                (primitive-load config)))))
-      (cond ((option-ref options 'server #f)
-	     (main-server %guilecraft-dir%))
+      (cond ((option-ref options 'module-server #f)
+	     (module-server %module-socket-file%))
+	    ((option-ref options 'profile-server #f)
+	     (profile-server %profile-socket-file%))
 	    ((option-ref options 'web #f)
 	     (web))
 	    ((option-ref options 'install #f)
@@ -122,9 +123,6 @@ Options will be surrounded by square brackets if optional."
 	    ((option-ref options 'retrieve #f)
 	     (retrieve-module (option-ref options 'retrieve #f)))
 	    (else (client))))))
-
-(define (main-server dir)
-  (begin (server dir)))
 
 (define (client)
   (cli-client))

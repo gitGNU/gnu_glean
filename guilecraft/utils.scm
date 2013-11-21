@@ -3,10 +3,18 @@
 (define-module (guilecraft utils)
   #:use-module (guilecraft config)
   #:use-module (rnrs)
-  #:export (clog
+  #:export (flatten
+	    clog
 	    llog
 	    gmsg
 	    rprinter))
+
+(define (flatten obj)
+  (cond ((null? obj) '())
+	((not (pair? obj)) (list obj))
+	(else
+	 (append (flatten (car obj))
+		 (flatten (cdr obj))))))
 
 (define (llog args)
   "Returns #undefined. Provide logic-warning log abstraction:

@@ -36,43 +36,36 @@
 	    ($short-list $set))
 
 (test-assert "dummy-set-blob"
-  (and (set-blob? (make-dummy-set-blob))
-       (dummy-set-blob? (make-dummy-set-blob))))
-
-(test-assert "dummy-mod-blob"
-  (and (mod-blob? (make-dummy-mod-blob))
-       (dummy-mod-blob? (make-dummy-mod-blob))))
+  (and (blob? (make-dummy-blob))
+       (dummy-blob? (make-dummy-blob))))
 
 (test-assert "The empty scorecard"
-  (null-scorecard? (make-empty-scorecard)))
+  (empty-scorecard? (make-empty-scorecard)))
 
 (test-equal "first in scorecard"
-  (make-mod-blob
-   'test (list (make-set-blob 'gset-tag 0 0)))
-  (car-mod-blobs (scorecard-data (make-scorecard-skeleton
-				   (list test-gmodule)))))
+	    (make-blob
+	     'test '() '() 0 0)
+	    (scorecard-first (scorecard-data (make-scorecard-skeleton
+					      (list test-gmodule)))))
 
 (test-equal "rest of scorecard"
-  '()
-  (cdr-mod-blobs (scorecard-data (make-scorecard-skeleton
-				   (list test-gmodule)))))
+	    '()
+	    (scorecard-rest (scorecard-data (make-scorecard-skeleton
+					     (list test-gmodule)))))
 
 (test-assert "lower score"
-  (lower-score? (make-set-blob 'foo 1 3)
-		(make-set-blob 'bar 4 1)))
+  (lower-score? (make-set-blob 'foo '() '() 1 3)
+		(make-set-blob 'bar '() '() 4 1)))
 
 (test-eq "update-scorecard"
 	 1
 	 (set-blob-score
-	  (car-set-blobs
-	   (mod-blob-data
-	    (car-mod-blobs
-	     (scorecard-data
-	      (update-scorecard
-	       (make-scorecard-skeleton
-		(list test-gmodule))
-	       'test
-	       'gset-tag
-	       #t)))))))
+	  (scorecard-first
+	   (update-scorecard
+	    (make-scorecard-skeleton
+	     (list test-gmodule))
+	    'test
+	    'gset-tag
+	    #t))))
 
 (test-end "scorecard-tests")

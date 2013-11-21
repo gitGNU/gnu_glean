@@ -30,7 +30,9 @@
   #:use-module (guilecraft data-types gprofiles)
   #:use-module (guilecraft data-types sets)
   #:use-module (guilecraft data-types scorecards)
-  #:use-module (guilecraft data-types requests)
+  #:use-module (guilecraft data-types base-requests)
+  #:use-module (guilecraft data-types module-requests)
+  #:use-module (guilecraft data-types profile-requests)
   #:export (get-rc
 	    known-rc?))
 
@@ -56,23 +58,37 @@ known-rcs."
     (predicate . ,p)
 
     (scorecard . ,make-scorecard)
-    (set-blob . ,make-set-blob)
-    (mod-blob . ,make-mod-blob)
+    (blob . ,make-blob)
 
     (profile . ,make-profile)
     (id . ,make-id)
 
+    ;; generic requests
     (request . ,request)
     (response . ,response)
 
     (alive-rq . ,alive-rq)
-    (auth-rq . ,auth-rq)
-    (auth-rs . ,auth-rs)
     (quit-rq . ,quit-rq)
+    (ack-rs . ,ack-rs)
+    (neg-rs . ,neg-rs)
+    (unk-rs . ,unk-rs)
+
+    ;; profile requests
+    (reg-rq . ,reg-rq)
+    (modq . ,modq)
+    (mods . ,mods)
+    (set!q . ,set!q)
+    (auth-rq . ,auth-rq)
+    (chauth-rq . ,chauth-rq)
+    (chauth-rs . ,chauth-rs)
+    (evauth-rq . ,evauth-rq)
+    (auth-rs . ,auth-rs)
+
+    ;; module requests
     (chall-rq . ,chall-rq)
     (chall-rs . ,chall-rs)
     (eval-rq . ,eval-rq)
     (eval-rs . ,eval-rs)
-    (ack-rs . ,ack-rs)
-    (neg-rs . ,neg-rs)
-    (unk-rs . ,unk-rs)))
+    (hashmapq . ,hashmapq)
+    (hashmaps . ,hashmaps)
+    (hash-rq . ,hash-rq)))

@@ -1,5 +1,7 @@
 ;;; guilecraft --- fast learning tool.         -*- coding: utf-8 -*-
 
+;;;; Client Base Library
+
 ;; Copyright (C) 2008, 2010, 2012 Alex Sassmannshausen
 
 ;; This program is free software; you can redistribute it and/or
@@ -29,7 +31,9 @@
 (define-module (guilecraft clients min)
   #:use-module (guilecraft config)
   #:use-module (guilecraft comtools)
-  #:use-module (guilecraft data-types requests)
+  #:use-module (guilecraft data-types base-requests)
+  #:use-module (guilecraft data-types profile-requests)
+  #:use-module (guilecraft data-types module-requests)
   #:use-module (guilecraft data-types gprofiles)
   #:use-module (guilecraft data-types sets)
   #:use-module (guilecraft data-types scorecards)
@@ -52,7 +56,7 @@
 
 ;;; Definitions in this section generally have little to do with
 ;;; server communication (the alive? request in (call/startup) is the
-;;; only request mad to the server).  Instead, these functions provide
+;;; only request made to the server).  Instead, these functions provide
 ;;; features that will need to be implement by Guilecraft clients in
 ;;; any case.
 
@@ -60,7 +64,7 @@
   "Perform routine checks, and initial setup.  If all is well, call
 client-handler a thunk, which should implement the actual client
 functionality."
-  (if (alive?)
+  (if (alive? %profile-socket-file% 'prof)
       (client-handler)
       (throw 'alive?)))
 
@@ -111,48 +115,50 @@ Currently only contains the player profile."
 ;;; their responses that use call/exchange to provide data to the
 ;;; client program.
 
-(define (rq-profiles)
-  "Return an association list of profile names and profile ids
-registered with the server."
-  (call/exchange profs-list profs-rs? profs-rq))
+;; (define (rq-profiles)
+;;   "Return an association list of profile names and profile ids
+;; registered with the server."
+;;   (call/exchange profs-list profs-rs? profs-rq))
 
-(define (rq-auth id)
+(define (rq-auth name)
   "Return a profile if authentication is successful."
-  (call/exchange auth-rs-profile auth-rs? auth-rq id))
+  (call/exchange auths-token auth-rs? auth-rq name))
 
 ;; The documentation for cut mentions that the order of evaluation for
 ;; cut and cute are unspecified.  I have introduced a test to warn us
 ;; if they are ever not evaluated in the correct order, rather than
 ;; dealing with this problem properly for now.
-(define (rq-chall profile)
+(define (rq-chall token)
   "Return a new profile and challenge."
-  (let ((result (call/exchange (list
-				chall-rs-profile
-				chall-rs-challenge)
-			       chall-rs?
-			       chall-rq profile)))
-    (if (not (profile? (car result)))
-	(throw 'problem-with-cut result)
-	result)))
+  ;; (let ((result (call/exchange (list
+  ;; 				challs-token
+  ;; 				challs-mod-server)
+  ;; 			       chall-rs?
+  ;; 			       chall-rq profile)))
+  ;;   (if (not (profile? (car result)))
+  ;; 	(throw 'problem-with-cut result)
+  ;; 	result)))
+  )
 ;; See comments for rq-chall re: cut(e)
 (define (rq-eval profile answer)
   "Return a new profile and the evaluation result."
-  (let ((result (call/exchange (list
-				eval-rs-profile
-				eval-rs-result)
-			       eval-rs?
-			       eval-rq profile answer)))
-    (if (not (profile? (car result)))
-	(throw 'problem-with-cut result)
-	result)))
+  ;; (let ((result (call/exchange (list
+  ;; 				eval-rs-profile
+  ;; 				eval-rs-result)
+  ;; 			       eval-rs?
+  ;; 			       eval-rq profile answer)))
+  ;;   (if (not (profile? (car result)))
+  ;; 	(throw 'problem-with-cut result)
+  ;; 	result)))
+  )
 
-(define (call/exchange proc predicate rq . args)
+(define (call/exchange proc predicate rq target . args)
   "Return the result of applying PROC to the server response to the
 server request RQ with ARGS, after testing the response with
 PREDICATE.  If PREDICATE returns false, raise an error.  If PROC is a
 list, return a list containing the result of applying each proc in
 list to the server response."
-  (let ((result (rs-content (exchange (request (apply rq args))))))
+  (let ((result (rs-content (exchange (request (apply rq args)) target))))
     (if (predicate result)
 	(if (list? proc)
 	    (map (cut <> result) proc)

@@ -22,8 +22,11 @@
 (define-module (tests server-responses)
   #:use-module (srfi srfi-1)      ; Provide fold
   #:use-module (srfi srfi-64)      ; Provide test suite
+  #:use-module (guilecraft config)
   #:use-module (guilecraft comtools)
-  #:use-module (guilecraft data-types requests)
+  #:use-module (guilecraft clients min)
+  #:use-module (guilecraft data-types base-requests)
+  #:use-module (guilecraft data-types module-requests)
   #:use-module (quickcheck quickcheck)
   #:use-module (tests quickcheck-defs)
   #:use-module (tests test-utils))
@@ -32,18 +35,24 @@
 
 ;; Test a well behaving symbol message (it uses gwrite)
 (test-assert "server-random-data"
-  (unk-rs? (rs-content (exchange 'random))))
+  (unk-rs? (rs-content (exchange 'random
+				 %module-socket-file%))))
 
 (quickname "random-data")
 (quickcheck (lambda (_)
-	      (unk-rs? (rs-content (exchange _))))
+	      (unk-rs? (rs-content (exchange _
+					     %module-socket-file%))))
 	    $symbol)
 
 (test-assert "server-unknown-request"
-  (unk-rs? (rs-content (exchange (request 'random)))))
+	     (unk-rs?
+	      (rs-content (exchange (request 'random)
+				    %module-socket-file%))))
 
 (test-assert "server-alive"
-  (ack-rs? (rs-content (exchange (request (alive-rq))))))
+	     (ack-rs?
+	      (rs-content (exchange (request (alive-rq))
+				    %module-socket-file%))))
 
 ;; (test-assert "get-profs"
 ;;   (fold (lambda (prof-list result)
@@ -69,14 +78,18 @@
 	     (neg-rs?
 	      (rs-content
 	       (exchange
-		(request (chall-rq test-gprofile))))))
+		(request (chall-rq test-gprofile
+				   %profile-socket-file%))
+		%module-socket-file%))))
 
 ;; test using real module
 (test-assert "server-challenge"
 	     (chall-rs?
 	      (rs-content
 	       (exchange
-		(request (chall-rq test-gprofile-2))))))
+		(request (chall-rq "token"
+				   %profile-socket-file%))
+		%module-socket-file%))))
 
 ;; test using bogus active-modules
 (test-assert "server-#f-eval"
@@ -84,19 +97,23 @@
 		   (rs-content
 		    (exchange
 		     (request (eval-rq test-gprofile
-				       "random")))))))
+				       %profile-socket-file%
+				       "answer"))
+		     %module-socket-file%)))))
 
 ;; test using real module
 (test-assert "server-eval"
 	     (eval-rs?
 	      (rs-content
 	       (exchange
-		(request (eval-rq test-gprofile-2
-				  "random"))))))
+		(request (eval-rq "token"
+				  %profile-socket-file%
+				  "answer"))
+		%module-socket-file%))))
 
 (test-assert "server-quit"
-  (and (exchange (request (quit-rq)))
-       (begin (usleep 500)
-	      (not (alive?)))))
+	     (and (exchange (request (quit-rq)) %module-socket-file%)
+		  (begin (usleep 500)
+			 (not (alive? %module-socket-file%)))))
 
 (test-end "server-tests")

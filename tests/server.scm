@@ -23,13 +23,13 @@
   #:use-module (srfi srfi-64)      ; Provide test suite
   #:use-module (guilecraft config)
   #:use-module (guilecraft comtools)
-;;  #:use-module (guilecraft data-types requests)
+  #:use-module (guilecraft clients min)
   ) ; Provide functions to be tested.
 
 (test-begin "server-tests")
 
 (begin
-  (define path (string-append %guilecraft-dir% "/socket"))
+  (define path %module-socket-file%)
   (define address (make-socket-address AF_UNIX path)))
 
 ;; Test a well behaving symbol message (it uses gwrite)

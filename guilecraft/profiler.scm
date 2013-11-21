@@ -24,11 +24,11 @@
 (define (profiler profile)
   "Returns lowest scoring mod-blob."
   (if (and (profile? profile)
-	   (not (null-scorecard? (profile-scorecard profile))))
+	   (not (empty-scorecard? (profile-scorecard profile))))
       (lowest-module-blob profile)
       (assertion-violation
        'profiler
-       "PROFILE is not a profile, or contains a null-scorecard."
+       "PROFILE is not a profile, or contains a empty-scorecard."
        profile (scorecard-data profile))))
 
 (define (lowest-module-blob profile)
@@ -42,7 +42,7 @@ scorecard is empty."
 	(scorecard (profile-scorecard profile)))
 
     (cond ((or (empty-active-modules? active-modules)
-	       (null-scorecard? scorecard))
+	       (empty-scorecard? scorecard))
 	   #f)
 	  (else (reduce (lambda (module-blob previous)
 			  (if (and (active-module? module-blob

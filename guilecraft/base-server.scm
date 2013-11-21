@@ -26,19 +26,14 @@
 ;;
 ;;; Code:
 
-(define-module (guilecraft server)
+(define-module (guilecraft base-server)
   #:use-module (ice-9 rdelim)
   #:use-module (srfi srfi-26)
-  #:use-module (guilecraft gmodule-manager)
-  #:use-module (guilecraft data-types requests)
-  #:use-module (guilecraft data-types gprofiles)
-  #:use-module (guilecraft data-types scorecards)
+  #:use-module (guilecraft data-types base-requests)
   #:use-module (guilecraft comtools)
-  #:use-module (guilecraft portal)
   #:use-module (guilecraft utils)
-  #:use-module (guilecraft store)
   #:use-module (rnrs)
-  #:export (server))
+  #:export (the-server))
 
 (define %gettext-domain
   "guilecraft")
@@ -46,12 +41,11 @@
 (define _ (cut gettext <> %gettext-domain))
 (define N_ (cut ngettext <> <> <> %gettext-domain))
 
-(define (server guilecraft-dir)
+(define (the-server socket-file server-dispatcher)
   "Starts server: sets socket path, calls checks and then server loop."
   (define (thunk)
-    (let ((path (string-append guilecraft-dir "/socket")))
-      (if (prepare-port path)
-	  (server-loop path))))
+    (if (prepare-port socket-file)
+	(server-loop socket-file server-dispatcher)))
   (define (h key . args)
     (display args)
     (newline)
@@ -61,17 +55,15 @@
 	  (state (cadddr args)))
       (server-quit socket client path state)))
   
-  ;; Register the known modules
-  (store-modules)
   ;; start the server
   ;;(catch #t thunk h)
   (thunk)
   )
 
-(define (prepare-port path)
-  "Checks whether PATH exists, and if so, offers to delete and
+(define (prepare-port socket-file)
+  "Checks whether SOCKET-FILE exists, and if so, offers to delete and
 continue load."
-  (if (not (file-exists? path))
+  (if (not (file-exists? socket-file))
       #t
       (begin
 	(simple-format #t "Socket file exists. 
@@ -86,21 +78,17 @@ Enter y to continue, or anything else to abort:")
 		  (eq? answer 'yes)
 		  (eq? answer 'Yes))
 	      (begin
-		(delete-file path)
+		(delete-file socket-file)
 		#t)
-	      (throw 'socket-error #f #f path 'prepare-port))))))
+	      (throw 'socket-error #f #f socket-file 'prepare-port))))))
 
-(define (build-out obj)
-  (record->list* obj))
-
-
-(define (server-loop path)
-  "Set up the socket on PATH, and use loop to accept and process
-client requests."
+(define (server-loop socket-file server-dispatcher)
+  "Set up the socket on SOCKET-FILE, and use loop to accept and
+forward client requests to SERVER-DISPATCHER."
 
   (define (start-server)
     (let ((s (socket PF_UNIX SOCK_STREAM 0))
-	  (sock-addr (make-socket-address AF_UNIX path)))
+	  (sock-addr (make-socket-address AF_UNIX socket-file)))
 
       (setsockopt s SOL_SOCKET SO_REUSEADDR 1)
       (bind s sock-addr)
@@ -118,19 +106,21 @@ client requests."
 	     (client (car connection)))
 
 	(define (respond record)
+	  (clog "in respond")
 	  (let ((resp (response (server-dispatcher record))))
 	    (gmsg #:priority 7 "respond: resp:" resp)
+	    (gmsg #:priority 7 "respond: resp:" (rs-content resp))
 	    (if resp
 		(begin
 		  (gwrite (record->list* resp) client)
 		  (close client)
 		  (gmsg #:priority 8 "respond: Client closed.")
 		  (cond ((ack-rs? (rs-content resp))
-			 (gmsg "respond: checking for quit-rq…")
+			 (gmsg #:priority 7 "respond: checking for quit-rq…")
 			 (if (quit-rq? (ack-orig (rs-content resp)))
 			     (begin
 			       (gmsg "respond: quit detected.")
-			       (server-quit client client path
+			       (server-quit client client socket-file
 					    'normal))
 			     (gmsg "respond: no quit.")))))
 		(begin
@@ -149,70 +139,7 @@ client requests."
 
     (loop 1)))
 
-(define (server-dispatcher request)
-  "Interprets client requests, and passes additional information for
-handling to request handler.
-
-As scheme readers/writers currently don't handle records, objects(?)
-or symbols, these need to be decomposed into lists before transmission
-and recomposed upon receipt."
-
-  (define (challenge-provider rq)
-    (guard (err ((or (eqv? err 'no-profile)
-		     (eqv? err 'no-modules))
-		 (begin (clog err)
-			(neg-rs rq)))
-		((eqv? err 'false-result)
-		 (begin (llog err)
-			(assertion-violation
-			 'challenge-provider
-			 "We were returned a #f chall result!"
-			 err))))
-	   (if (profile? (chall-rq-profile rq))
-	       (let ((result (generate-challenge (chall-rq-profile rq))))
-		 (if result
-		     (chall-rs result)
-		     (raise 'false-result)))
-	       (raise 'no-profile))))
-
-  (define (eval-provider rq)
-    (guard (err ((or (eqv? err 'no-profile)
-		     (eqv? err 'no-modules))
-		 (begin (clog err)
-			(neg-rs rq)))
-		((eqv? err 'false-result)
-		 (begin (llog err)
-			(assertion-violation
-			 'eval-provider
-			 "We were returned a #f eval result!"
-			 err))))
-	   (let ((profile (eval-rq-profile rq)))
-	     (if (profile? profile)
-		 (let ((result (generate-evaluation
-				(eval-rq-answer rq)
-				(eval-rq-profile rq))))
-		   (if result
-		       (eval-rs result)
-		       (raise 'false-result)))
-		 (raise 'no-profile)))))
-
-  (cond ((eof-object? request)
-	 #f)
-	((request? request)
-	 (let ((rq (rq-content request)))
-	   (gmsg #:priority 8 "server-dispatcher: rq-content:" rq)
-	   (cond ((alive-rq? rq)
-		  (ack-rs rq))
-		 ((chall-rq? rq)
-		  (challenge-provider rq))
-		 ((eval-rq? rq)
-		  (eval-provider rq))
-		 ((quit-rq? rq)
-		  (ack-rs rq))
-		 (else (unk-rs rq)))))
-	(else (unk-rs request))))
-
-(define (server-quit s client path state)
+(define (server-quit s client socket-file state)
   "Shuts down communication and stops the server. Tries to close
 sockets gracefully even upon crash."
   (cond ((or (eq? state 'server)
@@ -230,8 +157,8 @@ sockets gracefully even upon crash."
 		      (close client))
 		  (if s
 		      (close s))
-		  (if path
-		      (delete-file path))
+		  (if socket-file
+		      (delete-file socket-file))
 		  (simple-format #t
 				 "Thank you for playing.")
 		  (newline)
@@ -242,13 +169,13 @@ sockets gracefully even upon crash."
 	 (begin
 	   (simple-format #t 
 			  "Received kill signal. Now quitting.
-Arguments were: s ~S; client ~S; path ~S; state ~S."
-			  s client path state)
+Arguments were: s ~S; client ~S; socket-file ~S; state ~S."
+			  s client socket-file state)
 	   (newline)
 	   ;; (if client
 	   ;;     (close client))
 	   ;; (if s
 	   ;;     (close s))
-	   ;; (if path
-	   ;;     (delete-file path))
+	   ;; (if socket-file
+	   ;;     (delete-file socket-file))
 	   (exit 1)))))

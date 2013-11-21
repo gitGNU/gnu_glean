@@ -8,14 +8,10 @@
 ;; Gmodule-Manager also defines an interface 
 
 (define-module (guilecraft problem-type-manager)
-  #:use-module (guilecraft data-manager)
   #:use-module (guilecraft utils)
   #:use-module (guilecraft data-types sets)
     #:use-module (rnrs)
-  #:export (ptm_add-problem-type
-	    ptm_get-problem-type
-
-	    ptm_assess-answer
+  #:export (ptm_assess-answer
 	    ptm_get-challenge))
 
 
@@ -48,22 +44,3 @@ This is a high-level function, called directly from the UI."
   ;; (if (get-problem-type-provider problem)
   ;;     ((get-problem-type-provider problem) 'get-challenge problem)
   ;;     'ptm_get-challenge-unknown-problem-type))
-
-(define ptm_add-problem-type
-  (lambda (problem-type-provider prototype-problem-type)
-    "Convenience procedure to add a given gmodule to the
-gmodule-manager."
-    (problem-type-manager 'put problem-type-provider prototype-problem-type)))
-
-(define get-problem-type-provider
-  (lambda (problem)
-    "Convenience procedure to retrieve a given problem-type-provider
-from the problem-type-manager table."
-    (problem-type-manager 'get (ptm_get-problem-type problem))))
-
-(define ptm_get-problem-type
-  (lambda (problem)
-    (record-type-name (record-type-descriptor problem))))
-
-;; define a data-manager table using the result of record-type-name as key
-(define problem-type-manager (dman_data-manager ptm_get-problem-type))
