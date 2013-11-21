@@ -62,170 +62,131 @@
   "Interprets client requests, and passes additional information for
 handling to request handler."
 
-  (define (registration-provider registration-rq)
-    "Returns an auth-rs containing a token and the module-server for
-this newly registered user. Otherwise return neg-rs with a message of
-'invalid-username if the username in REGISTRATION-RQ is invalid or
-exists already or with a message of 'invalid-mod-server if the
-module-server in REGISTRATION-RQ is invalid."
-    (guard (err ((or (eqv? err 'invalid-username)
-		     (eqv? err 'invalid-mod-server)
-		     (eqv? err '(register-user name-taken))
-		     (begin (clog err)
-			    (neg-rs registration-rq err)))))
-	   (cond ((not (string? (regq-name registration-rq)))
-		  (raise 'invalid-username))
-		 ((not (string? (regq-mod-server registration-rq)))
-		  (raise 'invalid-mod-server))
-		 ;; Auth-rs expects 2 values: token and prof-server, so
-		 ;; register-user will return a list.
-		 (else (apply auth-rs
-			      (register-user
-			       (regq-name registration-rq)
-			       ;; Password to come here.
-			       (regq-prof-server registration-rq)
-			       (regq-mod-server registration-rq)))))))
-
-  (define (modify-provider rq)
-    "Returns mods containing the value of the field requested in
-RQ. Otherwise returns a negq."
-    (guard (err ((or (eqv? err 'invalid-token)
-		     (eqv? err 'invalid-field)
-		     (eqv? err '(prep-modification unknown-field))
-		     (eqv? err '(get-name-by-token unknown-token)))
-		 (begin (clog err)
-			(neg-rs rq err))))
-	   (if (set!q? rq)
-	       (let ((token (set!q-token rq))
-		     (field (set!q-field rq))
-		     (value (set!q-value rq)))
-		 (cond ((not (symbol? field))
-			(raise 'invalid-field))
-		       ((not (token? token))
-			(raise 'invalid-token))
-		       (else
-			(let ((new-token
-			       (modify-profile field value
-					       (get-profile-by-token
-						token))))
-			  (auth-rs 
-			   new-token
-			   (profile-prof-server
-			    (get-profile-by-token new-token)))))))
-	       (let ((field (modq-field rq))
-		     (token (modq-token rq)))
-		 (cond ((not (symbol? field))
-			(raise 'invalid-field))
-		       ((not (token? token))
-			(raise 'invalid-token))
-		       (else
-			(let ((new-token (authenticate token)))
-			  (mods new-token
-				(prep-modification
-				 field
-				 (get-profile-by-token
-				  new-token))))))))))
-
-  (define (del-provider del-rq)
-    "Returns an ack-rs if DEL-RQ contains a valid token. Otherwise
-returns neg-rs with a message of 'invalid-token.
-
-This provider normally results in a user account being deleted."
-    (guard (err ((eqv? err 'invalid-token)
-		 (begin (clog err)
-			(neg-rs del-rq err))))
-	   (if (token? (delq-token del-rq))
-	       (ack-rs
-		(delete-user
-		 (delq-token del-rq)))
-	       (raise 'invalid-token))))
-
-  (define (auth-provider auth-rq)
-    "Returns an auth-rs if AUTH-RQ contains a valid
-username. Otherwise return neg-rs with a message of 'non-registered-user."
-    (guard (err ((eqv? err 'invalid-username)
-		 (begin (clog err)
-			(neg-rs auth-rq err)))
-		((eqv? err 'non-registered-user)
-		 (begin (clog err)
-			(neg-rs auth-rq err))))
-	   (if (string? (authq-name auth-rq))
-	       ;; Auth-rs expects 2 values: token and prof-server, so
-	       ;; authenticate-user will return a list.
-	       (apply auth-rs
-		      (authenticate-user
-		       (authq-name auth-rq)
-		       ;; Password to come here.
-		       ))
-	       (raise 'invalid-username))))
-
-  (define (prep-chall-provider prep-challq)
-    "Returns a prep-challs if PREP-CHALLQ contains a valid
-token. Otherwise return neg-rs with a message of 'invalid-token."
-    (guard (err ((eqv? err 'invalid-token)
-		 (begin (clog err)
-			(neg-rs prep-challq err))))
-	   (if (token? (prep-challq-token prep-challq))
-	       ;; prep-challs expects 3 values: token mod-server and
-	       ;; prof-server, so will return a list.
-	       (apply prep-challs
-		      (prep-hash-counter-pair (prep-challq-token
-					       prep-challq)))
-	       (raise 'invalid-token))))
-
-  (define (chauth-provider chauth-rq)
-    "Returns a chauth-rs if CHAUTH-RQ contains a valid token. Otherwise
-returns neg-rs with a message of 'invalid-token.
-
-This provider normally results in the users next challenge hash being
-prepared for collection by a module server."
-    (guard (err ((eqv? err 'invalid-token)
-		 (begin (clog err)
-			(neg-rs chauth-rq err))))
-	   (if (token? (chauthq-token chauth-rq))
-	       ;; chauth-rs expects 3 values: token, hash and counter,
-	       ;; so release-blobhash will return a list.
-	       (apply chauth-rs
-		      (release-blobhash
-		       (chauthq-token chauth-rq)))
-	       (raise 'invalid-token))))
-
-  (define (evauth-provider evauth-rq)
-    "Returns an ack-rs if EVAUTH-RQ contains a valid token and
-evaluation result. Otherwise returns neg-rs with a message of
-'invalid-token, or a neg-rs with a message of 'invalid-result.
-
-This provider normally results in a user's scorecard being updated to
-reflect result."
-    (guard (err ((or (eqv? err 'invalid-token)
-		     (eqv? err 'invalid-result))
-		 (begin (clog err)
-			(neg-rs evauth-rq err))))
-	   (cond ((not (token? (evauthq-token evauth-rq)))
-		  (raise 'invalid-token))
-		 ((not (boolean? (evauthq-result evauth-rq)))
-		  (raise 'invalid-result))
-		 (else (ack-rs (update-scorecard
-				(evauthq-token evauth-rq)
-				(evauthq-result evauth-rq)))))))
-
   (cond ((eof-object? request)
 	 #f)
 	((request? request)
 	 (let ((rq (rq-content request)))
 	   (clog rq)
 	   (rprinter rq)
-	   (cond ((alive-rq? rq) (ack-rs rq))
-		 ((reg-rq? rq) (registration-provider rq))
-		 ((del-rq? rq) (del-provider rq))
-		 ((or (modq? rq) (set!q? rq)) (modify-provider rq))
-		 ((auth-rq? rq) (auth-provider rq))
-		 ((prep-challq? rq) (prep-chall-provider rq))
-		 ((chauth-rq? rq) (chauth-provider rq))
-		 ((evauth-rq? rq) (evauth-provider rq))
-		 ((quit-rq? rq) (ack-rs rq))
-		 (else (unk-rs rq)))))
+	   (guard (err ((or (eqv? err 'invalid-username)
+			    (eqv? err 'invalid-mod-server)
+			    (eqv? err 'non-registered-user)
+			    (eqv? err '(register-user name-taken))
+			    (eqv? err 'invalid-token)
+			    (eqv? err 'invalid-result)
+			    (eqv? err 'invalid-field)
+			    (eqv? err '(prep-modification unknown-field))
+			    (eqv? err '(get-name-by-token unknown-token))
+			    (begin (clog err)
+				   (neg-rs rq err)))))
+		  (cond ((alive-rq? rq) (ack-rs rq))
+			((quit-rq? rq) (ack-rs rq))
+			((prep-challq? rq)
+			 (process-prepchallq rq))
+			((chauth-rq? rq)
+			 (process-chauthq rq))
+			((evauthq? rq)
+			 (process-evauthq rq))
+			((auth-rq? rq)
+			 (process-authq rq))
+			((set!q? rq)
+			 (process-set!q rq))
+			((modq? rq)
+			 (process-modq rq))
+			((reg-rq? rq)
+			 (process-regq rq))
+			((del-rq? rq)
+			 (process-delq rq))
+			(else (unk-rs rq))))))
 	(else (unk-rs request))))
+
+;;;;; Server Response Creation
+;;;; Functions that provide request specific parsing and response
+;;;; skeletons.
+(define (process-prepchallq rq)
+  (if (token? (prep-challq-token rq))
+      ;; prep-challs expects 3 values: token mod-server and
+      ;; prof-server, so will return a list.
+      (apply prep-challs
+	     (prep-hash-counter-pair (prep-challq-token
+				      rq)))
+      (raise 'invalid-token)))
+(define (process-chauthq rq)
+  (if (token? (chauthq-token chauth-rq))
+      ;; chauth-rs expects 3 values: token, hash and counter,
+      ;; so release-blobhash will return a list.
+      (apply chauth-rs
+	     (release-blobhash
+	      (chauthq-token chauth-rq)))
+      (raise 'invalid-token)))
+(define (process-evauthq rq)
+  (cond ((not (token? (evauthq-token evauth-rq)))
+	 (raise 'invalid-token))
+	((not (boolean? (evauthq-result evauth-rq)))
+	 (raise 'invalid-result))
+	(else (ack-rs (update-scorecard
+		       (evauthq-token evauth-rq)
+		       (evauthq-result evauth-rq))))))
+(define (process-authq rq)
+  (if (string? (authq-name auth-rq))
+      ;; Auth-rs expects 2 values: token and prof-server, so
+      ;; authenticate-user will return a list.
+      (apply auth-rs
+	     (authenticate-user
+	      (authq-name auth-rq)
+	      ;; Password to come here.
+	      ))
+      (raise 'invalid-username)))
+(define (process-set!q rq)
+  (let ((token (set!q-token rq))
+	(field (set!q-field rq))
+	(value (set!q-value rq)))
+    (cond ((not (symbol? field))
+	   (raise 'invalid-field))
+	  ((not (token? token))
+	   (raise 'invalid-token))
+	  (else
+	   (let ((new-token
+		  (modify-profile field value
+				  (get-profile-by-token
+				   token))))
+	     (auth-rs 
+	      new-token
+	      (profile-prof-server
+	       (get-profile-by-token new-token))))))))
+(define (process-modq rq)
+  (let ((field (modq-field rq))
+	(token (modq-token rq)))
+    (cond ((not (symbol? field))
+	   (raise 'invalid-field))
+	  ((not (token? token))
+	   (raise 'invalid-token))
+	  (else
+	   (let ((new-token (authenticate token)))
+	     (mods new-token
+		   (prep-modification
+		    field
+		    (get-profile-by-token
+		     new-token))))))))
+(define (process-delq rq)
+  (if (token? (delq-token del-rq))
+      (ack-rs
+       (delete-user
+	(delq-token del-rq)))
+      (raise 'invalid-token)))
+(define (process-regq rq)
+  (cond ((not (string? (regq-name rq)))
+	 (raise 'invalid-username))
+	((not (string? (regq-mod-server rq)))
+	 (raise 'invalid-mod-server))
+	;; Auth-rs expects 2 values: token and prof-server, so
+	;; register-user will return a list.
+	(else (apply auth-rs
+		     (register-user
+		      (regq-name rq)
+		      ;; Password to come here.
+		      (regq-prof-server rq)
+		      (regq-mod-server rq))))))
 
 ;;;;; Profile Management
 ;;;; Define the functions used to provide the functionality defined
@@ -262,7 +223,7 @@ successfully updated with the new VALUE. Otherwise, raise an error."
     (cond ((not (list? active-modules))
 	   (raise '(modify-profile invalid-active-modules)))
 	  ((not (parse-active-modules active-modules))
-	   (raise `(modify-profile invalid-active-module ,current)))
+	   (raise '(modify-profile invalid-active-module ,current)))
 	  ;; Structure OK: we can update the active-modules.
 	  (else active-modules)))
   (define (make-name name)
@@ -276,7 +237,7 @@ successfully updated with the new VALUE. Otherwise, raise an error."
 	   (raise '(modify-profile invalid-prof-server)))
 	  ;; FIXME: Should attempt connection to server (i.e. myself).
 	  (else server)))
-  (define (make-prof-server server)
+  (define (make-mod-server server)
     (cond ((not (string? server))
 	   (raise '(modify-profile invalid-mod-server)))
 	  ;; FIXME: Should attempt connection to server and test.
@@ -469,6 +430,24 @@ appended to blobhash to create a pair.
 
 NOTE: UPDATE-PROFILE will carry out a stateful side-effect of
 updating PROFILE's parent in the store."
+  (define (traverse-blob blob)
+    "Return the highest priority blob at the root of BLOB (the
+highest priority root-blob of BLOB)."
+    (let ((children (blob-children blob)))
+      (if (null? children)
+	  blob				; blob is a root-blob
+	  (traverse-blob (fold-left highest-priority-blob
+				    (make-dummy-blob)
+				    children)))))
+  (define (highest-priority-blob winning-blob current-blobhash)
+    "Return WINNING-BLOB if it has a higher priority than the blob
+identified by CURRENT-BLOBHASH. Otherwise return the latter blob."
+    (let ((current-blob (find current-blobhash
+			      (profile-scorecard scorecard))))
+      (if (lower-score? winning-blob current-blob)
+	  winning-blob
+	  current-blob)))
+
   ;; Prepare scorecard and new profile
   (let* ((name (profile-name profile))
 	 (id (create-profile-id name))
@@ -486,24 +465,6 @@ updating PROFILE's parent in the store."
 	 (new-profile (make-profile name id prof-server mod-server
 				    active-modules scorecard)))
     (update-profile! new-profile)	; update profile
-
-    ;; actual work
-    (define (traverse-blob blob)
-      "Return the highest priority blob at the root of BLOB (the
-highest priority root-blob of BLOB)."
-      (let ((children (blob-children blob)))
-	(if (null? children)
-	    blob			; blob is a root-blob
-	    (traverse-blob (fold-left highest-priority-blob
-				      (make-dummy-blob)
-				      children)))))
-    (define (highest-priority-blob winning-blob current-blobhash)
-      "Return WINNING-BLOB if it has a higher priority than the blob
-identified by CURRENT-BLOBHASH. Otherwise return the latter blob."
-      (let ((current-blob (find current-blobhash scorecard)))
-	(if (lower-score? winning-blob current-blob)
-	    winning-blob
-	    current-blob)))
 
     ;; Initiate search with the crown-blobhashes provided by PROFILE's
     ;; active-modules list.
