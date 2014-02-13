@@ -9,3 +9,5 @@ guilecraft/config.scm
 *.ede
 *.sls
 Makefile.am
+/guilecraft/tmp.scm
+/session.scm
