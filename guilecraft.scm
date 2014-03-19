@@ -16,3 +16,4 @@ coding:utf-8
 (add-to-load-path (dirname (current-filename))) ;location of guilecraft libs
 
 ((@ (guilecraft boot) boot) (program-arguments))
+

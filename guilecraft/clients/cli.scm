@@ -27,6 +27,7 @@
 
 (define-module (guilecraft clients cli)
   #:use-module (guilecraft clients min)
+  #:use-module (guilecraft config)
   #:export (cli-client))
 
 (define (cli-client)

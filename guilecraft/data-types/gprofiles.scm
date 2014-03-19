@@ -1,8 +1,8 @@
 ;;; guilecraft --- Fast learning tool.         -*- coding: utf-8 -*-
 
 (define-module (guilecraft data-types gprofiles)
+  #:use-module (guilecraft data-types scorecards)
   #:use-module (guilecraft utils)
-  #:use-module (guilecraft scorecard-ops)
   #:use-module (rnrs)
   #:export (make-profile
 	    make-bare-profile
@@ -53,8 +53,10 @@
 	      (raise '(make-profile invalid-mod-server)))
 	     ((not (list? active-modules))
 	      (raise '(make-profile invalid-active-modules)))
-	     ((not (procedure? scorecard))
-	      (raise '(make-profile invalid-scorecard))))))))
+	     ((not (scorecard? scorecard))
+	      (raise '(make-profile invalid-scorecard)))
+	     (else (new name id prof-server mod-server
+			active-modules scorecard)))))))
 (define bare-profile-rcd
   (make-record-constructor-descriptor
    profile-rtd #f

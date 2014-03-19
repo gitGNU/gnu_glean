@@ -110,6 +110,7 @@ Options will be surrounded by square brackets if optional."
              (lambda ()
                (set-current-module config-module)
                (primitive-load config)))))
+
       (cond ((option-ref options 'module-server #f)
 	     (module-server %module-socket-file%))
 	    ((option-ref options 'profile-server #f)
@@ -132,9 +133,7 @@ Options will be surrounded by square brackets if optional."
 ;;; Just a place-holder
 (define (main-loop)
   "The main loop which calls challenges and expects answers, until the kill signal."
-  (begin (use-modules (guilecraft portal)
-		      (modules git)
-		      (profiles alex))
+  (begin
     ;; for now we drop into read, but we want to drop into server
     ;; listening mode.
     (read)))

@@ -18,6 +18,8 @@
 	     gman_get-gmodule
 	     gman_list-gmodules
 	     stored-modules
+	     list-known-modules
+	     set-id->set
 	     set-id->gmodule-object
 	     set-id->set-object))
 
@@ -47,7 +49,16 @@ gmodule-table stored in gmodule-manager."
        (vector-map cons keys values)))))
 
 (define (stored-modules)
+  "Return a list of modules currently stored in the module store."
   (gmodule-manager 'values))
+
+(define (list-known-modules)
+  "Return a list of module IDs currently known to store."
+  (map set-id (stored-modules)))
+
+(define (set-id->set set-id)
+  "Return the set that is named by set-id."
+  (gman_get-gmodule set-id))
 
 ; set-id->gmodule-object is in this module, not gmodule-ops,
 ; because it operates at a higher level: it applies through

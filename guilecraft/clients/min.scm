@@ -45,12 +45,21 @@
 	    resolve-usernames
 	    resolve-id
 	    
-	    call/exchange
-	    rq-auth
-	    rq-chall
-	    rq-eval
-	    rq-profiles
-	    ))
+	    register-player
+	    authenticate-player
+
+            fetch-id-hash-pairs
+            push-actives-modules
+
+            fetch-hashmap
+            push-scorecard
+
+            fetch-challenge-id
+            fetch-challenge
+
+            fetch-evaluation
+            push-evaluation
+            ))
 
 ;;;; Client Support Functions
 
@@ -64,7 +73,7 @@
   "Perform routine checks, and initial setup.  If all is well, call
 client-handler a thunk, which should implement the actual client
 functionality."
-  (if (alive? %profile-socket-file% 'prof)
+  (if (alive? %profile-socket-file%)
       (client-handler)
       (throw 'alive?)))
 
@@ -115,44 +124,100 @@ Currently only contains the player profile."
 ;;; their responses that use call/exchange to provide data to the
 ;;; client program.
 
-;; (define (rq-profiles)
-;;   "Return an association list of profile names and profile ids
-;; registered with the server."
-;;   (call/exchange profs-list profs-rs? profs-rq))
+(define (register-player name profile-server module-server)
+  "Return an auths upon successful profile registration."
+  (call/exchange auths? regq profile-server
+                 name profile-server module-server))
 
-(define (rq-auth name)
-  "Return a profile if authentication is successful."
-  (call/exchange auths-token auth-rs? auth-rq name))
+(define (authenticate-player name profile-server)
+  "Return an auths or ERROR."
+  (call/exchange auths? authq profile-server
+                 name))
 
-;; The documentation for cut mentions that the order of evaluation for
-;; cut and cute are unspecified.  I have introduced a test to warn us
-;; if they are ever not evaluated in the correct order, rather than
-;; dealing with this problem properly for now.
-(define (rq-chall token)
-  "Return a new profile and challenge."
-  ;; (let ((result (call/exchange (list
-  ;; 				challs-token
-  ;; 				challs-mod-server)
-  ;; 			       chall-rs?
-  ;; 			       chall-rq profile)))
-  ;;   (if (not (profile? (car result)))
-  ;; 	(throw 'problem-with-cut result)
-  ;; 	result)))
-  )
-;; See comments for rq-chall re: cut(e)
-(define (rq-eval profile answer)
-  "Return a new profile and the evaluation result."
-  ;; (let ((result (call/exchange (list
-  ;; 				eval-rs-profile
-  ;; 				eval-rs-result)
-  ;; 			       eval-rs?
-  ;; 			       eval-rq profile answer)))
-  ;;   (if (not (profile? (car result)))
-  ;; 	(throw 'problem-with-cut result)
-  ;; 	result)))
-  )
+(define (add-active-modules token module-ids
+                            profile-server module-server)
+  ;; Get sethash pairs
+  (fetch-id-hash-pairs module-ids module-server)
+  ;; Update profile active modules
+  (push-actives-modules token id-hash-pairs profile-server)
+  ;; Get hashmaps if necessary
+  (fetch-hashmap token crownsets module-server)
+  ;; Update profile scorecards with hashmaps
+  (push-scorecard token hashmap profile-server))
 
-(define (call/exchange proc predicate rq target . args)
+(define (next-challenge token profile-server module-server)
+  ;; Get next challenge blobhash/counter
+  (fetch-challenge-id token profile-server)
+  ;; Get next problem
+  (fetch-challenge blobhash blobcounter module-server))
+
+(define (submit-answer token answer profile-server module-server)
+  ;; Evaluate answer
+  (fetch-evaluation blobhash blobcounter answer module-server)
+  ;; Update profile scorecard
+  (push-evaluation token evaluation profile-server))
+
+(define (fetch-challenge-id token profile-server)
+  "Return chauths or ERROR."
+  (call/exchange chauths? chauthq profile-server token))
+
+(define (fetch-challenge blobhash blobcounter module-server)
+  "Return challs or ERROR."
+  (call/exchange challs? challq module-server blobhash blobcounter))
+
+(define (fetch-evaluation blobhash blobcounter answer module-server)
+  "Return evals or ERROR."
+  (call/exchange evals? evals module-server
+                 blobhash blobcounter answer))
+
+(define (push-evaluation token evaluation profile-server)
+  "Return evals or ERROR."
+  (call/exchange auths? evauthq profile-server
+                 token evaluation))
+
+(define (fetch-hashmap crownsets module-server)
+  "Return hashmaps or ERROR."
+  (call/exchange hashmaps? hashmapq module-server crownsets))
+
+(define (fetch-id-hash-pairs set-ids module-server)
+  "Return a sethashess or ERROR."
+  (call/exchange sethashess? sethashesq module-server set-ids))
+
+(define (push-scorecard token hashmap profile-server)
+  "Return an auths confirming success, a set!s requesting further data
+or ERROR."
+  (push-data token 'scorecard hashmap profile-server))
+
+(define (push-actives-modules token id-hash-pairs profile-server)
+  "Return an auths confirming success, a set!s requesting further data
+or ERROR."
+  (push-data token 'active-modules id-hash-pairs profile-server))
+
+(define (push-data token type data profile-server)
+  "Return an auths confirming success, a set!s requesting further data
+or ERROR."
+  (let ((result (lesser-call/exchange set!q profile-server
+                                      token type data)))
+    (if (or (auths? result)
+            (set!s? result))
+        result
+        (throw 'exchange-error result))))
+
+(define (call/exchange predicate rq target . args)
+  "Return the expected request of performing an RQ with ARGS on TARGET
+as validated by PREDICATE. Raise an error if the response is not
+expected."
+  (let ((result (apply lesser-call/exchange rq target args)))
+    (if (predicate result)
+        result
+        (throw 'exchange-error result))))
+
+(define (lesser-call/exchange rq target . args)
+  "Return the request of performing an RQ with ARGS on TARGET. Raise
+an error if the response is not expected."
+  (rs-content (exchange (request (apply rq args)) target)))
+
+(define (call/exchange1 proc predicate rq target . args)
   "Return the result of applying PROC to the server response to the
 server request RQ with ARGS, after testing the response with
 PREDICATE.  If PREDICATE returns false, raise an error.  If PROC is a

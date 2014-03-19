@@ -2,8 +2,20 @@
 
 (define-module (guilecraft data-types profile-requests)
   #:use-module (rnrs records procedural)
-  #:export (reg-rq
-	    reg-rq?
+  #:export (
+            echoq
+            echoq?
+            echoq-token
+            echoq-message
+            echos
+            echos?
+            echos-token
+            echos-lounge
+            echos-library
+            echos-message
+
+            regq
+	    regq?
 	    regq-name
 	    regq-prof-server
 	    regq-mod-server
@@ -23,55 +35,84 @@
 	    set!q-field
 	    set!q-value
 
-	    del-rq
-	    del-rq?
+	    set!s
+	    set!s?
+	    set!s-token
+	    set!s-field
+	    set!s-value
+	    set!s-mod-server
+
+	    delq
+	    delq?
 	    delq-token
 
-	    auth-rq
-	    auth-rq?
+	    authq
+	    authq?
 	    authq-name
-	    auth-rs
-	    auth-rs?
+	    auths
+	    auths?
 	    auths-token
-	    auths-prof-server
+	    auths-mod-server
 
-	    prep-challq
-	    prep-challq?
-	    prep-challq-token
-	    prep-challs
-	    prep-challs?
-	    prep-challs-token
-	    prep-challs-prof-server
-	    prep-challs-mod-server
-
-	    chauth-rq
-	    chauth-rq?
+	    chauthq
+	    chauthq?
 	    chauthq-token
-	    chauth-rs
-	    chauth-rs?
+	    chauths
+	    chauths?
 	    chauths-token
 	    chauths-hash
 	    chauths-counter
+	    chauths-mod-server
 
-	    evauth-rq
-	    evauth-rq?
+	    evauthq
+	    evauthq?
 	    evauthq-token
 	    evauthq-result))
 
+;; Echo requests are a simple test request that returns a new token,
+;; the profile-server, the module-server and the test-message supplied
+;; to the requestor.
+;;Request
+(define echoq-rtd
+  (make-record-type-descriptor 'echoq #f #f #f #f
+			       '#((immutable token)
+                                  (immutable message))))
+(define echoq-rcd
+  (make-record-constructor-descriptor echoq-rtd #f #f))
+(define echoq (record-constructor echoq-rcd))
+(define echoq? (record-predicate echoq-rtd))
+(define echoq-token (record-accessor echoq-rtd 0))
+(define echoq-message (record-accessor echoq-rtd 1))
+;; Response
+(define echos-rtd
+  (make-record-type-descriptor 'echos #f #f #f #f
+			       '#((immutable token)
+				  (immutable prof-server)
+				  (immutable mod-server)
+                                  (immutable message))))
+(define echos-rcd
+  (make-record-constructor-descriptor echos-rtd #f #f))
+(define echos (record-constructor echos-rcd))
+(define echos? (record-predicate echos-rtd))
+(define echos-token (record-accessor echos-rtd 0))
+(define echos-lounge (record-accessor echos-rtd 1))
+(define echos-library (record-accessor echos-rtd 2))
+(define echos-message (record-accessor echos-rtd 3))
+
 ;; Reg requests provide a profile name and a module server (no
 ;; password for now) and are responded to with an auth-response.
-(define reg-rq-rtd
-  (make-record-type-descriptor 'reg-rq #f #f #f #f
+(define regq-rtd
+  (make-record-type-descriptor 'regq #f #f #f #f
 			       '#((immutable name)
 				  (immutable prof-server)
 				  (immutable mod-server))))
-(define reg-rq-rcd
-  (make-record-constructor-descriptor reg-rq-rtd #f #f))
-(define reg-rq (record-constructor reg-rq-rcd))
-(define reg-rq? (record-predicate reg-rq-rtd))
-(define regq-name (record-accessor reg-rq-rtd 0))
-(define regq-prof-server (record-accessor reg-rq-rtd 1))
-(define regq-mod-server (record-accessor reg-rq-rtd 2))
+(define regq-rcd
+  (make-record-constructor-descriptor regq-rtd #f #f))
+(define regq (record-constructor regq-rcd))
+(define regq? (record-predicate regq-rtd))
+(define regq-name (record-accessor regq-rtd 0))
+(define regq-prof-server (record-accessor regq-rtd 1))
+(define regq-mod-server (record-accessor regq-rtd 2))
 
 ;; Modq Request provide a symbol identifier of the field indicated
 ;; for modification (e.g. 'active-modules, 'name, 'prof-server, etc.)
@@ -96,12 +137,13 @@
   (make-record-constructor-descriptor mods-rtd #f #f))
 (define mods (record-constructor mods-rcd))
 (define mods? (record-predicate mods-rtd))
-(define modq-token (record-accessor modq-rtd 0))
+(define mods-token (record-accessor mods-rtd 0))
 (define mods-value (record-accessor mods-rtd 1))
 
 ;; Set! Requests provide a token, a symbol identifier of the field
 ;; indicated for modification (e.g. 'active-modules, 'name,
 ;; 'prof-server, etc.) and an appropriate new value for that field.
+;; If no further action is required, return auths, else set!s.
 (define set!q-rtd
   (make-record-type-descriptor 'set!q #f #f #f #f
 			       '#((immutable token)
@@ -115,107 +157,94 @@
 (define set!q-field (record-accessor set!q-rtd 1))
 (define set!q-value (record-accessor set!q-rtd 2))
 
+;; Indicate to the client that further action is required.
+(define set!s-rtd
+  (make-record-type-descriptor 'set!s #f #f #f #f
+			       '#((immutable token)
+				  (immutable field)
+				  (immutable value)
+				  (immutable mod-server))))
+(define set!s-rcd
+  (make-record-constructor-descriptor set!s-rtd #f #f))
+(define set!s (record-constructor set!s-rcd))
+(define set!s? (record-predicate set!s-rtd))
+(define set!s-token (record-accessor set!s-rtd 0))
+(define set!s-field (record-accessor set!s-rtd 1))
+(define set!s-value (record-accessor set!s-rtd 2))
+(define set!s-mod-server (record-accessor set!s-rtd 3))
+
 ;; Auth requests provide a profile name (no password for now) and are
 ;; responded to with a auth-response.
-(define auth-rq-rtd
-  (make-record-type-descriptor 'auth-rq #f #f #f #f
+(define authq-rtd
+  (make-record-type-descriptor 'authq #f #f #f #f
 			       '#((immutable name))))
-(define auth-rq-rcd
-  (make-record-constructor-descriptor auth-rq-rtd #f #f))
-(define auth-rq (record-constructor auth-rq-rcd))
-(define auth-rq? (record-predicate auth-rq-rtd))
-(define authq-name (record-accessor auth-rq-rtd 0))
+(define authq-rcd
+  (make-record-constructor-descriptor authq-rtd #f #f))
+(define authq (record-constructor authq-rcd))
+(define authq? (record-predicate authq-rtd))
+(define authq-name (record-accessor authq-rtd 0))
 
 ;; Auth responses provide a token to be used by the client for future
 ;; requests
-(define auth-rs-rtd
-  (make-record-type-descriptor 'auth-rs #f #f #f #f
+(define auths-rtd
+  (make-record-type-descriptor 'auths #f #f #f #f
 			       '#((immutable token)
-				  (immutable prof-server))))
-(define auth-rs-rcd
-  (make-record-constructor-descriptor auth-rs-rtd #f #f))
-(define auth-rs (record-constructor auth-rs-rcd))
-(define auth-rs? (record-predicate auth-rs-rtd))
-(define auths-token (record-accessor auth-rs-rtd 0))
-(define auths-prof-server (record-accessor auth-rs-rtd 1))
-
-;; prep-chall requests ask the prof server to prepare a new blobhash
-;; for consumption by a mod server when it is ready to return a new
-;; challenge.
-;; prof server responds with a prep-chall response.
-(define prep-challq-rtd
-  (make-record-type-descriptor 'prep-challq #f #f #f #f
-			       '#((immutable token))))
-(define prep-challq-rcd
-  (make-record-constructor-descriptor prep-challq-rtd #f #f))
-(define prep-challq (record-constructor prep-challq-rcd))
-(define prep-challq? (record-predicate prep-challq-rtd))
-(define prep-challq-token (record-accessor prep-challq-rtd 0))
-
-;; prep-chall responses provide a new token, the issuing profile
-;; server address and the profile's associated mod server address.
-(define prep-challs-rtd
-  (make-record-type-descriptor 'prep-challs #f #f #f #f
-			       '#((immutable token)
-				  (immutable prof-server)
 				  (immutable mod-server))))
-(define prep-challs-rcd
-  (make-record-constructor-descriptor prep-challs-rtd #f #f))
-(define prep-challs (record-constructor prep-challs-rcd))
-(define prep-challs? (record-predicate prep-challs-rtd))
-(define prep-challs-token (record-accessor prep-challs-rtd 0))
-(define prep-challs-prof-server (record-accessor prep-challs-rtd 1))
-(define prep-challs-mod-server (record-accessor prep-challs-rtd 2))
+(define auths-rcd
+  (make-record-constructor-descriptor auths-rtd #f #f))
+(define auths (record-constructor auths-rcd))
+(define auths? (record-predicate auths-rtd))
+(define auths-token (record-accessor auths-rtd 0))
+(define auths-mod-server (record-accessor auths-rtd 1))
 
-;; Chauth requests provide the token originally provided by auth-rs to
-;; the client, supplied by a mod-server in expectation of a chauth
-;; response: the information required to generate the next challenge.
-(define chauth-rq-rtd
-  (make-record-type-descriptor 'chauth-rq #f #f #f #f
+;; Chauthq requires a token and responds normally with chauths.
+(define chauthq-rtd
+  (make-record-type-descriptor 'chauthq #f #f #f #f
 			       '#((immutable token))))
-(define chauth-rq-rcd
-  (make-record-constructor-descriptor chauth-rq-rtd #f #f))
-(define chauth-rq (record-constructor chauth-rq-rcd))
-(define chauth-rq? (record-predicate chauth-rq-rtd))
-(define chauthq-token (record-accessor chauth-rq-rtd 0))
+(define chauthq-rcd
+  (make-record-constructor-descriptor chauthq-rtd #f #f))
+(define chauthq (record-constructor chauthq-rcd))
+(define chauthq? (record-predicate chauthq-rtd))
+(define chauthq-token (record-accessor chauthq-rtd 0))
 
-;; Chauth responses provide a token, a hash and a counter. The token
-;; is to be returned to the client. The hash and the counter let the
-;; mod-server identify the next challenge to pose.
-(define chauth-rs-rtd
-  (make-record-type-descriptor 'chauth-rs #f #f #f #f
+;; Chauths provide the blobhash and counter of the next challenge to
+;; be asked, as well as the mod-server to be used by the client.
+(define chauths-rtd
+  (make-record-type-descriptor 'chauths #f #f #f #f
 			       '#((immutable token)
 				  (immutable hash)
-				  (immutable counter))))
-(define chauth-rs-rcd
-  (make-record-constructor-descriptor chauth-rs-rtd #f #f))
-(define chauth-rs (record-constructor chauth-rs-rcd))
-(define chauth-rs? (record-predicate chauth-rs-rtd))
-(define chauths-token (record-accessor chauth-rs-rtd 0))
-(define chauths-hash (record-accessor chauth-rs-rtd 1))
-(define chauths-counter (record-accessor chauth-rs-rtd 2))
+				  (immutable counter)
+				  (immutable mod-server))))
+(define chauths-rcd
+  (make-record-constructor-descriptor chauths-rtd #f #f))
+(define chauths (record-constructor chauths-rcd))
+(define chauths? (record-predicate chauths-rtd))
+(define chauths-token (record-accessor chauths-rtd 0))
+(define chauths-hash (record-accessor chauths-rtd 1))
+(define chauths-counter (record-accessor chauths-rtd 2))
+(define chauths-mod-server (record-accessor chauths-rtd 3))
 
 ;; Evauth requests provide a token originally furnished in the most
 ;; recent auth request, to be used by the prof-server to identify the
 ;; scorecard to update in light of the result.
-(define evauth-rq-rtd
-  (make-record-type-descriptor 'evauth-rq #f #f #f #f
+(define evauthq-rtd
+  (make-record-type-descriptor 'evauthq #f #f #f #f
 			       '#((immutable token)
 				  (immutable result))))
-(define evauth-rq-rcd
-  (make-record-constructor-descriptor evauth-rq-rtd #f #f))
-(define evauth-rq (record-constructor evauth-rq-rcd))
-(define evauth-rq? (record-predicate evauth-rq-rtd))
-(define evauthq-token (record-accessor evauth-rq-rtd 0))
-(define evauthq-result (record-accessor evauth-rq-rtd 1))
+(define evauthq-rcd
+  (make-record-constructor-descriptor evauthq-rtd #f #f))
+(define evauthq (record-constructor evauthq-rcd))
+(define evauthq? (record-predicate evauthq-rtd))
+(define evauthq-token (record-accessor evauthq-rtd 0))
+(define evauthq-result (record-accessor evauthq-rtd 1))
 
 ;; Del Requests provide a token to identify the player profile to be
 ;; deleted.
-(define del-rq-rtd
-  (make-record-type-descriptor 'del-rq #f #f #f #f
+(define delq-rtd
+  (make-record-type-descriptor 'delq #f #f #f #f
 			       '#((immutable token))))
-(define del-rq-rcd
-  (make-record-constructor-descriptor del-rq-rtd #f #f))
-(define del-rq (record-constructor del-rq-rcd))
-(define del-rq? (record-predicate del-rq-rtd))
-(define delq-token (record-accessor del-rq-rtd 0))
+(define delq-rcd
+  (make-record-constructor-descriptor delq-rtd #f #f))
+(define delq (record-constructor delq-rcd))
+(define delq? (record-predicate delq-rtd))
+(define delq-token (record-accessor delq-rtd 0))

@@ -53,7 +53,7 @@ PATH is the path to the unix domain socket that will be tested for
 server existence."
   (catch #t (lambda ()
 	      (and (access? socket-path W_OK)
-		   (exchange (request (alive-rq))
+		   (exchange (request (aliveq))
 			     socket-path)))
     (lambda (key . args)
       key args				; ignored
@@ -209,7 +209,19 @@ Return #f if object is not a list."
   (define (p->r* p)
     (let ((first (car p))
 	  (rest (cdr p)))
-      (cond ((list? first)
+      (cond ((string? first)
+	     (cond ((list? rest)
+		    (cons (gc-string->symbol first)
+			  (l->r* rest)))
+		   ((pair? rest)
+		    (cons (gc-string->symbol first)
+			  (p->r* rest)))
+		   ((string? rest)
+		    (cons (gc-string->symbol first)
+			  (gc-string->symbol rest)))
+		   (else (cons (gc-string->symbol first)
+			       rest))))
+	    ((list? first)
 	     (cond ((list? rest)
 		    (cons (l->r* first)
 			  (l->r* rest)))
@@ -233,18 +245,7 @@ Return #f if object is not a list."
 			  (gc-string->symbol rest)))
 		   (else (cons (p->r* first)
 			       rest))))
-	    ((string? first)
-	     (cond ((list? rest)
-		    (cons (gc-string->symbol first)
-			  (l->r* rest)))
-		   ((pair? rest)
-		    (cons (gc-string->symbol first)
-			  (p->r* rest)))
-		   ((string? rest)
-		    (cons (gc-string->symbol first)
-			  (gc-string->symbol rest)))
-		   (else (cons (p->r* first)
-			       rest))))
+
 	    (else (cond ((list? rest)
 			 (cons first
 			       (l->r* rest)))
@@ -267,7 +268,8 @@ Return #f if object is not a list."
 		 (cons (p->r* first)
 		       (l->r* rest)))
 		((string? first)
-		 (if (known-rc? (gc-string->symbol first)) ; embedded tagged list?
+		 ;; embedded tagged list?
+		 (if (known-rc? (gc-string->symbol first))
 		     (list->record
 		      (cons first
 			    (l->r* rest)))

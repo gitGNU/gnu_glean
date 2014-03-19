@@ -25,6 +25,7 @@
 
 (define-module (guilecraft data-manager)
   #:use-module (rnrs)
+  #:use-module (guilecraft utils)
   #:export (data-manager))
 
 (define data-manager

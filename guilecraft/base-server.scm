@@ -41,8 +41,30 @@
 (define _ (cut gettext <> %gettext-domain))
 (define N_ (cut ngettext <> <> <> %gettext-domain))
 
+(define (clean-and-exit socket-file . args)
+  "Remove sockets, if they exist, and exit."
+  (define (del-sock-exit sock-file)
+    (display "Found socket. Deleting...")
+    (newline)
+    (delete-file sock-file)
+    (display "Deleted. Exiting.")
+    (newline)
+    (exit))
+  (define (base-exit)
+    (display "No sockets open. Exiting.")
+    (newline)
+    (exit))
+
+  args ;; ignore args
+  (display "Caught term signal. Checking for sockets...")
+  (newline)
+  (cond ((file-exists? socket-file)
+         (del-sock-exit socket-file))
+        (else (base-exit))))
+
 (define (the-server socket-file server-dispatcher)
-  "Starts server: sets socket path, calls checks and then server loop."
+  "Starts server: sets socket path, calls checks and then server
+loop."
   (define (thunk)
     (if (prepare-port socket-file)
 	(server-loop socket-file server-dispatcher)))
@@ -57,6 +79,8 @@
   
   ;; start the server
   ;;(catch #t thunk h)
+  (sigaction SIGTERM (lambda args (clean-and-exit socket-file args)))
+  (sigaction SIGINT (lambda args (clean-and-exit socket-file args)))
   (thunk)
   )
 
@@ -110,14 +134,15 @@ forward client requests to SERVER-DISPATCHER."
 	  (let ((resp (response (server-dispatcher record))))
 	    (gmsg #:priority 7 "respond: resp:" resp)
 	    (gmsg #:priority 7 "respond: resp:" (rs-content resp))
+	    (rprinter resp)
 	    (if resp
 		(begin
 		  (gwrite (record->list* resp) client)
 		  (close client)
 		  (gmsg #:priority 8 "respond: Client closed.")
-		  (cond ((ack-rs? (rs-content resp))
-			 (gmsg #:priority 7 "respond: checking for quit-rq…")
-			 (if (quit-rq? (ack-orig (rs-content resp)))
+		  (cond ((acks? (rs-content resp))
+			 (gmsg #:priority 7 "respond: checking for quitq…")
+			 (if (quitq? (ack-orig (rs-content resp)))
 			     (begin
 			       (gmsg "respond: quit detected.")
 			       (server-quit client client socket-file
