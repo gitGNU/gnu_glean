@@ -383,7 +383,11 @@ evauthq."
   ;; cycle through each element in hashpath, turning every entry into
   ;; a blob in a flat results list.
   ;; (i.e. turn a nested list of hashpaths into flat list of blobs.
-  (define (self node) (car node))
+  (define (self node)
+    (if (and (list? node)
+             (not (null? node)))
+        (car node)
+        (raise 'node-not-list)))
   (define (children node) (cdr node))
   (define (childless? node) (null? (children node)))
   (define (current remaining-nodes) (car remaining-nodes))
