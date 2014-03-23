@@ -21,15 +21,156 @@
 
 (define-module (tests clients-min)
   #:use-module (srfi srfi-64)      ; Provide test suite
-  #:use-module (guilecraft clients min))
+  #:use-module (guilecraft config)
+  #:use-module (guilecraft monads)
+  #:use-module (guilecraft data-types base-requests)
+  #:use-module (guilecraft data-types profile-requests)
+  #:use-module (guilecraft data-types module-requests)
+  #:use-module (guilecraft clients monadic-min))
 
-(test-begin "min-tests")
+(test-begin "clients-min-tests")
 
-(test-assert "server"
-	     (let ((s (server)))
-	       (close s)))
+;; A test token modified throughout successfull tests with set!
+(define test-tk #f)
+(define test-mon #f)
+;; Other sideeffect vars
+(define test-tmp #f)
+(define test-q #f)
 
-(test-assert "exchange"
-	     (exchange 'random))
-
-(test-end "min-tests")
+(test-assert "lesser-call/exchange"
+	     (negs?
+              (lesser-call/exchange
+               %profile-socket-file%    ; target
+               echoq                    ; request
+               'token-lc/e 'msg-lc/e))) ; inputs
+(test-assert "call/exchange"
+	     (negs?
+              (call/exchange
+               %profile-socket-file%    ; target
+               negs? echoq              ; predicate, constructor
+               'token-c/e 'msg-c/e)))   ; inputs
+;; Lounge Test: Token update
+(test-assert "register-player"
+             (let ((st8 (register-player "test"
+                                         %profile-socket-file%
+                                         %module-socket-file%)))
+               (if (state? st8)
+                   (begin
+                     (set! test-tk (state-tk st8))
+                     #t)
+                   #f)))
+;; Library Test: Tmp update
+(test-assert "fetch-id-hash-pairs"
+             (let ((st8ful ((fetch-id-hash-pairs '(test))
+                            (mk-state test-tk %profile-socket-file%
+                                      %module-socket-file%))))
+               (if (stateful? st8ful)
+                   (begin (logger st8ful)
+                          (set! test-tmp (car (result st8ful)))
+                          #t)
+                   #f)))
+;; Lounge Test: Token and Tmp update
+(test-assert "push-active-modules"
+             (let ((st8ful ((push-active-modules test-tmp)
+                            (mk-state test-tk %profile-socket-file%
+                                      %module-socket-file%))))
+               (if (stateful? st8ful)
+                   (begin (logger st8ful)
+                          (set! test-tk  (state-tk (state st8ful)))
+                          (set! test-tmp (car (result st8ful)))
+                          #t)
+                   #f)))
+;; Library Test: Tmp update
+(test-assert "fetch-hashmap"
+             (let ((st8ful ((fetch-hashmap test-tmp)
+                            (mk-state test-tk
+                                      %profile-socket-file%
+                                      %module-socket-file%))))
+               (if (stateful? st8ful)
+                   (begin (logger st8ful)
+                          (set! test-tmp (car (result st8ful)))
+                          #t)
+                   #f)))
+;; Lounge Test: Token update
+(test-assert "push-scorecard"
+             (let ((st8ful ((push-scorecard test-tmp)
+                            (mk-state test-tk %profile-socket-file%
+                                      %module-socket-file%))))
+               (if (stateful? st8ful)
+                   (begin (logger st8ful)
+                          (set! test-tk (state-tk (state st8ful)))
+                          #t)
+                   #f)))
+;; Lounge Test: Token and Tmp update
+(test-assert "fetch-challenge-id"
+             (let ((st8ful ((fetch-challenge-id)
+                            (mk-state test-tk %profile-socket-file%
+                                      %module-socket-file%))))
+               (if (stateful? st8ful)
+                   (begin (logger st8ful)
+                          (set! test-tk  (state-tk (state st8ful)))
+                          (set! test-tmp (result st8ful))
+                          #t)
+                   #f)))
+;; Library Test: Q update
+(test-assert "fetch-challenge"
+             (let ((st8ful ((apply fetch-challenge test-tmp)
+                            (mk-state test-tk %profile-socket-file%
+                                      %module-socket-file%))))
+               (if (stateful? st8ful)
+                   (begin (logger st8ful)
+                          (set! test-q (car (result st8ful)))
+                          #t)
+                   #f)))
+;; Library Test: Tmp update
+(test-assert "fetch-evaluation"
+             (let ((st8ful ((apply fetch-evaluation "test"
+                                   test-tmp)
+                            (mk-state test-tk %profile-socket-file%
+                                      %module-socket-file%))))
+               (if (stateful? st8ful)
+                   (begin (logger st8ful)
+                          (set! test-tmp (car (result st8ful)))
+                          #t)
+                   #f)))
+;; Lounge Test: Token
+(test-assert "push-evaluation"
+             (let ((st8ful ((push-evaluation test-tmp)
+                            (mk-state test-tk %profile-socket-file%
+                                      %module-socket-file%))))
+               (if (stateful? st8ful)
+                   (begin (logger st8ful)
+                          (set! test-tk  (state-tk (state st8ful)))
+                          #t)
+                   #f)))
+;; Monadic Transaction Test: Active modules
+(format #t "\nMonadic Test.\n")
+(test-assert "add-active-modules"
+             (let ((st8ful
+                    (add-active-modules
+                     '(test)
+                     (register-player "mon-test"
+                                      %profile-socket-file%
+                                      %module-socket-file%))))
+               (if (stateful? st8ful)
+                   (begin (logger st8ful)
+                          (set! test-mon (state st8ful))
+                          #t)
+                   #f)))
+;; Monadic Transaction Test: Request Challenge
+(test-assert "next-challenge"
+             (let ((st8ful (next-challenge test-mon)))
+               (if (stateful? st8ful)
+                   (begin (logger st8ful)
+                          (set! test-mon (state st8ful))
+                          #t)
+                   #f)))
+;; Monadic Transaction Test: Push Evaluation
+(test-assert "submit-answer"
+             (let ((st8ful (submit-answer "test" test-mon)))
+               (if (stateful? st8ful)
+                   (begin (logger st8ful)
+                          (set! test-mon (state st8ful))
+                          #t)
+                   #f)))
+(test-end "clients-min-tests")
