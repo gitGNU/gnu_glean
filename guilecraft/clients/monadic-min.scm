@@ -183,7 +183,7 @@ applying MVALUE to MPROC."
 lounge using NAME. Raise an Exchange Error otherwise."
   (let ((rs (call/exchange profile-server auths? regq
                            name profile-server module-server)))
-    (mk-state (auths-token rs) profile-server
+    (mk-state (auths-token rs) (auths-prof-server rs)
               (auths-mod-server rs))))
 
 (define (authenticate-player name profile-server)
@@ -191,8 +191,8 @@ lounge using NAME. Raise an Exchange Error otherwise."
 lounge using NAME. Raise an Exchange Error otherwise."
   (let ((rs (call/exchange profile-server auths? authq
                            name)))
-    (list (auths-token rs) profile-server
-          (auths-mod-server rs))))
+    (mk-state (auths-token rs) (auths-prof-server rs)
+              (auths-mod-server rs))))
 
 ;;;;; Composite Transactions
 (define (add-active-modules module-ids state)
@@ -281,9 +281,9 @@ player's profile."
                (state-tk state)         ; token
                evaluation)))            ; input
       (stateful '(unimportant)
-                (mk-state (auths-token   rs)
-                          (state-lng     state)
-                          (state-lib     state))))))
+                (mk-state (auths-token           rs)
+                          (auths-prof-server     state)
+                          (auths-mod-server      state))))))
 
 (define (fetch-hashmap crownsets)
   "Return hashmaps or ERROR."
@@ -321,9 +321,9 @@ or ERROR."
                               (state-lng   state)
                               (state-lib   state)))
           (stateful '(unimportant)
-                    (mk-state (auths-token rs)
-                              (state-lng   state)
-                              (state-lib   state)))))))
+                    (mk-state (auths-token       rs)
+                              (auths-prof-server state)
+                              (auths-mod-server state)))))))
 
 (define (push-active-modules id-hash-pairs)
   "Return an auths confirming success, a set!s requesting further data
@@ -339,9 +339,9 @@ or ERROR."
                               (state-lng state)
                               (state-lib state)))
           (stateful 'unimportant
-                    (mk-state (auths-token rs)
-                              (state-lng state)
-                              (state-lib state)))))))
+                    (mk-state (auths-token       rs)
+                              (auths-prof-server state)
+                              (auths-mod-server state)))))))
 
 ;;;;; Helper Procedures
 (define (push-data type data token profile-server)

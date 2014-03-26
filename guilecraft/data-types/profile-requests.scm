@@ -40,7 +40,6 @@
 	    set!s-token
 	    set!s-field
 	    set!s-value
-	    set!s-mod-server
 
 	    delq
 	    delq?
@@ -53,6 +52,7 @@
 	    auths?
 	    auths-token
 	    auths-mod-server
+	    auths-prof-server
 
 	    chauthq
 	    chauthq?
@@ -62,7 +62,6 @@
 	    chauths-token
 	    chauths-hash
 	    chauths-counter
-	    chauths-mod-server
 
 	    evauthq
 	    evauthq?
@@ -162,8 +161,7 @@
   (make-record-type-descriptor 'set!s #f #f #f #f
 			       '#((immutable token)
 				  (immutable field)
-				  (immutable value)
-				  (immutable mod-server))))
+				  (immutable value))))
 (define set!s-rcd
   (make-record-constructor-descriptor set!s-rtd #f #f))
 (define set!s (record-constructor set!s-rcd))
@@ -171,7 +169,6 @@
 (define set!s-token (record-accessor set!s-rtd 0))
 (define set!s-field (record-accessor set!s-rtd 1))
 (define set!s-value (record-accessor set!s-rtd 2))
-(define set!s-mod-server (record-accessor set!s-rtd 3))
 
 ;; Auth requests provide a profile name (no password for now) and are
 ;; responded to with a auth-response.
@@ -189,13 +186,15 @@
 (define auths-rtd
   (make-record-type-descriptor 'auths #f #f #f #f
 			       '#((immutable token)
+                                  (immutable prof-server)
 				  (immutable mod-server))))
 (define auths-rcd
   (make-record-constructor-descriptor auths-rtd #f #f))
 (define auths (record-constructor auths-rcd))
 (define auths? (record-predicate auths-rtd))
 (define auths-token (record-accessor auths-rtd 0))
-(define auths-mod-server (record-accessor auths-rtd 1))
+(define auths-prof-server (record-accessor auths-rtd 1))
+(define auths-mod-server (record-accessor auths-rtd 2))
 
 ;; Chauthq requires a token and responds normally with chauths.
 (define chauthq-rtd
@@ -213,8 +212,7 @@
   (make-record-type-descriptor 'chauths #f #f #f #f
 			       '#((immutable token)
 				  (immutable hash)
-				  (immutable counter)
-				  (immutable mod-server))))
+				  (immutable counter))))
 (define chauths-rcd
   (make-record-constructor-descriptor chauths-rtd #f #f))
 (define chauths (record-constructor chauths-rcd))
@@ -222,7 +220,6 @@
 (define chauths-token (record-accessor chauths-rtd 0))
 (define chauths-hash (record-accessor chauths-rtd 1))
 (define chauths-counter (record-accessor chauths-rtd 2))
-(define chauths-mod-server (record-accessor chauths-rtd 3))
 
 ;; Evauth requests provide a token originally furnished in the most
 ;; recent auth request, to be used by the prof-server to identify the

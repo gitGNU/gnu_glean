@@ -162,16 +162,15 @@ out of sync if they are."
           ((not (token? token))
            (raise 'invalid-token))
           (else
-           (let* ((new-token
-                   (modify-profile field value
-                                   (get-profile-by-token
-                                    token) token))
-                  (diff (missing-blobs (get-profile-by-token new-token))))
+           (let* ((new-token (modify-profile field value
+                                             (get-profile-by-token
+                                              token) token))
+                  (updated-profile (get-profile-by-token new-token))
+                  (diff (missing-blobs updated-profile)))
              (if (null? diff)
-                 (auths
-                  new-token
-                  (profile-mod-server
-                   (get-profile-by-token new-token)))
+                 (auths new-token
+                        (profile-prof-server updated-profile)
+                        (profile-mod-server  updated-profile))
                  (set!s new-token 'scorecard diff)))))))
 (define (process-modq rq)
   (let ((field (modq-field rq))
