@@ -479,15 +479,15 @@ profile.
 First, validate name against the known-profiles. Second generate a
 token and associate it with the user's profile. Finally Return the
 new-token and the user's mod-server."
-  (if (member name (name-table 'values))
-      (raise '(authenticate-user user-already-authenticated))
-      (let ((profile (get-profile-by-name name)))
-        (if profile
-            ;; Only place where adding a name to name-table is allowed
-            `(,(add-to-name-table (make-token (profile-id profile))
-                                  (profile-name profile))
-              ,(profile-mod-server profile))
-            (raise '(authenticate-user authentication-failed))))))
+  (del-from-name-table name)                  ; Remove existing tokens
+  (let ((profile (get-profile-by-name name))) ; create new
+    (if profile
+        ;; Only place where adding a name to name-table is allowed
+        `(,(add-to-name-table (make-token (profile-id profile))
+                              (profile-name profile))
+          ,(profile-prof-server profile)
+          ,(profile-mod-server profile))
+        (raise '(authenticate-user authentication-failed)))))
 (define (delete-user token)
   "Return a delq containing TOKEN to confirm the profile has been
 deleted. TOKEN is no longer valid. Otherwise, raise an error.
@@ -635,7 +635,10 @@ authentication-failed)"
       (update-name-table (get-profile-by-token old-token)
                          old-token)
       (raise '(authenticate authentication-failed))))
-
+(define (del-from-name-table name)
+  "Return value is unspecified. Remove each association in the
+name-table who's name is NAME."
+  (name-table 'rem-val name))
 (define (update-name-table profile old-token)
   ;; Delete the old token
   (name-table 'rem old-token)

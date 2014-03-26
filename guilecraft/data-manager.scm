@@ -45,7 +45,7 @@ check and is added to table. Return #f otherwise.
 
 Return all values stored in the table when MESSAGE is 'list."
 
-	(cond ((eqv? message 'get)       ; Retrieving an entry
+	(cond ((eqv? message 'get)      ; Retrieving an entry
 	       (hashtable-ref data (car args) #f))
 	      ((eqv? message 'put)	; Storing an entry
 	       (if (predicate (cadr args))
@@ -53,6 +53,18 @@ Return all values stored in the table when MESSAGE is 'list."
 		     (hashtable-set! data (car args) (cadr args))
 		     #t)
 		   #f))
+              ((eqv? message 'rem-val)
+               (call-with-values
+                   ;; fetch values and keys
+                   (lambda () (hashtable-entries data))
+                 (lambda (ks vs)
+                   (vector-for-each
+                    ;; destroy every entry who's value matches arg to
+                    ;; 'rem-val
+                    (lambda (k v)
+                      (if (equal? v (car args))
+                          (hashtable-delete! data k)))
+                    ks vs))))
 	      ((eqv? message 'rem)
 	       (hashtable-delete! data (car args)))
 	      ((eqv? message 'list-keys (hashtable-keys data)))
