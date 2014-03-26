@@ -122,45 +122,47 @@
 handling to request handler."
 
   (cond ((eof-object? request)
-	 #f)
+         #f)
 
-	((request? request)
-	 (let ((rq (rq-content request)))
-	   (guard (err ((or (eqv? err 'no-profile)
-			    (eqv? err 'no-modules)
-			    (eqv? err 'invalid-token)
-			    (eqv? err 'invalid-auth-server)
-			    (eqv? err 'invalid-set-ids)
-			    (eqv? err 'invalid-answer))
-			(begin (clog err)
-			       (negs rq err)))
-		       ((equal? err '(exchange (server system-error)))
-			(begin (clog err)
-			       (negs rq 'offline-auth-server)))
-		       ((eqv? err 'false-result)
-			(begin (llog err)
-			       (assertion-violation
-				'challenge-provider
-				"We were returned a false chall result!"
-				err))))
+        ((request? request)
+         (let ((rq (rq-content request)))
+           (guard (err ((or (eqv? err 'no-profile)
+                            (eqv? err 'no-modules)
+                            (eqv? err 'invalid-token)
+                            (eqv? err 'invalid-auth-server)
+                            (eqv? err 'invalid-set-ids)
+                            (eqv? err 'invalid-answer)
+                            (eqv? err 'invalid-counter)
+                            (eqv? err 'invalid-blobhash))
+                        (begin (clog err)
+                               (negs rq err)))
+                       ((equal? err '(exchange (server system-error)))
+                        (begin (clog err)
+                               (negs rq 'offline-auth-server)))
+                       ((eqv? err 'false-result)
+                        (begin (llog err)
+                               (assertion-violation
+                                'challenge-provider
+                                "We were returned a false chall result!"
+                                err))))
 
-		  (cond ((aliveq? rq)
-			 (acks rq))
-			((challq? rq)
-			 (challenge-provider rq))
-			((evalq? rq)
-			 (eval-provider rq))
-			((known-modq? rq)
-			 (known-mod-provider rq))
-			((sethashesq? rq)
-			 (sethashes-provider rq))
-			((hashmapq? rq)
-			 (hashmap-provider rq))
-			((quitq? rq)
-			 (acks rq))
-			(else (unks rq))))))
+                  (cond ((aliveq? rq)
+                         (acks rq))
+                        ((challq? rq)
+                         (challenge-provider rq))
+                        ((evalq? rq)
+                         (eval-provider rq))
+                        ((known-modq? rq)
+                         (known-mod-provider rq))
+                        ((sethashesq? rq)
+                         (sethashes-provider rq))
+                        ((hashmapq? rq)
+                         (hashmap-provider rq))
+                        ((quitq? rq)
+                         (acks rq))
+                        (else (unks rq))))))
 
-	 (else (unks request))))
+        (else (unks request))))
 ;;;;; Server Response Creation
 ;;;; Functions that provide request specific parsing and response
 ;;;; skeletons.
@@ -216,18 +218,18 @@ COUNTER, or raise 'invalid-set."
 (define (hashmap-provider rq)
   (let ((set-ids (hashmapq-ids rq)))
     (if (not (list? set-ids))
-	(raise 'invalid-set-ids)
-	(hashmaps (generate-hashmap set-ids)))))
+        (raise 'invalid-set-ids)
+        (hashmaps (generate-hashmap set-ids)))))
 
 (define (sethashes-provider rq)
   (let ((set-ids (sethashesq-set-ids rq)))
     (if (not (list? set-ids))
-	(raise 'invalid-set-ids)
-	(sethashess (map (lambda (set-id)
-			   (if (get-module set-id)
-			       (cons set-id (make-set-hash set-id))
-			       (cons set-id #f)))
-			 set-ids)))))
+        (raise 'invalid-set-ids)
+        (sethashess (map (lambda (set-id)
+                           (if (get-module set-id)
+                               (cons set-id (make-set-hash set-id))
+                               (cons set-id #f)))
+                         set-ids)))))
 
 ;;;;; Module Management
 ;;;; Define the functions used to provide the functionality defined
@@ -240,10 +242,10 @@ module harder by triggering a reload of the modules if the module
 identified by SET-ID cannot be found."
   (let ((module (set-id->set set-id)))
     (if module
-	module
-	(begin
-	  (store-modules)
-	  (set-id->set set-id)))))
+        module
+        (begin
+          (store-modules)
+          (set-id->set set-id)))))
 
 (define (make-set-hash set-id)
   (apply + (bytevector->u8-list
@@ -271,9 +273,9 @@ empty, raise a warning."
       "Return a set-hashmap, a list containing lists of blobhashes for
 each set and it's children that this hashtraverser is passed."
       (cond ((not set)
-	     '())
+             '())
             ; If set contains further sets, recurse!
-	    ((set? (car (set-contents set)))
+            ((set? (car (set-contents set)))
              (let ((h (hash set parent-ids)))
                (cons h
                      ;; Parent-ids contains parent-ids in reverse order!
@@ -281,7 +283,7 @@ each set and it's children that this hashtraverser is passed."
                                                      parent-ids))
                           (set-contents set)))))
             ; If set does not contain further sets, then we're done.
-	    (else
+            (else
              (let ((h (hash set parent-ids)))
                (cons h '()))))))
 
@@ -306,7 +308,7 @@ set), or else #f."
             ((not set) #f) ; Return #f if set is #f
             ;; If set contains further sets, recurse: it can't
             ;; possibly be TARGET: that must be a rootset!
-	    ((set? (car (set-contents set)))
+            ((set? (car (set-contents set)))
              ;; Due to cons below, PARENT-IDS contains parent-ids in
              ;; reverse order!
              (fold-left (moduletraverser-maker (cons (set-id set)
@@ -318,6 +320,6 @@ set), or else #f."
             ;; is equivalent to TARGET, then we've found TARGET!
             ((eqv? (hash set parent-ids) target) set)
             ;; Else we must continue looking.
-	    (else #f))))
+            (else #f))))
 
   (find-set blobhash (stored-modules)))
