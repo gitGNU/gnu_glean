@@ -315,16 +315,16 @@ updated. Third, update the set in the scorecard. Finally, return
 evauthq."
   ;; First, generate new token
   ;; Second, update profile
-;;; raise on failure
-;;; else return auths
+  ;; raise on failure
+  ;; else return auths
   (let* ((new-token (authenticate token))
-         (profile (get-profile-by-token token))
+         (profile (get-profile-by-token new-token))
          (scorecard (profile-scorecard profile))
          (blobhash (car (fetch-next-hash-counter-pair profile))))
-    (begin
-      (update-scorecard scorecard blobhash result)
-      (auths new-token
-             (profile-mod-server profile)))))
+    (update-scorecard scorecard blobhash result)
+    (auths new-token
+           (profile-prof-server profile)
+           (profile-mod-server profile))))
 
 ;;;;;; On Scorecards and Blobhashes
 ;; Scorecards are essentially a flat (hash?) table, associating a
