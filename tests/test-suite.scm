@@ -34,6 +34,8 @@
   (with-cwd (string-append %guilecraft-dir% "/logs/")
 	    (lambda ()
 	      (use-modules
+               (tests base32)
+               (tests hash)
                ;; FIXME: Old style scorecards
                ;;(tests scorecards)
                ;; FIXME: Do we still use this?
