@@ -63,34 +63,34 @@
 handling to request handler."
 
   (cond ((eof-object? request)
-	 #f)
-	((request? request)
-	 (let ((rq (rq-content request)))
-	   (guard (err (err
-			(begin (clog err)
+         #f)
+        ((request? request)
+         (let ((rq (rq-content request)))
+           (guard (err (err
+                        (begin (clog err)
                                (display "Error in dispatcher")
                                (newline)
-			       (negs rq err))))
-		  (cond ((aliveq? rq) (acks rq))
-			((quitq? rq) (acks rq))
+                               (negs rq err))))
+                  (cond ((aliveq? rq) (acks rq))
+                        ((quitq? rq) (acks rq))
                         ((echoq? rq)
                          (process-echoq rq))
-			((chauthq? rq)
-			 (process-chauthq rq))
-			((evauthq? rq)
-			 (process-evauthq rq))
-			((authq? rq)
-			 (process-authq rq))
-			((set!q? rq)
-			 (process-set!q rq))
-			((modq? rq)
-			 (process-modq rq))
-			((regq? rq)
-			 (process-regq rq))
-			((delq? rq)
-			 (process-delq rq))
-			(else (unks rq))))))
-	(else (unks request))))
+                        ((chauthq? rq)
+                         (process-chauthq rq))
+                        ((evauthq? rq)
+                         (process-evauthq rq))
+                        ((authq? rq)
+                         (process-authq rq))
+                        ((set!q? rq)
+                         (process-set!q rq))
+                        ((modq? rq)
+                         (process-modq rq))
+                        ((regq? rq)
+                         (process-regq rq))
+                        ((delq? rq)
+                         (process-delq rq))
+                        (else (unks rq))))))
+        (else (unks request))))
 
 ;;;;; Server Response Creation
 ;;;; Functions that provide request specific parsing and response
@@ -100,10 +100,10 @@ handling to request handler."
 server, module server and the message contained in RQ."
   (let ((token (echoq-token rq)))
     (cond ((not (token? token))
-	   (raise 'invalid-token))
-	  (else
-	   (let* ((new-token (authenticate token))
-		  (profile (get-profile-by-token new-token)))
+           (raise 'invalid-token))
+          (else
+           (let* ((new-token (authenticate token))
+                  (profile (get-profile-by-token new-token)))
              (echos new-token (profile-prof-server profile)
                     (profile-mod-server profile) (echoq-message rq)))))))
 (define (process-chauthq rq)
@@ -112,22 +112,22 @@ pair. Return a set!s informing that scorecard and active-modules are
 out of sync if they are."
   (let ((token (chauthq-token rq)))
     (cond ((not (token? token))
-	   (raise 'invalid-token))
-	  (else
-	   (let* ((new-token (authenticate token))
-		  (profile (get-profile-by-token new-token))
-		  (diff (missing-blobs profile)))
-	     ;; If scorecard & active modules are in sync, proceed…
-	     (if (null? diff)
+           (raise 'invalid-token))
+          (else
+           (let* ((new-token (authenticate token))
+                  (profile (get-profile-by-token new-token))
+                  (diff (missing-blobs profile)))
+             ;; If scorecard & active modules are in sync, proceed…
+             (if (null? diff)
                  (let ((blob-pair (fetch-next-hash-counter-pair
                                    profile)))
                    (chauths new-token
                             (car blob-pair)
                             (cdr blob-pair)
                             (profile-mod-server profile)))
-		 ;; else force sync.
-		 (set!s new-token 'scorecard diff
-			(profile-mod-server profile))))))))
+                 ;; else force sync.
+                 (set!s new-token 'scorecard diff
+                        (profile-mod-server profile))))))))
 
 (define (process-evauthq rq)
   (let ((token (evauthq-token rq))
@@ -148,64 +148,64 @@ out of sync if they are."
       ;; Auths expects 2 values: token and mod-server, so
       ;; authenticate-user will return a list.
       (apply auths
-	     (authenticate-user
-	      (authq-name rq)
-	      ;; Password to come here.
-	      ))
+             (authenticate-user
+              (authq-name rq)
+              ;; Password to come here.
+              ))
       (raise 'invalid-username)))
 (define (process-set!q rq)
   (let ((token (set!q-token rq))
-	(field (set!q-field rq))
-	(value (set!q-value rq)))
+        (field (set!q-field rq))
+        (value (set!q-value rq)))
     (cond ((not (symbol? field))
-	   (raise 'invalid-field))
-	  ((not (token? token))
-	   (raise 'invalid-token))
-	  (else
-	   (let* ((new-token
-		   (modify-profile field value
-				   (get-profile-by-token
-				    token) token))
-		  (diff (missing-blobs (get-profile-by-token new-token))))
-	     (if (null? diff)
-		 (auths 
-		  new-token
-		  (profile-mod-server
-		   (get-profile-by-token new-token)))
-		 (set!s new-token 'scorecard diff)))))))
+           (raise 'invalid-field))
+          ((not (token? token))
+           (raise 'invalid-token))
+          (else
+           (let* ((new-token
+                   (modify-profile field value
+                                   (get-profile-by-token
+                                    token) token))
+                  (diff (missing-blobs (get-profile-by-token new-token))))
+             (if (null? diff)
+                 (auths
+                  new-token
+                  (profile-mod-server
+                   (get-profile-by-token new-token)))
+                 (set!s new-token 'scorecard diff)))))))
 (define (process-modq rq)
   (let ((field (modq-field rq))
-	(token (modq-token rq)))
+        (token (modq-token rq)))
     (cond ((not (symbol? field))
-	   (raise 'invalid-field))
-	  ((not (token? token))
-	   (raise 'invalid-token))
-	  (else
-	   (let ((new-token (authenticate token)))
-	     (mods new-token
-		   (prep-modification
-		    field
-		    (get-profile-by-token
-		     new-token))))))))
+           (raise 'invalid-field))
+          ((not (token? token))
+           (raise 'invalid-token))
+          (else
+           (let ((new-token (authenticate token)))
+             (mods new-token
+                   (prep-modification
+                    field
+                    (get-profile-by-token
+                     new-token))))))))
 (define (process-delq rq)
   (if (token? (delq-token delq))
       (acks
        (delete-user
-	(delq-token delq)))
+        (delq-token delq)))
       (raise 'invalid-token)))
 (define (process-regq rq)
   (cond ((not (string? (regq-name rq)))
-	 (raise 'invalid-username))
-	((not (string? (regq-mod-server rq)))
-	 (raise 'invalid-mod-server))
-	;; Auths expects 2 values: token and mod-server, so
-	;; register-user will return a list.
-	(else (apply auths
-		     (register-user
-		      (regq-name rq)
-		      ;; Password to come here.
-		      (regq-prof-server rq)
-		      (regq-mod-server rq))))))
+         (raise 'invalid-username))
+        ((not (string? (regq-mod-server rq)))
+         (raise 'invalid-mod-server))
+        ;; Auths expects 2 values: token and mod-server, so
+        ;; register-user will return a list.
+        (else (apply auths
+                     (register-user
+                      (regq-name rq)
+                      ;; Password to come here.
+                      (regq-prof-server rq)
+                      (regq-mod-server rq))))))
 
 ;;;;; Profile Management
 ;;;; Define the functions used to provide the functionality defined
@@ -217,31 +217,31 @@ hashmap."
   (define (check-blob-maker scorecard-data)
     (lambda (results active-module)
       (if (scorecard-data 'get (cdr active-module))
-	  results (cons active-module results))))
+          results (cons active-module results))))
 
   (fold-left (check-blob-maker
-	      (scorecard-data (profile-scorecard profile)))
-	     '()
-	     (profile-active-modules profile)))
+              (scorecard-data (profile-scorecard profile)))
+             '()
+             (profile-active-modules profile)))
 
 (define (prep-modification field profile)
   "Return the value of the field in PROFILE identified by FIELD."
   (define (get-accessor rtd)
     (fold-left (lambda (index pot-field)
-		 (if (number? index)
-		     (if (eqv? field pot-field)
-			 (record-accessor rtd index)
-			 (1+ index))
-		     index))
-	       0
-	       (vector->list (record-type-field-names rtd))))
+                 (if (number? index)
+                     (if (eqv? field pot-field)
+                         (record-accessor rtd index)
+                         (1+ index))
+                     index))
+               0
+               (vector->list (record-type-field-names rtd))))
 
   (if (eqv? field 'blobs)
       ((scorecard-data (profile-scorecard profile)) 'values)
       (let ((accessor (get-accessor (record-rtd profile))))
-	(if (procedure? accessor)
-	    (accessor profile)
-	    (raise '(prep-modification unknown-field))))))
+        (if (procedure? accessor)
+            (accessor profile)
+            (raise '(prep-modification unknown-field))))))
 
 (define (modify-profile field value profile token)
   "Return a new transactional token if PROFILE's FIELD was
@@ -249,62 +249,62 @@ successfully updated with the new VALUE. Otherwise, raise an error."
   (define (make-active-modules active-modules)
     (define (parse-active-modules)
       (fold-left (lambda (previous current)
-		   (if (and previous
-			    (pair? current)
-			    (symbol? (car current))
-			    (blobhash? (cdr current)))
-		       #t #f))
-		 #t active-modules))
+                   (if (and previous
+                            (pair? current)
+                            (symbol? (car current))
+                            (blobhash? (cdr current)))
+                       #t #f))
+                 #t active-modules))
     (cond ((not (list? active-modules))
-	   (raise '(modify-profile invalid-active-modules)))
-	  ((not (parse-active-modules))
-	   (raise `(modify-profile invalid-active-module ,active-modules)))
-	  ;; Structure OK: we can update the active-modules.
-	  (else active-modules)))
+           (raise '(modify-profile invalid-active-modules)))
+          ((not (parse-active-modules))
+           (raise `(modify-profile invalid-active-module ,active-modules)))
+          ;; Structure OK: we can update the active-modules.
+          (else active-modules)))
   (define (make-scorecart hashmap)
     (let ((blobs (hashmap->blobs hashmap))
-	  (scorecard (profile-scorecard profile)))
+          (scorecard (profile-scorecard profile)))
       ;; Add new blobs to scorecard-data
       (add-blobs blobs scorecard)))
   (define (make-name name)
     (cond ((not (string? name))
-	   (raise '(modify-profile invalid-name)))
-	  ((check-profile name)
-	   (raise '(modify-profile name-already-in-use)))
-	  (else name)))
+           (raise '(modify-profile invalid-name)))
+          ((check-profile name)
+           (raise '(modify-profile name-already-in-use)))
+          (else name)))
   (define (make-prof-server server)
     (cond ((not (string? server))
-	   (raise '(modify-profile invalid-prof-server)))
-	  ;; FIXME: Should attempt connection to server (i.e. myself).
-	  (else server)))
+           (raise '(modify-profile invalid-prof-server)))
+          ;; FIXME: Should attempt connection to server (i.e. myself).
+          (else server)))
   (define (make-mod-server server)
     (cond ((not (string? server))
-	   (raise '(modify-profile invalid-mod-server)))
-	  ;; FIXME: Should attempt connection to server and test.
-	  (else server)))
+           (raise '(modify-profile invalid-mod-server)))
+          ;; FIXME: Should attempt connection to server and test.
+          (else server)))
   (define (make-field field-name field-accessor constructor)
     (cond ((eqv? field field-name)
-	   (constructor value))
-	  (else (field-accessor profile))))
+           (constructor value))
+          (else (field-accessor profile))))
   (let* ((name (make-field 'name profile-name make-name))
-	 ;; Id is automatically created and depends on name.
-	 (id (create-profile-id name))
-	 (prof-server (make-field 'prof-server profile-prof-server
-				  make-prof-server))
-	 (mod-server (make-field 'mod-server profile-mod-server
-				 make-mod-server))
-	 (active-modules
-	  (make-field 'active-modules profile-active-modules
-		      make-active-modules))
-	 (scorecard (make-field 'scorecard profile-scorecard
-				make-scorecart))
-	 (new-profile (make-profile name id prof-server mod-server
-				    active-modules scorecard)))
+         ;; Id is automatically created and depends on name.
+         (id (create-profile-id name))
+         (prof-server (make-field 'prof-server profile-prof-server
+                                  make-prof-server))
+         (mod-server (make-field 'mod-server profile-mod-server
+                                 make-mod-server))
+         (active-modules
+          (make-field 'active-modules profile-active-modules
+                      make-active-modules))
+         (scorecard (make-field 'scorecard profile-scorecard
+                                make-scorecart))
+         (new-profile (make-profile name id prof-server mod-server
+                                    active-modules scorecard)))
     ;; cycle through field names, when FIELD matches field name, make
     ;; value the for the new FIELD
     (if (eqv? field 'name)
-	(migrate-profile (profile-name profile) new-profile token)
-	(update-profile! new-profile token))))
+        (migrate-profile (profile-name profile) new-profile token)
+        (update-profile! new-profile token))))
 
 (define (process-evaluation-result token result)
   "Return an evauthq containing TOKEN and RESULT as a confirmation
@@ -316,8 +316,8 @@ updated. Third, update the set in the scorecard. Finally, return
 evauthq."
   ;; First, generate new token
   ;; Second, update profile
-  ;;; raise on failure
-  ;;; else return auths
+;;; raise on failure
+;;; else return auths
   (let* ((new-token (authenticate token))
          (profile (get-profile-by-token token))
          (scorecard (profile-scorecard profile))
@@ -359,20 +359,20 @@ evauthq."
   "Return a flat list of blobs on the basis of HASHMAP."
   ;; hashmap takes the shape of:
   ;; '((hash ((hash ((hash ((hash ())
-  ;; 			       (hash ((hash ())
-  ;; 					(hash ())))
-  ;; 			       (hash ())))
+  ;;                    (hash ((hash ())
+  ;;                     (hash ())))
+  ;;                    (hash ())))
   ;;                     (hash ((hash ())
-  ;; 		                  (hash ())))))
-  ;; 	     (hash ())))
+  ;;                           (hash ())))))
+  ;;          (hash ())))
   ;;   (hash ((hash ((hash ((hash ())
-  ;; 			       (hash ())))))
-  ;; 	     (hash '()))))
+  ;;                    (hash ())))))
+  ;;          (hash '()))))
   ;; hashpath is a single crownhash and offspring in the mapIt takes
   ;; the form of:
   ;; '(hash ((hash ((hash '())
-  ;; 		      (hash '())))
-  ;; 	     (hash ((hash '())))))
+  ;;               (hash '())))
+  ;;          (hash ((hash '())))))
   ;; each node in a hash path is a pair containing the hash in
   ;; question and a list of its child hashes.
 
@@ -395,31 +395,31 @@ evauthq."
   (define (no-more? remaining-nodes) (null? remaining-nodes))
   (define (traverse-path remaining-nodes parents)
     (if (no-more? remaining-nodes)
-	'()				; finish list when done.
-	(let ((node (current remaining-nodes)))
-	  (cond ((childless? node)	; root node
-		 ;; make root-blob and proceed to siblings.
-		 (cons (make-blob (self node) parents '() 0 0)
-		       (traverse-path (siblings remaining-nodes)
-				      parents)))
-		;; Not childless: must recurse on self's children and
-		;; on its siblings.
-		;; Currently this causes nesting, hence the need to
-		;; flatten the blobs list at the end.
-		(else
-		 ;; make blob and...
-		 (cons (make-blob (self node) parents
-				  (map self (children node)) 0 0)
-		       ;; recurse on children and ...
-		       (cons (traverse-path (children node)
-					    (list (self node)))
-			     ;; recurse on siblings
-			     (traverse-path (siblings remaining-nodes)
-					    parents))))))))
+        '()                             ; finish list when done.
+        (let ((node (current remaining-nodes)))
+          (cond ((childless? node)      ; root node
+                 ;; make root-blob and proceed to siblings.
+                 (cons (make-blob (self node) parents '() 0 0)
+                       (traverse-path (siblings remaining-nodes)
+                                      parents)))
+                ;; Not childless: must recurse on self's children and
+                ;; on its siblings.
+                ;; Currently this causes nesting, hence the need to
+                ;; flatten the blobs list at the end.
+                (else
+                 ;; make blob and...
+                 (cons (make-blob (self node) parents
+                                  (map self (children node)) 0 0)
+                       ;; recurse on children and ...
+                       (cons (traverse-path (children node)
+                                            (list (self node)))
+                             ;; recurse on siblings
+                             (traverse-path (siblings remaining-nodes)
+                                            parents))))))))
 
   (flatten
    (cons (make-blob (self node) '() (map self (children node)) 0 0)
-	 (traverse-path (children node) (list (self node))))))
+         (traverse-path (children node) (list (self node))))))
 ;; Originally I thought we would need to keep track of a list of
 ;; crown-blobhashes, so that that list could act as the first set of
 ;; blobhashes to be searched below (root of the btree to be
@@ -449,30 +449,30 @@ ACTIVE-MODULES."
 highest priority root-blob of BLOB)."
     (let ((children (blob-children blob)))
       (if (null? children)
-	  blob				; blob is a root-blob
-	  (traverse-blob (fold-left highest-priority-blob
-				    (make-dummy-blob)
-				    children)))))
+          blob                          ; blob is a root-blob
+          (traverse-blob (fold-left highest-priority-blob
+                                    (make-dummy-blob)
+                                    children)))))
   (define (highest-priority-blob winning-blob current-blobhash)
     "Return WINNING-BLOB if it has a higher priority than the blob
 identified by CURRENT-BLOBHASH. Otherwise return the latter blob."
     (let ((current-blob (find-blob current-blobhash
-				   (profile-scorecard profile))))
+                                   (profile-scorecard profile))))
       (if (lower-score? winning-blob current-blob)
-	  winning-blob
-	  current-blob)))
+          winning-blob
+          current-blob)))
 
   ;; Initiate search with the crown-blobhashes provided by PROFILE's
   ;; active-modules list.
   (let ((selected-blob
-	 (traverse-blob
-	  (fold-left highest-priority-blob
-		     (make-dummy-blob)
-		     (active-module-hashes
-		      (profile-active-modules profile))))))
+         (traverse-blob
+          (fold-left highest-priority-blob
+                     (make-dummy-blob)
+                     (active-module-hashes
+                      (profile-active-modules profile))))))
     (cons (blob-hash selected-blob) (blob-counter selected-blob))))
 
-(define (authenticate-user name)	; FIXME: Password to come here
+(define (authenticate-user name)        ; FIXME: Password to come here
   "Return a new token and the user's mod-server address to confirm
 that name has been used to authenticate the player against a stored
 profile.
@@ -497,9 +497,9 @@ First, run authenticate-user with TOKEN. Then, raise error or delete
 profile from db. Finally generate delq with TOKEN."
   (let ((new-token (authenticate token)))
     (if new-token
-	(if (remove-profile (get-profile-by-token new-token))
-	    (delq token)
-	    (raise '(delete-user deletion-failed))))
+        (if (remove-profile (get-profile-by-token new-token))
+            (delq token)
+            (raise '(delete-user deletion-failed))))
     (raise '(delete-user 'authentication-failed))))
 (define (register-user name prof-server mod-server)
   ;; Password to come as #2
@@ -508,11 +508,11 @@ that the user has been registered, or raise an error if problems are
 encountered."
   (let ((hash (name->hash name)))
     (if (and (number? hash)
-	     (not (profile-table 'contains hash)))
-	(authenticate-user (add-profile
-			    (make-bare-profile name prof-server
-					       mod-server)))
-	(raise '(register-user name-taken)))))
+             (not (profile-table 'contains hash)))
+        (authenticate-user (add-profile
+                            (make-bare-profile name prof-server
+                                               mod-server)))
+        (raise '(register-user name-taken)))))
 
 ;;;;; Operations
 (define (check-profile name)
@@ -525,7 +525,7 @@ profile-table."
   (let ((hash (name->hash name)))
     (if (check-profile name)
         (current-profile (profile-table 'get hash))
-	(raise '(get-profile-by-name unknown-name)))))
+        (raise '(get-profile-by-name unknown-name)))))
 
 ;;;;; Profile Storage
 (define (current-profile profile-group)
@@ -538,27 +538,27 @@ profile has been installed by copying the profile identified by
 OLD-NAME to the new PROFILE's listing, and by deleting the old profile
 association. Otherwise, raise an error."
   (let ((old-hash (name->hash old-name))
-	(new-hash (name->hash (profile-name profile))))
+        (new-hash (name->hash (profile-name profile))))
     ;; Check old profile exists
     (if (profile-table 'contains old-hash)
-	;; Check new profile does not yet exist
-	(if (not (profile-table 'contains new-hash))
-	    ;; Save old data, delete old profile entry, copy to new
-	    ;; entry, update to latest profile.
-	    (let ((profile-group (profile-table 'get old-hash)))
-	      (remove-profile (get-profile-by-name old-name))
-	      (profile-table 'put new-hash profile-group)
-	      ;; This returns the new token.
-	      (update-profile! profile token))
-	    (raise '(migrate-profile new-name-exists)))
-	(raise '(migrate-profile old-name-unknown)))))
+        ;; Check new profile does not yet exist
+        (if (not (profile-table 'contains new-hash))
+            ;; Save old data, delete old profile entry, copy to new
+            ;; entry, update to latest profile.
+            (let ((profile-group (profile-table 'get old-hash)))
+              (remove-profile (get-profile-by-name old-name))
+              (profile-table 'put new-hash profile-group)
+              ;; This returns the new token.
+              (update-profile! profile token))
+            (raise '(migrate-profile new-name-exists)))
+        (raise '(migrate-profile old-name-unknown)))))
 (define (update-profile! profile old-token)
   "Return a new transactional token as confirmation that the latest
 PROFILE has been installed for PROFILE-HASH. Otherwise, raise an
 error."
   (let ((profile-hash (name->hash (profile-name profile))))
     (if (profile-table 'contains profile-hash)
-	(if (profile-table 'update profile-hash 
+        (if (profile-table 'update profile-hash 
                            (lambda (profile-group)
                              (cons profile profile-group))
                            #f)
@@ -566,25 +566,25 @@ error."
             ;; changed from the last transaction.
             (update-name-table profile old-token)
             (raise '(update-profile! update-failure)))
-	(raise '(update-profile! profile-hash-not-found)))))
+        (raise '(update-profile! profile-hash-not-found)))))
 (define (add-profile profile)
   "Return PROFILE as confirmation that the new profile has been
 installed. Otherwise return an error."
   (let ((hash (name->hash (profile-name profile))))
     (if (not (profile-table 'contains hash))
-	(if (profile-table 'put hash (list profile))
-	    (profile-name profile)
-	    (raise '(add-profile put-failure)))
-	(raise '(add-profile profile-hash-exists)))))
+        (if (profile-table 'put hash (list profile))
+            (profile-name profile)
+            (raise '(add-profile put-failure)))
+        (raise '(add-profile profile-hash-exists)))))
 (define (remove-profile profile)
   "Return PROFILE as confirmation that the new profile has been
 installed. Otherwise return an error."
   (let ((hash (name->hash (profile-name profile))))
     (if (profile-table 'contains hash)
-	(if (profile-table 'rem hash)
-	    #t
-	    (raise '(remove-profile rem-failure)))
-	(raise '(remove-profile profile-hash-not-found)))))
+        (if (profile-table 'rem hash)
+            #t
+            (raise '(remove-profile rem-failure)))
+        (raise '(remove-profile profile-hash-not-found)))))
 ;;   "Returns an instance of data-manager to store profiles by
 ;; profile-group.
 
@@ -593,10 +593,10 @@ installed. Otherwise return an error."
 ;; current when the server is launched."
 (define profile-table
   (data-manager (lambda (object)
-		  (if (and (list? object)
-			   (profile? (car object)))
-		      #t
-		      #f))))
+                  (if (and (list? object)
+                           (profile? (car object)))
+                      #t
+                      #f))))
 
 ;;;;; Name Table
 ;; Links current tokens to profile names which can then be used to
@@ -625,7 +625,7 @@ Currently this is not random enough — it should include a salt."
                           (string->symbol
                            (number->string
                             (current-time))))))))
-  token))
+    token))
 (define (token? obj)
   (if (number? obj) #t #f))
 (define (authenticate old-token)
@@ -634,7 +634,7 @@ succeeded. Otherwise raise an error: '(authenticate
 authentication-failed)"
   (if (check-name old-token)
       (update-name-table (get-profile-by-token old-token)
-                          old-token)
+                         old-token)
       (raise '(authenticate authentication-failed))))
 
 (define (update-name-table profile old-token)
@@ -650,9 +650,9 @@ with PROFILE-NAME in the name table. Otherwise, raise a warning.
 Raise an error if TOKEN is already present in the table."
   (if (not (name-table 'contains token))
       (if (name-table 'put token profile-name)
-	  token
-	  (raise '(add-to-name-table put-failure)))
+          token
+          (raise '(add-to-name-table put-failure)))
       ;; This should normally not happen: tokens should be random.
       (error 'add-to-name-table
-	     "TOKEN is already present in name-table!"
-	     token)))
+             "TOKEN is already present in name-table!"
+             token)))
