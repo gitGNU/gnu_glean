@@ -42,7 +42,8 @@
   #:use-module (guilecraft data-types sets)
   #:use-module (guilecraft data-types scorecards)
   #:use-module (srfi srfi-26)
-  #:export (;; monad helpers
+  #:export (
+            ;; monad helpers
             echor
             mechor
             state?
@@ -75,7 +76,7 @@
             lesser-call/exchange
             call/exchange
             push-data
-))
+            ))
 
 ;; A monadic value in the lounge-monad context is a procedure taking
 ;; TOKEN, LOUNGE and LIBRARY as arguments, and carrying out an
@@ -232,9 +233,10 @@ player's profile."
     ;; Evaluate answer
     ((challenge-details (fetch-challenge-id))
      (evaluation (apply fetch-evaluation answer
-                        (result challenge-details))))
-    ;; Update profile scorecard
-    (push-evaluation evaluation)) state))
+                        challenge-details)))
+    ;; Update profile scorecard.
+    ;; car is evaluation, cdr is solution.
+    (push-evaluation (car evaluation))) state))
 
 ;;;;; Atomic Transactions / Monadic Transactions
 (define (fetch-challenge-id)
@@ -282,8 +284,8 @@ player's profile."
                evaluation)))            ; input
       (stateful '(unimportant)
                 (mk-state (auths-token           rs)
-                          (auths-prof-server     state)
-                          (auths-mod-server      state))))))
+                          (auths-prof-server     rs)
+                          (auths-mod-server      rs))))))
 
 (define (fetch-hashmap crownsets)
   "Return hashmaps or ERROR."
@@ -322,8 +324,8 @@ or ERROR."
                               (state-lib   state)))
           (stateful '(unimportant)
                     (mk-state (auths-token       rs)
-                              (auths-prof-server state)
-                              (auths-mod-server state)))))))
+                              (auths-prof-server rs)
+                              (auths-mod-server  rs)))))))
 
 (define (push-active-modules id-hash-pairs)
   "Return an auths confirming success, a set!s requesting further data
@@ -340,8 +342,8 @@ or ERROR."
                               (state-lib state)))
           (stateful 'unimportant
                     (mk-state (auths-token       rs)
-                              (auths-prof-server state)
-                              (auths-mod-server state)))))))
+                              (auths-prof-server rs)
+                              (auths-mod-server  rs)))))))
 
 ;;;;; Helper Procedures
 (define (push-data type data token profile-server)
