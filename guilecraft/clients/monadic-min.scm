@@ -63,7 +63,9 @@
             add-active-modules
             next-challenge
             submit-answer
+            delete-player
             ;; atomic/monadic transactions
+            push-deletion
             fetch-challenge-id
             fetch-challenge
             fetch-evaluation
@@ -238,7 +240,27 @@ player's profile."
     ;; car is evaluation, cdr is solution.
     (push-evaluation (car evaluation))) state))
 
+(define (delete-player state)
+  "Given the usual STATE of token, lounge and library, request lounge
+delete the player identified by token."
+  ((push-deletion) state))
+
 ;;;;; Atomic Transactions / Monadic Transactions
+(define (push-deletion)
+  "Return a client-monad mval for a delq request."
+  (lambda (state)
+    "Return a steteful whose result's first values is #t upon
+successful deletion of the profile identified by the lounge server and
+the token in STATE. Raise an Exchange Error otherwise."
+    (let ((rs (call/exchange
+               (state-lng state)        ; lounge connection
+               acks? delq               ; predicate, constructor
+               (state-tk state))))      ; input
+      (stateful '(#t)
+                (mk-state #f
+                          #f
+                          #f)))))
+
 (define (fetch-challenge-id)
   "Return chauths or ERROR."
   (lambda (state)

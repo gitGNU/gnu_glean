@@ -187,10 +187,8 @@ out of sync if they are."
                     (get-profile-by-token
                      new-token))))))))
 (define (process-delq rq)
-  (if (token? (delq-token delq))
-      (acks
-       (delete-user
-        (delq-token delq)))
+  (if (token? (delq-token rq))
+      (acks (delete-user (delq-token rq)))
       (raise 'invalid-token)))
 (define (process-regq rq)
   (cond ((not (string? (regq-name rq)))
@@ -498,8 +496,8 @@ profile from db. Finally generate delq with TOKEN."
     (if new-token
         (if (remove-profile (get-profile-by-token new-token))
             (delq token)
-            (raise '(delete-user deletion-failed))))
-    (raise '(delete-user 'authentication-failed))))
+            (raise '(delete-user deletion-failed)))
+        (raise '(delete-user 'authentication-failed)))))
 (define (register-user name prof-server mod-server)
   ;; Password to come as #2
   "Return a new token and the user's mod-server address to confirm

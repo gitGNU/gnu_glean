@@ -143,6 +143,16 @@
                           (set! test-tk  (state-tk (state st8ful)))
                           #t)
                    #f)))
+;; Lounge Test: Delete Test Account
+(test-assert "delete-user"
+             (let ((st8ful ((push-deletion)
+                            (mk-state test-tk %profile-socket-file%
+                                      %module-socket-file%))))
+               (if (stateful? st8ful)
+                   (begin (logger st8ful)
+                          (set! test-tk  (state-tk (state st8ful)))
+                          #t)
+                   #f)))
 ;; Monadic Transaction Test: Active modules
 (format #t "\nMonadic Test.\n")
 (test-assert "add-active-modules"
@@ -173,4 +183,13 @@
                           (set! test-mon (state st8ful))
                           #t)
                    #f)))
+;; Monadic Transaction Test: Delete User
+(test-assert "delete-player"
+             (let ((st8ful (delete-player test-mon)))
+               (if (stateful? st8ful)
+                   (begin (logger st8ful)
+                          (set! test-mon (state st8ful))
+                          #t)
+                   #f)))
+
 (test-end "clients-min-tests")
