@@ -94,6 +94,7 @@
   #:use-module (guilecraft base-server)
   #:use-module (ice-9 rdelim)
   #:use-module (srfi srfi-26)
+  #:use-module (guilecraft base32)
   #:use-module (guilecraft gmodule-manager)
   #:use-module (guilecraft problem-type-manager)
   #:use-module (guilecraft data-types base-requests)
@@ -248,8 +249,9 @@ identified by SET-ID cannot be found."
           (set-id->set set-id)))))
 
 (define (make-set-hash set-id)
-  (apply + (bytevector->u8-list
-            (string->utf8 (symbol->string set-id)))))
+  (string->symbol
+   (bytevector->base32-string
+    (string->utf8 (symbol->string set-id)))))
 
 (define (hash set parent-ids)
   "Returns a blobhash. A blobhash is not just a hash of the set-id,

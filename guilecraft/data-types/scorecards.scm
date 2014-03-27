@@ -66,7 +66,7 @@
 (define scorecard-data (record-accessor scorecard-rtd 0))
 
 ;;;; Scorecard Operations
-(define (blobhash? obj) (number? obj))
+(define (blobhash? obj) (symbol? obj))
 
 (define (find-blob blobhash scorecard)
   "Return the blob stored under BLOBHASH in SCORECARD."
