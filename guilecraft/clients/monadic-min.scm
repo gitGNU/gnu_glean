@@ -252,10 +252,11 @@ player's profile."
     ;; Evaluate answer
     ((challenge-details (fetch-challenge-id))
      (evaluation (apply fetch-evaluation answer
-                        challenge-details)))
-    ;; Update profile scorecard.
-    ;; car is evaluation, cdr is solution.
-    (push-evaluation (car evaluation))) state))
+                        challenge-details))
+     ;; Update profile scorecard…
+     (pushed (push-evaluation (car evaluation))))
+    ;; …But return evaluation result + new state
+    (return evaluation)) state))
 
 (define (delete-player state)
   "Given the usual STATE of token, lounge and library, request lounge
