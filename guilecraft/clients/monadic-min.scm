@@ -64,7 +64,9 @@
             next-challenge
             submit-answer
             delete-player
+            known-modules
             ;; atomic/monadic transactions
+            fetch-known-modules
             push-deletion
             fetch-challenge-id
             fetch-challenge
@@ -265,7 +267,26 @@ delete the player identified by token."
       (list (cadr (neg-msg neg))
             (delq-token (neg-orig neg))))))
 
+(define (known-modules state)
+  "Given the usual STATE of token, lounge and library, request library
+provides us with details of available modules."
+  (catch 'exchange-error
+    (lambda ()
+      ((fetch-known-modules) state))
+    (lambda (key neg)
+      (list (cadr (neg-msg neg))))))
+
 ;;;;; Atomic Transactions / Monadic Transactions
+(define (fetch-known-modules)
+  "Return a client-monad mval for an availq."
+  (lambda (state)
+    (let ((rs (call/exchange
+               (state-lib state)        ; library connection
+               knowns? knownq           ; predicate, constructor
+               ;; add search?           ; input
+               )))
+      (stateful (knowns-list rs)
+                state))))
 (define (push-deletion)
   "Return a client-monad mval for a delq request."
   (lambda (state)

@@ -22,14 +22,11 @@
 	    evals-result
 	    evals-solution
 
-	    known-modq
-	    known-modq?
-	    known-modq-token
-
-	    known-mods
-	    known-mods?
-	    known-mods-token
-	    known-mods-list
+	    knownq
+	    knownq?
+	    knowns
+	    knowns?
+	    knowns-list
 
 	    hashmapq
 	    hashmapq?
@@ -96,26 +93,23 @@
 (define evals-solution (record-accessor evals-rtd 1))
 
 ;; Request a list of known modules
-(define known-modq-rtd
-  (make-record-type-descriptor 'known-modq #f #f #f #f
-			       '#((immutable token))))
-(define known-modq-rcd
-  (make-record-constructor-descriptor known-modq-rtd #f #f))
-(define known-modq (record-constructor known-modq-rcd))
-(define known-modq? (record-predicate known-modq-rtd))
-(define known-modq-token (record-accessor known-modq-rtd 0))
+(define knownq-rtd
+  (make-record-type-descriptor 'knownq #f #f #f #f
+			       '#()))
+(define knownq-rcd
+  (make-record-constructor-descriptor knownq-rtd #f #f))
+(define knownq (record-constructor knownq-rcd))
+(define knownq? (record-predicate knownq-rtd))
 
 ;; Return a list of known modules
-(define known-mods-rtd
-  (make-record-type-descriptor 'known-mods #f #f #f #f
-			       '#((immutable token)
-				  (immutable list))))
-(define known-mods-rcd
-  (make-record-constructor-descriptor known-mods-rtd #f #f))
-(define known-mods (record-constructor known-mods-rcd))
-(define known-mods? (record-predicate known-mods-rtd))
-(define known-mods-token (record-accessor known-mods-rtd 0))
-(define known-mods-list (record-accessor known-mods-rtd 1))
+(define knowns-rtd
+  (make-record-type-descriptor 'knowns #f #f #f #f
+			       '#((immutable list))))
+(define knowns-rcd
+  (make-record-constructor-descriptor knowns-rtd #f #f))
+(define knowns (record-constructor knowns-rcd))
+(define knowns? (record-predicate knowns-rtd))
+(define knowns-list (record-accessor knowns-rtd 0))
 
 ;; hashmap requests ask the mod server for a nested list of sethashes
 ;; reflecting the set structure for the sets identified by the
