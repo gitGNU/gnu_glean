@@ -184,18 +184,33 @@ applying MVALUE to MPROC."
 (define (register-player name profile-server module-server)
   "Return 'lounge state' upon successful registration with the
 lounge using NAME. Raise an Exchange Error otherwise."
-  (let ((rs (call/exchange profile-server auths? regq
-                           name profile-server module-server)))
-    (mk-state (auths-token rs) (auths-prof-server rs)
-              (auths-mod-server rs))))
+  (catch 'exchange-error
+    (lambda ()
+      (let ((rs (call/exchange profile-server auths? regq
+                               name profile-server module-server)))
+        (mk-state (auths-token rs) (auths-prof-server rs)
+                  (auths-mod-server rs))))
+    (lambda (key neg)
+      (let ((orig (neg-orig neg)))
+        (list (cadr (neg-msg neg))
+              (regq-name orig)
+              (regq-prof-server orig)
+              (regq-mod-server orig))))))
 
 (define (authenticate-player name profile-server)
   "Return 'lounge state' upon successful authentication with the
 lounge using NAME. Raise an Exchange Error otherwise."
-  (let ((rs (call/exchange profile-server auths? authq
-                           name)))
-    (mk-state (auths-token rs) (auths-prof-server rs)
-              (auths-mod-server rs))))
+  (catch 'exchange-error
+    (lambda ()
+      (let ((rs (call/exchange profile-server auths? authq
+                               name)))
+        (mk-state (auths-token rs) (auths-prof-server rs)
+                  (auths-mod-server rs))))
+    (lambda (key neg)
+      (let ((orig (neg-orig neg)))
+        (list (cadr (neg-msg neg))
+              (authq-name orig)
+              profile-server)))))
 
 ;;;;; Composite Transactions
 (define (add-active-modules module-ids state)
@@ -243,7 +258,12 @@ player's profile."
 (define (delete-player state)
   "Given the usual STATE of token, lounge and library, request lounge
 delete the player identified by token."
-  ((push-deletion) state))
+  (catch 'exchange-error
+    (lambda ()
+      ((push-deletion) state))
+    (lambda (key neg)
+      (list (cadr (neg-msg neg))
+            (delq-token (neg-orig neg))))))
 
 ;;;;; Atomic Transactions / Monadic Transactions
 (define (push-deletion)
@@ -391,4 +411,3 @@ expected."
   "Return the request of performing an RQ with ARGS on TARGET. Raise
 an error if the response is not expected."
   (rs-content (exchange (request (apply rq args)) target)))
-
