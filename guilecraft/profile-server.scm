@@ -100,7 +100,7 @@ handling to request handler."
 server, module server and the message contained in RQ."
   (let ((token (echoq-token rq)))
     (cond ((not (token? token))
-           (raise 'invalid-token))
+           (raise '(process-echoq invalid-token)))
           (else
            (let* ((new-token (authenticate token))
                   (profile (get-profile-by-token new-token)))
@@ -112,7 +112,7 @@ pair. Return a set!s informing that scorecard and active-modules are
 out of sync if they are."
   (let ((token (chauthq-token rq)))
     (cond ((not (token? token))
-           (raise 'invalid-token))
+           (raise '(process-chauthq invalid-token)))
           (else
            (let* ((new-token (authenticate token))
                   (profile (get-profile-by-token new-token))
@@ -128,21 +128,19 @@ out of sync if they are."
                  ;; else force sync.
                  (set!s new-token 'scorecard diff
                         (profile-mod-server profile))))))))
-
 (define (process-evauthq rq)
   (let ((token (evauthq-token rq))
         (result (evauthq-result rq)))
     (display "process-evauthq: start")
     (newline)
     (cond ((not (token? token))
-           (raise 'invalid-token))
+           (raise '(process-avauthq invalid-token)))
           ((not (boolean? result))
-           (raise 'invalid-result))
+           (raise '(process-evauthq invalid-result)))
           (else
            (display "process-evauthq: in else")
            (newline)
            (process-evaluation-result token result)))))
-
 (define (process-authq rq)
   (if (string? (authq-name rq))
       ;; Auths expects 2 values: token and mod-server, so
@@ -152,15 +150,15 @@ out of sync if they are."
               (authq-name rq)
               ;; Password to come here.
               ))
-      (raise 'invalid-username)))
+      (raise '(process-authq invalid-username))))
 (define (process-set!q rq)
   (let ((token (set!q-token rq))
         (field (set!q-field rq))
         (value (set!q-value rq)))
     (cond ((not (symbol? field))
-           (raise 'invalid-field))
+           (raise '(process-set!q invalid-field)))
           ((not (token? token))
-           (raise 'invalid-token))
+           (raise '(process-set!q invalid-token)))
           (else
            (let* ((new-token (modify-profile field value
                                              (get-profile-by-token
@@ -176,9 +174,9 @@ out of sync if they are."
   (let ((field (modq-field rq))
         (token (modq-token rq)))
     (cond ((not (symbol? field))
-           (raise 'invalid-field))
+           (raise '(process-modq invalid-field)))
           ((not (token? token))
-           (raise 'invalid-token))
+           (raise '(process-modq invalid-token)))
           (else
            (let ((new-token (authenticate token)))
              (mods new-token
@@ -189,12 +187,12 @@ out of sync if they are."
 (define (process-delq rq)
   (if (token? (delq-token rq))
       (acks (delete-user (delq-token rq)))
-      (raise 'invalid-token)))
+      (raise '(process-delq invalid-token))))
 (define (process-regq rq)
   (cond ((not (string? (regq-name rq)))
-         (raise 'invalid-username))
+         (raise '(process-regq invalid-username)))
         ((not (string? (regq-mod-server rq)))
-         (raise 'invalid-mod-server))
+         (raise '(process-regq invalid-mod-server)))
         ;; Auths expects 2 values: token and mod-server, so
         ;; register-user will return a list.
         (else (apply auths
@@ -384,7 +382,7 @@ evauthq."
     (if (and (list? node)
              (not (null? node)))
         (car node)
-        (raise 'node-not-list)))
+        (raise '(hashpath->blobs* node-not-list))))
   (define (children node) (cdr node))
   (define (childless? node) (null? (children node)))
   (define (current remaining-nodes) (car remaining-nodes))
@@ -497,7 +495,7 @@ profile from db. Finally generate delq with TOKEN."
         (if (remove-profile (get-profile-by-token new-token))
             (delq token)
             (raise '(delete-user deletion-failed)))
-        (raise '(delete-user 'authentication-failed)))))
+        (raise '(delete-user authentication-failed)))))
 (define (register-user name prof-server mod-server)
   ;; Password to come as #2
   "Return a new token and the user's mod-server address to confirm
