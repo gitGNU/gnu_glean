@@ -432,4 +432,7 @@ expected."
 (define (lesser-call/exchange target rq . args)
   "Return the request of performing an RQ with ARGS on TARGET. Raise
 an error if the response is not expected."
-  (rs-content (exchange (request (apply rq args)) target)))
+  (let ((rs (exchange (request (apply rq args)) target)))
+    (if rs
+        (rs-content rs)
+        (negs (apply rq args) '(exchange not-alive?)))))

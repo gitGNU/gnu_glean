@@ -24,20 +24,24 @@
   (let* ((s (socket PF_UNIX SOCK_STREAM 0))
 	 (path socket-path)
 	 (address (make-socket-address AF_UNIX path)))
-    (catch #t
+    (catch 'system-error
       (lambda ()
 	(connect s address)
 	s)
       (lambda (key . args)
-	(clog (string-append "server: Problem connecting to server: "
-			     (symbol->string key) " "
+	(clog (string-append "server: Problem connecting to server.\n"
+                             "Perhaps the server is down?\n"
+                             "(address is: "
+                             socket-path "\nKey is: "
+			     (symbol->string key) "\nError is: "
 			     (object->string args)))
-	(raise (list 'server key))))))
+        (raise 'alive?)))))
 
 (define (exchange request socket-path)
   "Connect to server, send request, return response or #f if
 connection fails."
-  (guard (err (err
+  (guard (err ((eqv? err 'alive?) #f)
+              (err
 	       (begin (clog err)
 		      (raise (list 'exchange err)))))
 	 (let ((s (server socket-path)))
