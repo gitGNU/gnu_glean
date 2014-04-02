@@ -22,6 +22,7 @@
 	    negs
 	    negs?
 	    neg-orig
+            neg-msg
 	    unks
 	    unks?
 	    unk-orig))
