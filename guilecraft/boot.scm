@@ -38,6 +38,7 @@
   #:use-module (guilecraft tools)
   #:use-module (guilecraft clients cli)
   #:use-module (guilecraft clients web)
+  #:use-module (guilecraft utils)
   #:export (boot))
 
 ;; Define the list of accepted options and their special properties
@@ -104,31 +105,29 @@ Options will be surrounded by square brackets if optional."
   (let ((options (parse-options args))
 	(start-clock (current-time)))
     (let ((config (option-ref options 'config #f)))
-      (if config
-          (let ((config-module (resolve-module '(guilecraft config))))
-            (save-module-excursion
-             (lambda ()
-               (set-current-module config-module)
-               (primitive-load config)))))
+      (if config (load-config config))
+      (ensure-user-dirs %log-dir% %socket-dir% %library-dir%
+                        %lounge-dir% %wip-library-dir%)
 
       (cond ((option-ref options 'module-server #f)
+             (ensure-config %library-config%)
+             (load-config %library.conf%)
 	     (module-server %module-socket-file%))
 	    ((option-ref options 'profile-server #f)
+             (ensure-config %lounge-config%)
+             (load-config %lounge.conf%)
 	     (profile-server %profile-socket-file%))
-	    ((option-ref options 'web #f)
-	     (web))
 	    ((option-ref options 'install #f)
 	     (install-module (option-ref options 'install #f)))
 	    ((option-ref options 'edit #f)
 	     (edit-module (option-ref options 'edit #f)))
 	    ((option-ref options 'retrieve #f)
 	     (retrieve-module (option-ref options 'retrieve #f)))
-	    (else (client))))))
+	    (else (ensure-config %client-config%)
+                  (client))))))
 
 (define (client)
   (cli-client))
-(define (web)
-  (web-client))
 
 ;;; Just a place-holder
 (define (main-loop)
@@ -137,3 +136,23 @@ Options will be surrounded by square brackets if optional."
     ;; for now we drop into read, but we want to drop into server
     ;; listening mode.
     (read)))
+
+(define (ensure-user-dirs . dirs)
+  (for-each mkdir-p dirs))
+
+(define (ensure-config config)
+  (if (access? (config-target config) R_OK)
+      (format #t "~a configuration exists.\n" (config-name config))
+      (begin
+        (format #t "~a configuration is being created… "
+                (config-name config))
+        (config-write config)
+        (format #t "[Done]\n"))))
+
+(define (load-config config)
+  ;; Parse optional root config-file
+  (let ((config-module (resolve-module '(guilecraft config))))
+    (save-module-excursion
+     (lambda ()
+       (set-current-module config-module)
+       (primitive-load config)))))

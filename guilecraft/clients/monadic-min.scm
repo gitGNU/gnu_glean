@@ -110,11 +110,15 @@
 ;;;; A monad specialised for the client stateful tasks. It provides
 ;;;; state management, and logging.
 (define (logger st8ful)
-  (if (> %debug% 10)
-      (let ((st8 (state st8ful)))
-        (format #t "Value: ~a, Token: ~a, Lounge: ~a, Library: ~a.\n"
+  (if (relevant? 'debug)
+      (let ((st8  (state st8ful))
+            (port (if (string? %log-file%)
+                      (open-file %log-file% "a")
+                      (current-output-port))))
+        (format port "Value: ~a, Token: ~a, Lounge: ~a, Library: ~a.\n"
                 (result st8ful) (state-tk st8) (state-lng st8)
-                (state-lib st8)))))
+                (state-lib st8))
+        (if (string? %log-file%) (close-output-port port)))))
 
 (define (lstateful value message st8)
   "Return a stateful with an additional log field out of VALUE,

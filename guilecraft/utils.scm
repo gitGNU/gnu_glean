@@ -25,19 +25,48 @@
 (define-module (guilecraft utils)
   #:use-module (guilecraft config)
   #:use-module (rnrs)
-  #:export (flatten
-	    clog
-	    llog
-	    gmsg
-	    rprinter
+  #:use-module (ice-9 match)
+  #:export (
+            flatten
+            mkdir-p
+            clog
+            llog
+            gmsg
+            rprinter
+            relevant?
             ))
 
 (define (flatten obj)
   (cond ((null? obj) '())
-	((not (pair? obj)) (list obj))
-	(else
-	 (append (flatten (car obj))
-		 (flatten (cdr obj))))))
+        ((not (pair? obj)) (list obj))
+        (else
+         (append (flatten (car obj))
+                 (flatten (cdr obj))))))
+
+(define (mkdir-p dir)
+  "Create directory DIR and all its ancestors."
+  (define absolute?
+    (string-prefix? "/" dir))
+
+  (define not-slash
+    (char-set-complement (char-set #\/)))
+
+  (let loop ((components (string-tokenize dir not-slash))
+             (root       (if absolute?
+                             ""
+                             ".")))
+    (match components
+      ((head tail ...)
+       (let ((path (string-append root "/" head)))
+         (catch 'system-error
+           (lambda ()
+             (mkdir path)
+             (loop tail path))
+           (lambda args
+             (if (= EEXIST (system-error-errno args))
+                 (loop tail path)
+                 (apply throw args))))))
+      (() #t))))
 
 (define (llog args)
   "Returns #undefined. Provide logic-warning log abstraction:
@@ -55,37 +84,37 @@ prints RECORD and its fields as a side-effect if #t."
 
   (if (record? record)
       (let* ((rtd (record-rtd record))
-	     (fields (vector->list (record-type-field-names rtd)))
-	     (length (length fields)))
+             (fields (vector->list (record-type-field-names rtd)))
+             (length (length fields)))
 
-	(define (print-fields remaining index)
-	  (cond ((null? remaining)
-		 #t)
-		(else
-		 (let ((field-value ((record-accessor rtd index)
-				     record)))
-		   (cond ((record? field-value)
-			  (simple-format #t "   ~a: ~a" (car remaining)
-					 field-value)
-			  (newline)
-			  (rprinter field-value))
-			 ((and (list? field-value)
-			       (not (null? field-value))
-			       (record? (car field-value)))
-			  (for-each (lambda (arg)
-				      (rprinter arg))
-				    field-value))
-			 (else
-			  (simple-format #t "   ~a: ~a" (car remaining)
-					 field-value)
-			  (newline))))
-		 (print-fields (cdr remaining) (1+ index)))))
+        (define (print-fields remaining index)
+          (cond ((null? remaining)
+                 #t)
+                (else
+                 (let ((field-value ((record-accessor rtd index)
+                                     record)))
+                   (cond ((record? field-value)
+                          (simple-format #t "   ~a: ~a" (car remaining)
+                                         field-value)
+                          (newline)
+                          (rprinter field-value))
+                         ((and (list? field-value)
+                               (not (null? field-value))
+                               (record? (car field-value)))
+                          (for-each (lambda (arg)
+                                      (rprinter arg))
+                                    field-value))
+                         (else
+                          (simple-format #t "   ~a: ~a" (car remaining)
+                                         field-value)
+                          (newline))))
+                 (print-fields (cdr remaining) (1+ index)))))
 
-	(simple-format #t "record: ~a" (record-type-name rtd))
-	(newline)
-	(print-fields fields 0)
-	(simple-format #t ":end:")
-	(newline))
+        (simple-format #t "record: ~a" (record-type-name rtd))
+        (newline)
+        (print-fields fields 0)
+        (simple-format #t ":end:")
+        (newline))
       #f))
 
 (define* (gmsg #:key (priority 10) . args)
@@ -94,17 +123,31 @@ Simple-Format if PRIORITY is lower than %DEBUG% set in config.scm."
   (define (indent length)
     (define (i l s)
       (if (zero? l)
-	  s
-	  (i (1- l) (string-append " " s))))
+          s
+          (i (1- l) (string-append " " s))))
     
     (if (zero? length)
-	""
-	(i (1- length) " ")))
+        ""
+        (i (1- length) " ")))
   (define (gm args format-string)
     (cond ((null? args) format-string)
-	  (else (gm (cdr args) (string-append format-string " ~S")))))
+          (else (gm (cdr args) (string-append format-string " ~S")))))
   (if (< priority %debug%)
-      (begin
-	(simple-format #t "~a* Debug:" (indent (1- priority)))
-	(apply simple-format #t (gm args " ") args)
-	(newline))))
+      (let ((port (if (string? %log-file%)
+                      (open-file %log-file% "a")
+                      (current-output-port))))
+        (format port "~a* Debug:" (indent (1- priority)))
+        (apply format port (gm args " ") args)
+        (newline port)
+        (if (string? %log-file%) (close-output-port port)))))
+
+(define (relevant? priority)
+  (define (weigh rating)
+    (cond ((eqv? rating 'critical)  0)
+          ((eqv? rating 'important) 1)
+          ((eqv? rating 'warning)   2)
+          ((eqv? rating 'inform)    3)
+          (else rating 4)))           ; 'debug
+  (let ((urgency (weigh priority))
+        (filter  (weigh %log-level%)))
+    (<= urgency filter)))
