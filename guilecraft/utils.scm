@@ -85,7 +85,10 @@ prints RECORD and its fields as a side-effect if #t."
   (if (record? record)
       (let* ((rtd (record-rtd record))
              (fields (vector->list (record-type-field-names rtd)))
-             (length (length fields)))
+             (length (length fields))
+             (port (if (string? %log-file%)
+                       (open-file %log-file% "a")
+                       (current-output-port))))
 
         (define (print-fields remaining index)
           (cond ((null? remaining)
@@ -94,9 +97,8 @@ prints RECORD and its fields as a side-effect if #t."
                  (let ((field-value ((record-accessor rtd index)
                                      record)))
                    (cond ((record? field-value)
-                          (simple-format #t "   ~a: ~a" (car remaining)
-                                         field-value)
-                          (newline)
+                          (format port "   ~a: ~a\n" (car remaining)
+                                  field-value)
                           (rprinter field-value))
                          ((and (list? field-value)
                                (not (null? field-value))
@@ -105,21 +107,19 @@ prints RECORD and its fields as a side-effect if #t."
                                       (rprinter arg))
                                     field-value))
                          (else
-                          (simple-format #t "   ~a: ~a" (car remaining)
-                                         field-value)
-                          (newline))))
+                          (format port "   ~a: ~a\n" (car remaining)
+                                  field-value))))
                  (print-fields (cdr remaining) (1+ index)))))
 
-        (simple-format #t "record: ~a" (record-type-name rtd))
-        (newline)
+        (format port "record: ~a\n" (record-type-name rtd))
         (print-fields fields 0)
-        (simple-format #t ":end:")
-        (newline))
+        (format port ":end:\n")
+        (if (string? %log-file%) (close-output-port port)))
       #f))
 
 (define* (gmsg #:key (priority 10) . args)
-  "Provide a simple debugging message system. Prints ARGS with
-Simple-Format if PRIORITY is lower than %DEBUG% set in config.scm."
+  "Provide a simple debugging message system. Prints ARGS with Format
+if PRIORITY is lower than %DEBUG% set in config.scm."
   (define (indent length)
     (define (i l s)
       (if (zero? l)
