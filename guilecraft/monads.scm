@@ -63,10 +63,20 @@
             ;; Concrete monads.
             identity-monad
             state-monad
+            nothing
+            nothing?
+            nothing-id
+            nothing-context
             stateful
             stateful?
             result
-            state)
+            state
+            mk-state
+            state?
+            state-tk
+            state-lng
+            state-lib
+            )
   #:replace (imported-modules
              compiled-modules))
 
@@ -283,24 +293,24 @@ lifted in monad, for which proc returns true."
 ;;;; MVALUE: returns a procedure taking state, which in turn, when
 ;;;; provided with state, returns a stateful.
 
-(define (stateful value state)
-    (if (and (list? value)
-             (list? state))
-        (cons value state)
-        (throw 'stateful-not-lists value state)))
-(define (stateful? thing)
-  (and (pair?   thing)
-       (state?  (state thing))
-       (result? (result thing))))
-(define (result st8ful)
-  "Return the value part from a STATE-PAIR."
-  (car st8ful))
+(define-record-type <nothing>
+  (nothing id context)
+  nothing?
+  (id      nothing-id)
+  (context nothing-context))
+(define-record-type <stateful>
+  (stateful res st8)
+  stateful?
+  (res result)
+  (st8 state))
+(define-record-type <st8>
+  (mk-state token lounge library)
+  state?
+  (token   state-tk)
+  (lounge  state-lng)
+  (library state-lib))
+
 (define (result? thing)
-  (list? thing))
-(define (state st8ful)
-  "Return the state part from a STATE-PAIR."
-  (cdr st8ful))
-(define (state? thing)
   (list? thing))
 
 (define (state-return value)

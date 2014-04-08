@@ -46,15 +46,7 @@
             ;; monad helpers
             echor
             mechor
-            state?
-            mk-state
-            state-tk
-            state-lib
-            state-lng
             state-lesser
-            lstateful
-            lstateful?
-            unlstateful
             logger
             ;; state generating transactions
             register-player
@@ -89,7 +81,8 @@
   (lambda (state)
     (let ((rs (rs-content
                (exchange
-                (request (echoq (car state) message)) (cadr state)))))
+                (request (echoq (car state) message))
+                (cadr state)))))
       (stateful `(,echos-message rs) (list (echos-token   rs)
                                            (echos-lounge  rs)
                                            (echos-library rs))))))
@@ -120,40 +113,9 @@
                 (state-lib st8))
         (if (string? %log-file%) (close-output-port port)))))
 
-(define (lstateful value message st8)
-  "Return a stateful with an additional log field out of VALUE,
-MESSAGE and ST8."
-  (list value 'log message st8))
-(define (lstateful? lst8ful)
-  (eqv? (car (state lst8ful)) 'log))
-(define (unlstateful lst8ful)
-  "Return the state of LST8FUL. Print the log message if LST8FUL
-is an lstateful."
-  (let ((st8 (state lst8ful)))
-    (if (eqv? (car st8) 'log)
-        (begin
-          (apply format #t (cadr st8))
-          (newline)
-          (caddr st8))
-        (begin
-          (logger lst8ful)
-          st8))))
-(define (mk-state token lounge library)
-  (list 'st8 token lounge library))
-(define (state? st8)
-  (eqv? (car st8) 'st8))
-(define (state-tk state)
-  "Return token from STATE."
-  (cadr state))
-(define (state-lng state)
-  "Return the lounge connection from STATE."
-  (caddr state))
-(define (state-lib state)
-  "Return the library connection from STATE."
-  (cadddr state))
 (define (state-lesser state)
   "Return token and the lounge connection from STATE."
-  (list (cadr state) (caddr state)))
+  (list (state-tk state) (state-lng state)))
 
 (define (client-return value)
   "Return a state mvalue seeded with VALUE."
@@ -167,10 +129,12 @@ applying MVALUE to MPROC."
   (lambda (st8)
     ;; Generate new-state-pair by passing state into mvalue.
     (let ((new-stateful (mvalue st8)))
-      (logger new-stateful) ; Use logging mechanism
-      ;; Return the state-pair resulting from applying the new state
-      ;; to mproc seeded with the new result.
-      ((mproc (result new-stateful)) (state new-stateful)))))
+      (logger new-stateful)         ; Use logging mechanism
+      ;; Return the state-pair resulting from applying the new
+      ;; state to mproc seeded with the new result.
+      (if (nothing? new-stateful)
+          new-stateful
+          ((mproc (result new-stateful)) (state new-stateful))))))
 
 (define-monad client-monad
   (bind   client-bind)
@@ -198,11 +162,15 @@ lounge using NAME. Raise an Exchange Error otherwise."
         (mk-state (auths-token rs) (auths-prof-server rs)
                   (auths-mod-server rs))))
     (lambda (key neg)
-      (let ((orig (neg-orig neg)))
-        (list (cadr (neg-msg neg))
-              (regq-name orig)
-              (regq-prof-server orig)
-              (regq-mod-server orig))))))
+      (let ((orig (neg-orig neg))
+            (k    (cadr (neg-msg neg))))
+        (if (eqv? k 'servers-down)
+            (nothing 'lounge-down
+                     profile-server)
+            (nothing k
+                     (list (regq-name orig)
+                           (regq-prof-server orig)
+                           (regq-mod-server orig))))))))
 
 (define (authenticate-player name profile-server)
   "Return 'lounge state' upon successful authentication with the
@@ -214,10 +182,14 @@ lounge using NAME. Raise an Exchange Error otherwise."
         (mk-state (auths-token rs) (auths-prof-server rs)
                   (auths-mod-server rs))))
     (lambda (key neg)
-      (let ((orig (neg-orig neg)))
-        (list (cadr (neg-msg neg))
-              (authq-name orig)
-              profile-server)))))
+      (let ((orig (neg-orig neg))
+            (k    (cadr (neg-msg neg))))
+        (if (eqv? k 'servers-down)
+            (nothing 'lounge-down
+                     profile-server)
+            (nothing k
+                     (list (authq-name orig)
+                           profile-server)))))))
 
 ;;;;; Composite Transactions
 (define (add-active-modules module-ids state)
@@ -225,26 +197,32 @@ lounge using NAME. Raise an Exchange Error otherwise."
 choosing from amongst a list of modules, carry out the necessary
 transactions to activate these modules for the player."
   ((mlet*
-    client-monad
-    ;; Get sethash pairs
-    ((hash-pairs (fetch-id-hash-pairs module-ids))
-     ;; Update profile active modules, retrieve newly required
-     ;; hashmaps.
-     (req-maps   (push-active-modules (car hash-pairs)))
-     ;; Get hashmaps if necessary.
-     ;;FIXME: implement if clause for this.
-     (hashmap    (fetch-hashmap (car req-maps))))
-    ;; Update profile scorecards with hashmaps.
-    ;;FIXME: only if step above required.
-    (push-scorecard (car hashmap))) state))
+       client-monad
+       ((test       (test-servers))
+        ;; Get sethash pairs
+        (hash-pairs (fetch-id-hash-pairs module-ids))
+        ;; Update profile active modules, retrieve newly required
+        ;; hashmaps.
+        (req-maps   (push-active-modules (car hash-pairs)))
+        ;; Get hashmaps if necessary.
+        ;;FIXME: implement if clause for this.
+        (hashmap    (if (eqv? req-maps 'unimportant)
+                        (return req-maps)
+                        (fetch-hashmap (car req-maps)))))
+       ;; Update profile scorecards with hashmaps.
+       ;;FIXME: only if step above required.
+       (if (eqv? hashmap 'unimportant)
+           (return hashmap)
+           (push-scorecard (car hashmap)))) state))
 
 (define (next-challenge state)
   "Given the usual STATE of token, lounge and library, return the
 next-challenge for the player associated with token."
   ((mlet*
     client-monad
-    ;; Get next challenge blobhash/counter
-    ((challenge-details (fetch-challenge-id)))
+    ((test              (test-servers))
+     ;; Get next challenge blobhash/counter
+     (challenge-details (fetch-challenge-id)))
     ;; Get next problem
     (apply fetch-challenge challenge-details)) state))
 
@@ -254,8 +232,9 @@ player's answer for assesment, and push the result of assesment to the
 player's profile."
   ((mlet*
     client-monad
-    ;; Evaluate answer
-    ((challenge-details (fetch-challenge-id))
+    ((test              (test-servers))
+     ;; Evaluate answer
+     (challenge-details (fetch-challenge-id))
      (evaluation (apply fetch-evaluation answer
                         challenge-details))
      ;; Update profile scorecard…
@@ -266,23 +245,30 @@ player's profile."
 (define (delete-player state)
   "Given the usual STATE of token, lounge and library, request lounge
 delete the player identified by token."
-  (catch 'exchange-error
-    (lambda ()
-      ((push-deletion) state))
-    (lambda (key neg)
-      (list (cadr (neg-msg neg))
-            (delq-token (neg-orig neg))))))
+  ((mlet*
+    client-monad
+    ((test (test-servers)))
+    (push-deletion)) state))
 
 (define (known-modules state)
   "Given the usual STATE of token, lounge and library, request library
 provides us with details of available modules."
-  (catch 'exchange-error
-    (lambda ()
-      ((fetch-known-modules) state))
-    (lambda (key neg)
-      (list (cadr (neg-msg neg))))))
+  ((mlet*
+    client-monad
+    ((test (test-servers)))
+    (fetch-known-modules)) state))
 
 ;;;;; Atomic Transactions / Monadic Transactions
+(define (test-servers)
+  "Return a client-monad mval which returns a nothing if one of the
+servers is down."
+  (lambda (state)
+    (cond ((not (alive? (state-lib state)))
+           (nothing 'library-down (state-lib state)))
+          ((not (alive? (state-lng state)))
+           (nothing 'lounge-down (state-lng state)))
+          (else (stateful '(unimportant)
+                          state)))))
 (define (fetch-known-modules)
   "Return a client-monad mval for an availq."
   (lambda (state)
@@ -440,4 +426,4 @@ an error if the response is not expected."
   (let ((rs (exchange (request (apply rq args)) target)))
     (if rs
         (rs-content rs)
-        (negs (apply rq args) '(exchange not-alive?)))))
+        (negs (apply rq args) '(exchange servers-down)))))
