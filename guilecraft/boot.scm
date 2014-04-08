@@ -36,6 +36,7 @@
   #:use-module (guilecraft module-server)
   #:use-module (guilecraft profile-server)
   #:use-module (guilecraft tools)
+  #:use-module (guilecraft clients repl)
   #:use-module (guilecraft clients cli)
   #:use-module (guilecraft clients web)
   #:use-module (guilecraft utils)
@@ -124,10 +125,12 @@ Options will be surrounded by square brackets if optional."
 	    ((option-ref options 'retrieve #f)
 	     (retrieve-module (option-ref options 'retrieve #f)))
 	    (else (ensure-config %client-config%)
+                  (load-config %client.conf%)
                   (client))))))
 
 (define (client)
-  (cli-client))
+  (let ((clients `((repl . ,repl-client))))
+    ((assq-ref clients %default-client%))))
 
 ;;; Just a place-holder
 (define (main-loop)
