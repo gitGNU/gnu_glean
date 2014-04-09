@@ -148,12 +148,32 @@ active-modules list."
 
 (define (update-scorecard scorecard blobhash assessment-result)
   "Return a new scorecard, on the basis of SCORECARD, with the score
-of the relevant blob adjusted based on ASSESSMENT-RESULT and
-BLOBHASH."
-  (let ((new-blob (update-blob ((scorecard-data scorecard) 'get
-                                blobhash) assessment-result))
-        (sc-data (scorecard-data scorecard)))
-    (sc-data 'put blobhash new-blob)))
+of the blob identified by BLOBHASH, and its parents, adjusted based on
+ASSESSMENT-RESULT."
+  ;; INFO: Currently this increases the assessed blobhash and all its
+  ;; parents by one. It may be desirable, when dealing with large
+  ;; sets, to either:
+  ;;
+  ;; - increase the score of each parent by 1/total-number-of-children
+  ;; (expensive lookup?)
+  ;; - increase the score of the parent to the score of the lowest
+  ;; scoring child in its tree.
+
+  (define (update-skorecard data blobhash)
+    (let ((blob (data 'get blobhash)))
+      (define (update-data)
+        (let ((new-blob (update-blob blob assessment-result)))
+          (data 'put blobhash new-blob)
+          data))
+
+      (if (null? (blob-parents blob))
+          (update-data)
+          ;; INFO: Currently this only modifies the car of parents,
+          ;; which could conceivably contain more than one element. We
+          ;; may need to process the other parents too… perhaps.
+          (update-skorecard (update-data) (car (blob-parents blob))))))
+
+  (make-scorecard (update-skorecard (scorecard-data scorecard) blobhash)))
 
 (define (update-blob blob assessment-result)
   "Return a new blob constructed on the basis of BLOB, with its score
