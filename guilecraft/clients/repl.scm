@@ -120,7 +120,7 @@
            (set! id (state rsp))
            (set! data (result rsp))
            (if (car (result rsp))
-               (guide `("Correct! The answer is indeed '~a.'\n\n"
+               (guide `("Correct! The answer is indeed '~a'.\n\n"
                         ,(s-text (cadr (result rsp)))))
                (guide `("Incorrect: the solution is:\n  '~a'\n\n"
                         ,(s-text (cadr (result rsp))))))
