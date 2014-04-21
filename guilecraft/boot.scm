@@ -35,7 +35,7 @@
   #:use-module (guilecraft config)
   #:use-module (guilecraft module-server)
   #:use-module (guilecraft profile-server)
-  #:use-module (guilecraft tools)
+  #:use-module (guilecraft library-store)
   #:use-module (guilecraft clients repl)
   #:use-module (guilecraft clients cli)
   #:use-module (guilecraft clients web)
@@ -108,7 +108,8 @@ Options will be surrounded by square brackets if optional."
     (let ((config (option-ref options 'config #f)))
       (if config (load-config config))
       (ensure-user-dirs %log-dir% %socket-dir% %library-dir%
-                        %lounge-dir% %wip-library-dir%)
+                        %lounge-dir% %wip-library-dir%
+                        %bak-library-dir%)
 
       (cond ((option-ref options 'module-server #f)
              (ensure-config %library-config%)
