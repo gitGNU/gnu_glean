@@ -93,8 +93,10 @@
 (define-module (guilecraft module-server)
   #:use-module (guilecraft base-server)
   #:use-module (ice-9 rdelim)
+  #:use-module (srfi srfi-1)
   #:use-module (srfi srfi-26)
   #:use-module (guilecraft base32)
+  #:use-module (guilecraft config)
   #:use-module (guilecraft gmodule-manager)
   #:use-module (guilecraft problem-type-manager)
   #:use-module (guilecraft data-types base-requests)
@@ -106,7 +108,7 @@
   #:use-module (guilecraft comtools)
   #:use-module (guilecraft gset-ops)
   #:use-module (guilecraft utils)
-  #:use-module (guilecraft store)
+  #:use-module (guilecraft library-store)
   #:use-module (guilecraft gmodule-manager)
   #:use-module (rnrs)
   #:export (module-server))
@@ -115,7 +117,6 @@
 ;;;; Define the actual module server and the server-dispatcher used
 ;;;; by it.
 (define (module-server module-socket-file)
-  (store-modules)
   (the-server module-socket-file server-dispatcher))
 
 (define (server-dispatcher request)
@@ -132,9 +133,11 @@ handling to request handler."
                             (eqv? err 'invalid-token)
                             (eqv? err 'invalid-auth-server)
                             (eqv? err 'invalid-set-ids)
+                            (eqv? err 'unknown-set-ids)
                             (eqv? err 'invalid-answer)
                             (eqv? err 'invalid-counter)
-                            (eqv? err 'invalid-blobhash))
+                            (eqv? err 'invalid-blobhash)
+                            (eqv? err 'unknown-set))
                         (begin (clog err)
                                (negs rq err)))
                        ((equal? err '(exchange (server system-error)))
@@ -182,10 +185,12 @@ COUNTER, or raise 'invalid-set."
           (else (challs (new-challenge (fetch-problem bh c)))))))
 
 (define (fetch-problem blobhash counter)
-    (let* ((set (find-hash-set blobhash))
-           (problems (set-contents set))
-           (num-of-problems (length problems)))
-      (list-ref problems (modulo counter num-of-problems))))
+  (let ((set (fetch-set blobhash (library-hash %library-dir%))))
+    (if set
+        (let* ((problems (set-contents set))
+               (num-of-problems (length problems)))
+          (list-ref problems (modulo counter num-of-problems)))
+        (raise 'unknown-set))))
 
 (define (eval-provider rq)
   (define (eval-answer problem answer)
@@ -219,114 +224,31 @@ COUNTER, or raise 'invalid-set."
                        (set-version set)
                        (set-synopsis set)
                        (set-description set)))
-               (stored-modules))))
+               (known-crownsets (library-hash %library-dir%)))))
 
 (define (hashmap-provider rq)
-  (let ((set-ids (hashmapq-ids rq)))
-    (if (not (list? set-ids))
-        (raise 'invalid-set-ids)
-        (hashmaps (generate-hashmap set-ids)))))
+  (if (and (list? (hashmapq-ids rq))
+           (fold (lambda (id previous) (and previous
+                                            (symbol? (car id))))
+                 #t (hashmapq-ids rq)))
+      (let ((sets (filter-map (lambda (id)
+                                (fetch-set-by-id (car id)
+                                                 (library-hash %library-dir%)))
+                              (hashmapq-ids rq))))
+        (if (not (null? sets))
+            (hashmaps (map crownset-hashmap sets))
+            (raise 'unknown-set-ids)))
+      (raise 'invalid-set-ids)))
 
 (define (sethashes-provider rq)
   (let ((set-ids (sethashesq-set-ids rq)))
     (if (not (list? set-ids))
         (raise 'invalid-set-ids)
-        (sethashess (map (lambda (set-id)
-                           (if (get-module set-id)
-                               (cons set-id (make-set-hash set-id))
-                               (cons set-id #f)))
-                         set-ids)))))
-
-;;;;; Module Management
-;;;; Define the functions used to provide the functionality defined
-;;;; above.
-
-;;;; Operating on the Module Store
-(define (get-module set-id)
-  "Wrapper around module-manager's set-id->set: it tries returning the
-module harder by triggering a reload of the modules if the module
-identified by SET-ID cannot be found."
-  (let ((module (set-id->set set-id)))
-    (if module
-        module
-        (begin
-          (store-modules)
-          (set-id->set set-id)))))
-
-(define (make-set-hash set-id)
-  (string->symbol
-   (bytevector->base32-string
-    (string->utf8 (symbol->string set-id)))))
-
-(define (hash set parent-ids)
-  "Returns a blobhash. A blobhash is not just a hash of the set-id,
-but a hash of the set-id appended by all parent-ids, to guarantee
-uniqueness of the blobhash." 
-  (make-set-hash
-   (fold-left symbol-append (set-id set) parent-ids)))
-
-;;;;; Hashmap generation
-;;;; First retrieve a tree of each module identified by blobhashes,
-;;;; then turn each id in the tree into a blobhash.
-(define (generate-hashmap id-pairs)
-  "Return a hashmap, built off of the list of ID-PAIRS. If it's
-empty, raise a warning."
-  (define (hashmap sets)
-    (map (hashtraverser-maker '()) sets))
-
-  (define (hashtraverser-maker parent-ids)
-    "Return a hashraverser specific PARENT-IDs."
-    (lambda (set)
-      "Return a set-hashmap, a list containing lists of blobhashes for
-each set and it's children that this hashtraverser is passed."
-      (cond ((not set)
-             '())
-            ; If set contains further sets, recurse!
-            ((set? (car (set-contents set)))
-             (let ((h (hash set parent-ids)))
-               (cons h
-                     ;; Parent-ids contains parent-ids in reverse order!
-                     (map (hashtraverser-maker (cons (set-id set)
-                                                     parent-ids))
-                          (set-contents set)))))
-            ; If set does not contain further sets, then we're done.
-            (else
-             (let ((h (hash set parent-ids)))
-               (cons h '()))))))
-
-  (hashmap (map (lambda (id-pair) (get-module (car id-pair))) id-pairs)))
-
-(define (find-hash-set blobhash)
-  "Return the set identified by BLOBHASH, or raise an error."
-
-  (define (find-set blobhash stored-modules)
-    "Return set who's blobhash matches BLOBHASH, starting on the
-assumption that the list of sets STORED-MODULES are crownsets."
-    (fold-left (moduletraverser-maker '() blobhash) #f stored-modules))
-
-  (define (moduletraverser-maker parent-ids target)
-    "Return a moduletraverser made for descendants of PARENT-IDS,
-searching for TARGET."
-    (lambda (found? set)
-      "Return SET if its blobhash (built with PARENT-IDS) matches
-TARGET, found? if it is not #f (it is then assumed to be TARGET's
-set), or else #f."
-      (cond (found? found?) ; Return found? if not #f
-            ((not set) #f) ; Return #f if set is #f
-            ;; If set contains further sets, recurse: it can't
-            ;; possibly be TARGET: that must be a rootset!
-            ((set? (car (set-contents set)))
-             ;; Due to cons below, PARENT-IDS contains parent-ids in
-             ;; reverse order!
-             (fold-left (moduletraverser-maker (cons (set-id set)
-                                                     parent-ids)
-                                               target)
-                        found?
-                        (set-contents set)))
-            ;; If SET does not contain further sets, and it's blobhash
-            ;; is equivalent to TARGET, then we've found TARGET!
-            ((eqv? (hash set parent-ids) target) set)
-            ;; Else we must continue looking.
-            (else #f))))
-
-  (find-set blobhash (stored-modules)))
+        (sethashess
+         (map (lambda (set-id)
+                (let ((hash (fetch-hash-by-id set-id
+                                              (library-hash %library-dir%))))
+                  (if hash
+                      (cons set-id hash)
+                      (cons set-id #f))))
+              set-ids)))))

@@ -46,9 +46,16 @@
   #:use-module (srfi srfi-1)
   #:use-module (srfi srfi-9)
   #:export (import-module
-	    export-module
-	    remove-module
-            compile-library))
+            export-module
+            remove-module
+            compile-library
+
+            fetch-set
+            fetch-hash-by-id
+            fetch-set-by-id
+            known-crownsets
+            crownset-hashmap
+            ))
 
 ;; A library is a database of all known sets indexed by their
 ;; fullhashes. A secondary index is stored in reference: minhash to
@@ -150,8 +157,8 @@ applying MVALUE to MPROC."
 ;; returns either a memoized store or compiles a store a-fresh when
 ;; the value is required.
 
-(define (hash-library library-dir)
-  "Return a hash, representing the state of %library-dir%."
+(define (library-hash library-dir)
+  "Return a hash, representing the state of LIBRARY-DIR."
   (cons library-dir
         (call-with-values open-sha256-port
           (lambda (port reader)
@@ -200,43 +207,52 @@ represented by LIBRARY-HASH-PAIR."
   "Return a new library consisting of LIBRARY augmented by SET."
   (let ((fullhash (set-fullhash set))
         (minhash  (crownset-minhash  set))
+        (cat      (library-cat  lib))
         (ref      (library-ref  lib)))
-    ;; FIXME: Check if fullhash already exists (e.g. exact same module
-    ;; in different file); if so proceed but emit warning.
-    (library (libv-cons fullhash set (library-cat lib))
+    (library (fold (lambda (hash-set-pair cat-so-far)
+                     (if (libv-assoc (car hash-set-pair) cat-so-far)
+                         cat-so-far
+                         (libv-cons (car hash-set-pair)
+                                    (cdr hash-set-pair)
+                                    cat-so-far)))
+                   cat
+                   (crownset-hash-index set))
              (if (libv-assoc minhash ref) ; if minhash exists, append
                  (let ((kv-pair (libv-assoc minhash ref)))
                    (libv-cons minhash (cons fullhash (cdr kv-pair))
                               (libv-delete minhash ref)))
                  (libv-cons minhash (list fullhash) ref)))))
 
-(define (libv-cat library-dir)
-  (library-cat (compile-library (hash-library library-dir))))
-(define (libv-ref library-dir)
-  (library-ref (compile-library (hash-library library-dir))))
+(define (libv-cat library-pair)
+  (library-cat (compile-library library-pair)))
+(define (libv-ref library-pair)
+  (library-ref (compile-library library-pair)))
 
-(define (fetch-set hash library-dir)
-  (cdr (libv-assoc hash (libv-cat library-dir))))
+(define (fetch-set hash library-pair)
+  (let ((set-pair? (libv-assoc hash (libv-cat library-pair))))
+    (if set-pair? (cdr set-pair?) #f)))
 ;; FIXME: Kludge: normally this should be a simple fetch-set, but
 ;; sethashesq currently only provides set-ids, as a result of knowns
 ;; not providing hashes yet.
-(define (fetch-hash-by-id id library-dir)
+(define (fetch-hash-by-id id library-pair)
   (libv-fold (lambda (hash set result)
                (cond (result                 result)
                      ((eqv? (set-id set) id) hash)
                      (else                   #f)))
              #f
-             (libv-cat library-dir)))
-(define (fetch-set-by-id id library-dir)
+             (libv-cat library-pair)))
+(define (fetch-set-by-id id library-pair)
   (libv-fold (lambda (hash set result)
                (cond (result                 result)
                      ((eqv? (set-id set) id) set)
                      (else                   #f)))
              #f
-             (libv-cat library-dir)))
+             (libv-cat library-pair)))
 
-(define (known-crownsets library-dir)
-  (vlist->list (vlist-map cdr (libv-cat library-dir))))
+(define (known-crownsets library-pair)
+  (map (lambda (hash) (fetch-set hash library-pair))
+       (flatten (vlist->list (vlist-map cdr
+                                        (libv-ref library-pair))))))
 
 ;;;;; Composite Transactions
 (define (import-module filename)
@@ -418,18 +434,29 @@ represented by LIBRARY-HASH-PAIR."
 
 
 ;;;;; Procedures for inclusion in Set
-
+;; FIXME: hash functions should work with promises?
 (define (crownset-minhash set)
   "Return a sha256 hash of SET's creator prefixed with its id."
-  (sha256-string (string-append (symbol->string (set-id set))
+  (sha256-symbol (string-append (symbol->string (set-id set))
                                 (set-creator set))))
+
+(define (crownset-hash-index set)
+  "Return a list containing pairs of every set-fullhash and set
+contained referred to by SET."
+  (define (minor-index set index)
+    (cond ((problem? (car (set-contents set)))
+           (cons (cons (rootset-hash set) set) index))
+          (else (cons (cons (set-fullhash set) set)
+                      (fold minor-index index (set-contents set))))))
+
+  (cons (cons (set-fullhash set) set) (fold minor-index '() (set-contents set))))
 
 (define (crownset-hashmap set)
   (define (hashtraverse-set set)
     "Return a set-hashmap, a list containing lists of blobhashes for
 each set and it's children that this hashtraverser is passed."
     (cond ((problem? (car (set-contents set)))
-           (rootset-hash set))
+           (list (rootset-hash set)))
           (else (list (set-fullhash set)
                       (map hashtraverse-set
                            (set-contents set))))))
@@ -440,8 +467,8 @@ each set and it's children that this hashtraverser is passed."
 all of SET's children."
   (define (hashtraverse-set set)
     (cond ((problem? (car (set-contents set)))
-           (rootset-hash set))
-          (else (apply sha256-string
+           (symbol->string (rootset-hash set)))
+          (else (apply sha256-symbol
                        (cons (symbol->string (set-id set))
                              (map hashtraverse-set
                                   (set-contents set)))))))
@@ -458,11 +485,13 @@ options fields of every problem in set-contents."
                                        (object->string
                                         (o-text option)))
                                      (problem-o problem)))))
-  (apply sha256-string (cons (symbol->string (set-id set))
+  (apply sha256-symbol (cons (symbol->string (set-id set))
                              (map problem-composite
                                   (set-contents set)))))
 
 ;;;;; Procedures for hash inclusion.
 (define (sha256-string . strings)
   (bytevector->base32-string
-   (sha256 (string->utf8 (string-join strings)))))
+   (sha256 (string->utf8 (string-join (map object->string strings))))))
+(define (sha256-symbol . strings)
+  (string->symbol (apply sha256-string strings)))
