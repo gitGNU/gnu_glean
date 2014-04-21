@@ -22,16 +22,12 @@
 ;; 59 Temple Place - Suite 330        Fax:    +1-617-542-2652
 ;; Boston, MA  02111-1307,  USA       gnu@gnu.org
 
-;;; Commentary:
+;;;; Commentary:
 ;;;
-;;; The Module Server manages known guilecraft modules and
-;;; module-hash-maps. It also provide challenge access and evaluation
-;;; functionality.
+;;; Functionality providing foundational monad logic. The library also
+;;; exposes procedures for a state, ‘Just‘ and an identity monad.
 ;;;
-;;; It uses the server communication framework defined in base-server,
-;;; implements a module server specific dispatcher, and the logic for
-;;; carrying out the functionality implied through the requests it
-;;; receives.
+;;;; Code:
 
 
 (define-module (guilecraft monads)
@@ -105,11 +101,13 @@
 
 (define-syntax define-monad
   (lambda (s)
-    "Define the monad under NAME, with the given bind and return methods."
+    "Define the monad under NAME, with the given bind and return
+methods."
     (define prefix (string->symbol "% "))
     (define (make-rtd-name name)
       (datum->syntax name
-                     (symbol-append prefix (syntax->datum name) '-rtd)))
+                     (symbol-append prefix
+                                    (syntax->datum name) '-rtd)))
 
     (syntax-case s (bind return)
       ((_ name (bind b) (return r))
@@ -120,10 +118,10 @@
                (make-monad b r))
 
              (define-syntax name
-               ;; An "inlined record", for use at expansion time.  The goal is
-               ;; to allow 'bind' and 'return' to be resolved at expansion
-               ;; time, in the common case where the monad is accessed
-               ;; directly as NAME.
+               ;; An "inlined record", for use at expansion time.  The
+               ;; goal is to allow 'bind' and 'return' to be resolved
+               ;; at expansion time, in the common case where the
+               ;; monad is accessed directly as NAME.
                (lambda (s)
                  (syntax-case s (%bind %return)
                    ((_ %bind)   #'b)

@@ -2,8 +2,8 @@
 
 ;;;; Client Base Library With Monads
 
-;; Copyright (C) 2008, 2010, 2012 Alex Sassmannshausen
-
+;; Copyright © 2014 Alex Sassmannshausen
+;;
 ;; This program is free software; you can redistribute it and/or
 ;; modify it under the terms of the GNU General Public License as
 ;; published by the Free Software Foundation; either version 3 of
@@ -101,7 +101,7 @@
 ;;;; Client Monad
 
 ;;;; A monad specialised for the client stateful tasks. It provides
-;;;; state management, and logging.
+;;;; state management, exception handling and logging.
 (define (logger st8ful)
   (if (relevant? 'debug)
       (let ((st8  (state st8ful))
