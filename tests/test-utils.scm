@@ -20,15 +20,14 @@
 ;; Boston, MA  02111-1307,  USA       gnu@gnu.org
 
 (define-module (tests test-utils)
+  #:use-module (guilecraft config)
   #:use-module (guilecraft data-types sets)
-
   #:use-module (guilecraft data-types gprofiles)
   #:use-module (guilecraft data-types scorecards)
-  #:use-module (guilecraft gprofile-ops)
 
   #:export (test-gmodule
-	    test-gprofile
-	    test-gprofile-2))
+            test-gprofile
+            test-gprofile-2))
 
 (define test-gmodule
   (module
@@ -40,28 +39,29 @@
     #:creator "Alex Sassmannshausen"
     #:attribution (list (media #:urls '("None")))
     #:contents (list
-		(set
-		 'gset-tag
-		 #:contents (list
-			     (problem
-			      (q "question?")
-			      (s "solution"))
-			     (problem
-			      (q "question?")
-			      (s "option b")
-			      (o "option a")
-			      (o "option b")
-			      (o "option c")))))
+                (set
+                 'gset-tag
+                 #:contents (list
+                             (problem
+                              (q "question?")
+                              (s "solution"))
+                             (problem
+                              (q "question?")
+                              (s "option b")
+                              (o "option a")
+                              (o "option b")
+                              (o "option c")))))
     #:resources (list (media #:urls '("http://some.url")))))
 
 (define test-gprofile
-  (make-profile "test"
-		(make-id "test" 1366787517)
-		'(the-test)
-		(make-scorecard '())))
+  (make-bare-profile "test"
+                     %lounge-port%
+                     %library-port%))
 
 (define test-gprofile-2
   (make-profile  "test2"
-		 (make-id "test2" 1366787517)
-		 '(test)
-		 (make-scorecard '())))
+                 (make-id "test2" 1366787517)
+                 %lounge-port%
+                 %library-port%
+                 '(test)
+                 (make-scorecard '())))

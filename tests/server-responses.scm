@@ -36,23 +36,23 @@
 ;; Test a well behaving symbol message (it uses gwrite)
 (test-assert "server-random-data"
   (unks? (rs-content (exchange 'random
-				 %module-socket-file%))))
+				 %library-port%))))
 
 (quickname "random-data")
 (quickcheck (lambda (_)
 	      (unks? (rs-content (exchange _
-					     %module-socket-file%))))
+					     %library-port%))))
 	    $symbol)
 
 (test-assert "server-unknown-request"
 	     (unks?
 	      (rs-content (exchange (request 'random)
-				    %module-socket-file%))))
+				    %library-port%))))
 
 (test-assert "server-alive"
 	     (acks?
 	      (rs-content (exchange (request (aliveq))
-				    %module-socket-file%))))
+				    %library-port%))))
 
 ;; (test-assert "get-profs"
 ;;   (fold (lambda (prof-list result)
@@ -79,8 +79,8 @@
 	      (rs-content
 	       (exchange
 		(request (challq test-gprofile
-                                 %profile-socket-file%))
-		%module-socket-file%))))
+                                 %lounge-port%))
+		%library-port%))))
 
 ;; test using real module
 (test-assert "server-challenge"
@@ -88,8 +88,8 @@
 	      (rs-content
 	       (exchange
 		(request (challq "token"
-                                 %profile-socket-file%))
-		%module-socket-file%))))
+                                 %lounge-port%))
+		%library-port%))))
 
 ;; test using bogus active-modules
 (test-assert "server-#f-eval"
@@ -97,9 +97,9 @@
 		   (rs-content
 		    (exchange
 		     (request (evalq test-gprofile
-                                     %profile-socket-file%
+                                     %lounge-port%
                                      "answer"))
-		     %module-socket-file%)))))
+		     %library-port%)))))
 
 ;; test using real module
 (test-assert "server-eval"
@@ -107,13 +107,13 @@
 	      (rs-content
 	       (exchange
 		(request (evalq "token"
-                                %profile-socket-file%
+                                %lounge-port%
                                 "answer"))
-		%module-socket-file%))))
+		%library-port%))))
 
 ;; (test-assert "server-quit"
-;; 	     (and (exchange (request (quit-rq)) %module-socket-file%)
+;; 	     (and (exchange (request (quit-rq)) %library-port%)
 ;; 		  (begin (usleep 500)
-;; 			 (not (alive? %module-socket-file%)))))
+;; 			 (not (alive? %library-port%)))))
 
 (test-end "server-tests")

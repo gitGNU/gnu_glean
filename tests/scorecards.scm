@@ -25,8 +25,7 @@
   #:use-module (quickcheck quickcheck)
   #:use-module (tests quickcheck-defs)
 
-  #:use-module (guilecraft data-types scorecards)
-  #:use-module (guilecraft scorecard-ops))
+  #:use-module (guilecraft data-types scorecards))
 
 (test-begin "scorecard-tests")
 

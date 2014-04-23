@@ -29,7 +29,7 @@
 (test-begin "comms-tests")
 
 (begin
-  (define path %module-socket-file%)
+  (define path %library-port%)
   (define address (make-socket-address AF_UNIX path)))
 
 ;; Write and immediately close: causes a crash when server attempts to
@@ -95,16 +95,16 @@
 
 ;; Use server as abstraction for port connection
 (test-assert "server-write"
-	     (let ((s (server %module-socket-file%)))
+	     (let ((s (server %library-port%)))
 	       (and (gwrite 'test s)
 		    (gread s)
 		    (close s))))
 
 ;; Use exchange as abstraction for port connection
 (test-assert "exchange-raw"
-	     (exchange 'test %module-socket-file%))
+	     (exchange 'test %library-port%))
 
 (test-assert "alive?"
-	     (alive? %module-socket-file%))
+	     (alive? %library-port%))
 
 (test-end "comms-tests")

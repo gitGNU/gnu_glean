@@ -3,8 +3,6 @@
 (define-module (guilecraft comtools)
   #:use-module (rnrs)
   #:use-module (guilecraft config)
-  #:use-module (guilecraft gprofile-ops)
-  #:use-module (guilecraft gmodule-ops)
   #:use-module (guilecraft utils)
   #:use-module (guilecraft record-index)
   #:use-module (guilecraft data-types base-requests)

@@ -40,20 +40,20 @@
 (test-assert "lesser-call/exchange"
 	     (negs?
               (lesser-call/exchange
-               %profile-socket-file%    ; target
+               %lounge-port%    ; target
                echoq                    ; request
                'token-lc/e 'msg-lc/e))) ; inputs
 (test-assert "call/exchange"
 	     (negs?
               (call/exchange
-               %profile-socket-file%    ; target
+               %lounge-port%    ; target
                negs? echoq              ; predicate, constructor
                'token-c/e 'msg-c/e)))   ; inputs
 ;; Lounge Test: Token update
 (test-assert "register-player"
              (let ((st8 (register-player "test"
-                                         %profile-socket-file%
-                                         %module-socket-file%)))
+                                         %lounge-port%
+                                         %library-port%)))
                (if (state? st8)
                    (begin
                      (set! test-tk (state-tk st8))
@@ -62,8 +62,8 @@
 ;; Library Test: Tmp update
 (test-assert "fetch-id-hash-pairs"
              (let ((st8ful ((fetch-id-hash-pairs '(test))
-                            (mk-state test-tk %profile-socket-file%
-                                      %module-socket-file%))))
+                            (mk-state test-tk %lounge-port%
+                                      %library-port%))))
                (if (stateful? st8ful)
                    (begin (logger st8ful)
                           (set! test-tmp (car (result st8ful)))
@@ -72,8 +72,8 @@
 ;; Lounge Test: Token and Tmp update
 (test-assert "push-active-modules"
              (let ((st8ful ((push-active-modules test-tmp)
-                            (mk-state test-tk %profile-socket-file%
-                                      %module-socket-file%))))
+                            (mk-state test-tk %lounge-port%
+                                      %library-port%))))
                (if (stateful? st8ful)
                    (begin (logger st8ful)
                           (set! test-tk  (state-tk (state st8ful)))
@@ -84,8 +84,8 @@
 (test-assert "fetch-hashmap"
              (let ((st8ful ((fetch-hashmap test-tmp)
                             (mk-state test-tk
-                                      %profile-socket-file%
-                                      %module-socket-file%))))
+                                      %lounge-port%
+                                      %library-port%))))
                (if (stateful? st8ful)
                    (begin (logger st8ful)
                           (set! test-tmp (car (result st8ful)))
@@ -94,8 +94,8 @@
 ;; Lounge Test: Token update
 (test-assert "push-scorecard"
              (let ((st8ful ((push-scorecard test-tmp)
-                            (mk-state test-tk %profile-socket-file%
-                                      %module-socket-file%))))
+                            (mk-state test-tk %lounge-port%
+                                      %library-port%))))
                (if (stateful? st8ful)
                    (begin (logger st8ful)
                           (set! test-tk (state-tk (state st8ful)))
@@ -104,8 +104,8 @@
 ;; Lounge Test: Token and Tmp update
 (test-assert "fetch-challenge-id"
              (let ((st8ful ((fetch-challenge-id)
-                            (mk-state test-tk %profile-socket-file%
-                                      %module-socket-file%))))
+                            (mk-state test-tk %lounge-port%
+                                      %library-port%))))
                (if (stateful? st8ful)
                    (begin (logger st8ful)
                           (set! test-tk  (state-tk (state st8ful)))
@@ -115,8 +115,8 @@
 ;; Library Test: Q update
 (test-assert "fetch-challenge"
              (let ((st8ful ((apply fetch-challenge test-tmp)
-                            (mk-state test-tk %profile-socket-file%
-                                      %module-socket-file%))))
+                            (mk-state test-tk %lounge-port%
+                                      %library-port%))))
                (if (stateful? st8ful)
                    (begin (logger st8ful)
                           (set! test-q (car (result st8ful)))
@@ -126,8 +126,8 @@
 (test-assert "fetch-evaluation"
              (let ((st8ful ((apply fetch-evaluation "test"
                                    test-tmp)
-                            (mk-state test-tk %profile-socket-file%
-                                      %module-socket-file%))))
+                            (mk-state test-tk %lounge-port%
+                                      %library-port%))))
                (if (stateful? st8ful)
                    (begin (logger st8ful)
                           (set! test-tmp (car (result st8ful)))
@@ -136,8 +136,8 @@
 ;; Lounge Test: Token
 (test-assert "push-evaluation"
              (let ((st8ful ((push-evaluation test-tmp)
-                            (mk-state test-tk %profile-socket-file%
-                                      %module-socket-file%))))
+                            (mk-state test-tk %lounge-port%
+                                      %library-port%))))
                (if (stateful? st8ful)
                    (begin (logger st8ful)
                           (set! test-tk  (state-tk (state st8ful)))
@@ -146,8 +146,8 @@
 ;; Lounge Test: Delete Test Account
 (test-assert "delete-user"
              (let ((st8ful ((push-deletion)
-                            (mk-state test-tk %profile-socket-file%
-                                      %module-socket-file%))))
+                            (mk-state test-tk %lounge-port%
+                                      %library-port%))))
                (if (stateful? st8ful)
                    (begin (logger st8ful)
                           (set! test-tk  (state-tk (state st8ful)))
@@ -160,8 +160,8 @@
                     (add-active-modules
                      '(test)
                      (register-player "mon-test"
-                                      %profile-socket-file%
-                                      %module-socket-file%))))
+                                      %lounge-port%
+                                      %library-port%))))
                (if (stateful? st8ful)
                    (begin (logger st8ful)
                           (set! test-mon (state st8ful))

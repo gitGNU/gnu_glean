@@ -38,16 +38,12 @@
                (tests hash)
                ;; FIXME: Old style scorecards
                ;;(tests scorecards)
-               ;; FIXME: Do we still use this?
-               ;;(tests profiler)
-               ;; FIXME: many failures
-               (tests gmodule-manager)
                ;; FIXME: many failures
                (tests gprofile-manager)
                ;; FIXME: Uses make-mod-blob
                ;; (tests comtools-offline)
                )
-	      (let* ((path %module-socket-file%))
+	      (let* ((path %library-port%))
 		(if (and (access? path W_OK)
 			 (catch #t
 			   (lambda ()

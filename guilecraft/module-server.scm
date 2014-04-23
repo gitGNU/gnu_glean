@@ -97,8 +97,6 @@
   #:use-module (srfi srfi-26)
   #:use-module (guilecraft base32)
   #:use-module (guilecraft config)
-  #:use-module (guilecraft gmodule-manager)
-  #:use-module (guilecraft problem-type-manager)
   #:use-module (guilecraft data-types base-requests)
   #:use-module (guilecraft data-types module-requests)
   #:use-module (guilecraft data-types profile-requests)
@@ -106,10 +104,8 @@
   #:use-module (guilecraft data-types sets)
   #:use-module (guilecraft data-types scorecards)
   #:use-module (guilecraft comtools)
-  #:use-module (guilecraft gset-ops)
   #:use-module (guilecraft utils)
   #:use-module (guilecraft library-store)
-  #:use-module (guilecraft gmodule-manager)
   #:use-module (rnrs)
   #:export (module-server))
 

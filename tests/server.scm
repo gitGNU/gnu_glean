@@ -29,7 +29,7 @@
 (test-begin "server-tests")
 
 (begin
-  (define path %module-socket-file%)
+  (define path %library-port%)
   (define address (make-socket-address AF_UNIX path)))
 
 ;; Test a well behaving symbol message (it uses gwrite)
