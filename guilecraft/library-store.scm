@@ -49,6 +49,7 @@
             export-module
             remove-module
             compile-library
+            library-hash
 
             fetch-set
             fetch-hash-by-id
@@ -488,10 +489,3 @@ options fields of every problem in set-contents."
   (apply sha256-symbol (cons (symbol->string (set-id set))
                              (map problem-composite
                                   (set-contents set)))))
-
-;;;;; Procedures for hash inclusion.
-(define (sha256-string . strings)
-  (bytevector->base32-string
-   (sha256 (string->utf8 (string-join (map object->string strings))))))
-(define (sha256-symbol . strings)
-  (string->symbol (apply sha256-string strings)))

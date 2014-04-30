@@ -27,15 +27,20 @@
 ;;; Code:
 
 (define-module (guilecraft hash)
+  #:use-module (guilecraft base32)
   #:use-module (guilecraft config)
   #:use-module (rnrs bytevectors)
   #:use-module (rnrs io ports)
   #:use-module (system foreign)
   #:use-module (srfi srfi-11)
-  #:export (sha256
+  #:export (
+            sha256
             open-sha256-port
             port-sha256
-            open-sha256-input-port))
+            open-sha256-input-port
+            sha256-string
+            sha256-symbol
+            ))
 
 
 ;;;
@@ -160,5 +165,13 @@ data read from PORT.  The thunk always returns the same value."
 
   (values (unbuffered (make-custom-binary-input-port "sha256" read! #f #f #f))
           get-hash))
+
+;; Convenience procedures to generate sha256 values.
+(define (sha256-string . strings)
+  (bytevector->base32-string
+   (sha256 (string->utf8 (string-join (map object->string strings))))))
+(define (sha256-symbol . strings)
+  (string->symbol (apply sha256-string strings)))
+
 
 ;;; hash.scm ends here
