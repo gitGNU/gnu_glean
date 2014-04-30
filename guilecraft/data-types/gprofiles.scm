@@ -2,68 +2,71 @@
 
 (define-module (guilecraft data-types gprofiles)
   #:use-module (guilecraft data-types scorecards)
+  #:use-module (guilecraft hash)
   #:use-module (guilecraft utils)
   #:use-module (rnrs)
   #:export (make-profile
-	    make-bare-profile
-	    profile?
-	    profile-name
-	    profile-id
-	    profile-prof-server
-	    profile-mod-server
-	    profile-active-modules
-	    profile-scorecard
+            make-bare-profile
+            profile?
+            profile-name
+            profile-id
+            profile-prof-server
+            profile-mod-server
+            profile-active-modules
+            profile-scorecard
 
-	    make-id
-	    id-symbol
-	    id-stamp
-	    id?
+            make-id
+            id-symbol
+            id-stamp
+            id?
 
-	    first-active-module
-	    rest-active-modules
-	    empty-active-modules?
-	    active-modules-ids
-	    active-modules-hashes
-	    create-profile-id
-	    update-id
-	    id->symbol
-	    name->hash
-	    id->hash))
+            first-active-module
+            rest-active-modules
+            empty-active-modules?
+            active-modules-ids
+            active-modules-hashes
+            create-profile-id
+            update-id
+            id->symbol
+            name->hash
+            id->hash
+            profile-hash
+            ))
 
 (define profile-rtd
   (make-record-type-descriptor 'profile #f #f #f #f
-			       '#((immutable name)
-				  (immutable id)
-				  (immutable prof-server)
-				  (immutable mod-server)
-				  (immutable active-modules)
-				  (immutable scorecard))))
+                               '#((immutable name)
+                                  (immutable id)
+                                  (immutable prof-server)
+                                  (immutable mod-server)
+                                  (immutable active-modules)
+                                  (immutable scorecard))))
 (define profile-rcd
   (make-record-constructor-descriptor
    profile-rtd #f
    (lambda (new)
      (lambda (name id prof-server mod-server active-modules scorecard)
        (cond ((not (string? name))
-	      (raise '(make-profile invalid-name)))
-	     ((not (id? id))
-	      (raise '(make-profile invalid-id)))
-	     ((not (string? prof-server))
-	      (raise '(make-profile invalid-prof-server)))
-	     ((not (string? mod-server))
-	      (raise '(make-profile invalid-mod-server)))
-	     ((not (list? active-modules))
-	      (raise '(make-profile invalid-active-modules)))
-	     ((not (scorecard? scorecard))
-	      (raise '(make-profile invalid-scorecard)))
-	     (else (new name id prof-server mod-server
-			active-modules scorecard)))))))
+              (raise '(make-profile invalid-name)))
+             ((not (id? id))
+              (raise '(make-profile invalid-id)))
+             ((not (string? prof-server))
+              (raise '(make-profile invalid-prof-server)))
+             ((not (string? mod-server))
+              (raise '(make-profile invalid-mod-server)))
+             ((not (list? active-modules))
+              (raise '(make-profile invalid-active-modules)))
+             ((not (scorecard? scorecard))
+              (raise '(make-profile invalid-scorecard)))
+             (else (new name id prof-server mod-server
+                        active-modules scorecard)))))))
 (define bare-profile-rcd
   (make-record-constructor-descriptor
    profile-rtd #f
    (lambda (new)
      (lambda (name prof-server mod-server)
        (new name (create-profile-id name) prof-server mod-server
-	    '() (make-empty-scorecard))))))
+            '() (make-empty-scorecard))))))
 (define make-profile (record-constructor profile-rcd))
 (define make-bare-profile (record-constructor bare-profile-rcd))
 (define profile? (record-predicate profile-rtd))
@@ -76,8 +79,8 @@
 
 (define id-rtd
   (make-record-type-descriptor 'id #f #f #f #f
-			       '#((immutable symbol)
-				  (immutable stamp))))
+                               '#((immutable symbol)
+                                  (immutable stamp))))
 (define id-rcd
   (make-record-constructor-descriptor id-rtd #f #f))
 (define make-id (record-constructor id-rcd))
@@ -108,8 +111,8 @@
 (define (create-profile-id name)
   "Generate the ID on the basis of name and current-time."
   (make-id (string->symbol name) (string->symbol
-				  (number->string
-				   (current-time)))))
+                                  (number->string
+                                   (current-time)))))
 
 (define (update-id profile)
   "Convenience procedure to generate new ID for existing profile."
@@ -118,7 +121,7 @@
 (define (id->symbol profile-id)
   (if (id? profile-id)
       (symbol-append (id-symbol profile-id)
-		     (id-stamp profile-id))
+                     (id-stamp profile-id))
       (assertion-violation
        'id->symbol
        "PROFILE-ID is not a profile id."
@@ -139,3 +142,6 @@
        'name->hash
        "PROFILE-NAME is not a profile string."
        profile-name)))
+
+(define* (profile-hash name #:optional (password ""))
+  (sha256-string name password))
