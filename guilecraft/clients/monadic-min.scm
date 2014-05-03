@@ -155,41 +155,22 @@ applying MVALUE to MPROC."
 (define (register-player name profile-server module-server)
   "Return 'lounge state' upon successful registration with the
 lounge using NAME. Raise an Exchange Error otherwise."
-  (catch 'exchange-error
-    (lambda ()
-      (let ((rs (call/exchange profile-server auths? regq
-                               name profile-server module-server)))
+  (let ((rs (call/exchange profile-server auths? regq
+                           name profile-server module-server)))
+    (if (nothing? rs)
+        rs
         (mk-state (auths-token rs) (auths-prof-server rs)
-                  (auths-mod-server rs))))
-    (lambda (key neg)
-      (let ((orig (neg-orig neg))
-            (k    (cadr (neg-msg neg))))
-        (if (eqv? k 'servers-down)
-            (nothing 'lounge-down
-                     profile-server)
-            (nothing k
-                     (list (regq-name orig)
-                           (regq-prof-server orig)
-                           (regq-mod-server orig))))))))
+                  (auths-mod-server rs)))))
 
 (define (authenticate-player name profile-server)
   "Return 'lounge state' upon successful authentication with the
 lounge using NAME. Raise an Exchange Error otherwise."
-  (catch 'exchange-error
-    (lambda ()
-      (let ((rs (call/exchange profile-server auths? authq
-                               name)))
+  (let ((rs (call/exchange profile-server auths? authq
+                           name)))
+    (if (nothing? rs)
+        rs
         (mk-state (auths-token rs) (auths-prof-server rs)
-                  (auths-mod-server rs))))
-    (lambda (key neg)
-      (let ((orig (neg-orig neg))
-            (k    (cadr (neg-msg neg))))
-        (if (eqv? k 'servers-down)
-            (nothing 'lounge-down
-                     profile-server)
-            (nothing k
-                     (list (authq-name orig)
-                           profile-server)))))))
+                  (auths-mod-server rs)))))
 
 ;;;;; Composite Transactions
 (define (add-active-modules module-ids state)
@@ -277,8 +258,10 @@ servers is down."
                knowns? knownq           ; predicate, constructor
                ;; add search?           ; input
                )))
-      (stateful (knowns-list rs)
-                state))))
+      (if (nothing? rs)
+          rs
+          (stateful (knowns-list rs)
+                    state)))))
 (define (push-deletion)
   "Return a client-monad mval for a delq request."
   (lambda (state)
@@ -289,10 +272,12 @@ the token in STATE. Raise an Exchange Error otherwise."
                (state-lng state)        ; lounge connection
                acks? delq               ; predicate, constructor
                (state-tk state))))      ; input
-      (stateful '(#t)
-                (mk-state #f
-                          #f
-                          #f)))))
+      (if (nothing? rs)
+          rs
+          (stateful '(#t)
+                    (mk-state #f
+                              #f
+                              #f))))))
 
 (define (fetch-challenge-id)
   "Return chauths or ERROR."
@@ -301,11 +286,13 @@ the token in STATE. Raise an Exchange Error otherwise."
                (state-lng state)        ; lounge connection
                chauths? chauthq         ; predicate, constructor
                (state-tk state))))      ; input
-      (stateful `(,(chauths-hash    rs)
-                  ,(chauths-counter rs))
-                (mk-state (chauths-token rs)
-                          (state-lng     state)
-                          (state-lib     state))))))
+      (if (nothing? rs)
+          rs
+          (stateful `(,(chauths-hash    rs)
+                      ,(chauths-counter rs))
+                    (mk-state (chauths-token rs)
+                              (state-lng     state)
+                              (state-lib     state)))))))
 
 (define (fetch-challenge blobhash blobcounter)
   "Return challs or ERROR."
@@ -314,8 +301,10 @@ the token in STATE. Raise an Exchange Error otherwise."
                (state-lib state)        ; library connection
                challs? challq           ; predicate, constructor
                blobhash blobcounter)))  ; inputs
-      (stateful `(,(challs-challenge rs))
-                state))))
+      (if (nothing? rs)
+          rs
+          (stateful `(,(challs-challenge rs))
+                    state)))))
 
 (define (fetch-evaluation answer blobhash blobcounter)
   "Return evals or ERROR."
@@ -325,9 +314,11 @@ the token in STATE. Raise an Exchange Error otherwise."
                evals? evalq             ; predicate, constructor
                blobhash blobcounter
                answer)))                ; inputs
-      (stateful `(,(evals-result   rs)
-                  ,(evals-solution rs))
-                state))))
+      (if (nothing? rs)
+          rs
+          (stateful `(,(evals-result   rs)
+                      ,(evals-solution rs))
+                    state)))))
 
 (define (push-evaluation evaluation)
   "Return evals or ERROR."
@@ -337,10 +328,12 @@ the token in STATE. Raise an Exchange Error otherwise."
                auths? evauthq           ; predicate, constructor
                (state-tk state)         ; token
                evaluation)))            ; input
-      (stateful '(unimportant)
-                (mk-state (auths-token           rs)
-                          (auths-prof-server     rs)
-                          (auths-mod-server      rs))))))
+      (if (nothing? rs)
+          rs
+          (stateful '(unimportant)
+                    (mk-state (auths-token           rs)
+                              (auths-prof-server     rs)
+                              (auths-mod-server      rs)))))))
 
 (define (fetch-hashmap crownsets)
   "Return hashmaps or ERROR."
@@ -349,8 +342,10 @@ the token in STATE. Raise an Exchange Error otherwise."
                (state-lib state)        ; library connection
                hashmaps? hashmapq       ; predicate, constructor
                crownsets)))             ; input
-      (stateful `(,(hashmaps-content rs))
-                state))))
+      (if (nothing? rs)
+          rs
+          (stateful `(,(hashmaps-content rs))
+                    state)))))
 
 (define (fetch-id-hash-pairs set-ids)
   "Return a sethashess or ERROR."
@@ -359,10 +354,12 @@ the token in STATE. Raise an Exchange Error otherwise."
                (state-lib state)        ; library connection
                sethashess? sethashesq   ; predicate, constructor
                set-ids)))               ; input
-      (stateful `(,(sethashess-set-ids rs))
-                (mk-state (state-tk  state)
-                          (state-lng state)
-                          (state-lib state))))))
+      (if (nothing? rs)
+          rs
+          (stateful `(,(sethashess-set-ids rs))
+                    (mk-state (state-tk  state)
+                              (state-lng state)
+                              (state-lib state)))))))
 
 (define (push-scorecard hashmap)
   "Return an auths confirming success, a set!s requesting further data
@@ -372,15 +369,18 @@ or ERROR."
                      'scorecard              ; thing to be updated,
                      hashmap                 ; input,
                      (state-lesser state)))) ; token, lounge
-      (if (set!s? rs)
-          (stateful `(,(set!s-value rs))
-                    (mk-state (set!s-token rs)
-                              (state-lng   state)
-                              (state-lib   state)))
-          (stateful '(unimportant)
-                    (mk-state (auths-token       rs)
-                              (auths-prof-server rs)
-                              (auths-mod-server  rs)))))))
+      (cond ((nothing? rs)
+             rs)
+            ((set!s? rs)
+             (stateful `(,(set!s-value rs))
+                       (mk-state (set!s-token rs)
+                                 (state-lng   state)
+                                 (state-lib   state))))
+            (else
+             (stateful '(unimportant)
+                       (mk-state (auths-token       rs)
+                                 (auths-prof-server rs)
+                                 (auths-mod-server  rs))))))))
 
 (define (push-active-modules id-hash-pairs)
   "Return an auths confirming success, a set!s requesting further data
@@ -390,15 +390,18 @@ or ERROR."
                       'active-modules         ; thing to be updated,
                       id-hash-pairs           ; input,
                       (state-lesser state)))) ; token, lounge
-      (if (set!s? rs)
-          (stateful `(,(set!s-value rs))
-                    (mk-state (set!s-token rs)
-                              (state-lng state)
-                              (state-lib state)))
-          (stateful 'unimportant
-                    (mk-state (auths-token       rs)
-                              (auths-prof-server rs)
-                              (auths-mod-server  rs)))))))
+      (cond ((nothing? rs)
+             rs)
+            ((set!s? rs)
+             (stateful `(,(set!s-value rs))
+                       (mk-state (set!s-token rs)
+                                 (state-lng state)
+                                 (state-lib state))))
+            (else
+             (stateful 'unimportant
+                       (mk-state (auths-token       rs)
+                                 (auths-prof-server rs)
+                                 (auths-mod-server  rs))))))))
 
 ;;;;; Helper Procedures
 (define (push-data type data token profile-server)
@@ -409,7 +412,7 @@ or ERROR."
     (if (or (auths? result)
             (set!s? result))
         result
-        (throw 'exchange-error result))))
+        (nothing 'exchange-error result))))
 
 (define (call/exchange target predicate rq . args)
   "Return the expected request of performing an RQ with ARGS on TARGET
@@ -418,7 +421,7 @@ expected."
   (let ((result (apply lesser-call/exchange target rq args)))
     (if (predicate result)
         result
-        (throw 'exchange-error result))))
+        (nothing 'exchange-error result))))
 
 (define (lesser-call/exchange target rq . args)
   "Return the request of performing an RQ with ARGS on TARGET. Raise

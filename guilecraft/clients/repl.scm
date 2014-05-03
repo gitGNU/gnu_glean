@@ -34,6 +34,7 @@
   #:use-module (guilecraft monads)
   #:use-module (guilecraft config)
   #:use-module (guilecraft data-types sets)
+  #:use-module (guilecraft utils)
   #:export (
             repl-client
             register
@@ -162,6 +163,10 @@
          (guide `("Your session is no longer valid. ")
                 '("Please sign in again.\n"))
          (suggest help-login help-register))
+        ((eqv? 'exchange-error (nothing-id rsp))
+         (guide '("We got a negative response from the server.\n")
+                '("It is:\n"))
+         (rprinter (nothing-context rsp)))
         (else (inform rsp))))
 
 (define (guide . output)
