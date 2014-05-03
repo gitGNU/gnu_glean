@@ -12,3 +12,4 @@ Makefile.am
 /guilecraft/tmp.scm
 /session.scm
 /wip-modules/
+TAGS
