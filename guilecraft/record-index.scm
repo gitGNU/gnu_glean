@@ -77,8 +77,6 @@ known-rcs."
     (echoq . ,echoq)
     (echos . ,echos)
     (regq . ,regq)
-    (modq . ,modq)
-    (mods . ,mods)
     (set!q . ,set!q)
     (set!s . ,set!s)
     (delq . ,delq)

@@ -20,15 +20,6 @@
 	    regq-prof-server
 	    regq-mod-server
 
-	    modq
-	    modq?
-	    modq-token
-	    modq-field
-	    mods
-	    mods?
-	    mods-token
-	    mods-value
-
 	    set!q
 	    set!q?
 	    set!q-token
@@ -112,32 +103,6 @@
 (define regq-name (record-accessor regq-rtd 0))
 (define regq-prof-server (record-accessor regq-rtd 1))
 (define regq-mod-server (record-accessor regq-rtd 2))
-
-;; Modq Request provide a symbol identifier of the field indicated
-;; for modification (e.g. 'active-modules, 'name, 'prof-server, etc.)
-(define modq-rtd
-  (make-record-type-descriptor 'modq #f #f #f #f
-			       '#((immutable token)
-				  (immutable field))))
-(define modq-rcd
-  (make-record-constructor-descriptor modq-rtd #f #f))
-(define modq (record-constructor modq-rcd))
-(define modq? (record-predicate modq-rtd))
-(define modq-token (record-accessor modq-rtd 0))
-(define modq-field (record-accessor modq-rtd 1))
-
-;; Mod Responses provide the value of the field identified in
-;; modq back to the client.
-(define mods-rtd
-  (make-record-type-descriptor 'mods #f #f #f #f
-			       '#((immutable token)
-				  (immutable value))))
-(define mods-rcd
-  (make-record-constructor-descriptor mods-rtd #f #f))
-(define mods (record-constructor mods-rcd))
-(define mods? (record-predicate mods-rtd))
-(define mods-token (record-accessor mods-rtd 0))
-(define mods-value (record-accessor mods-rtd 1))
 
 ;; Set! Requests provide a token, a symbol identifier of the field
 ;; indicated for modification (e.g. 'active-modules, 'name,
