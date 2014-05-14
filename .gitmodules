@@ -1,0 +1,3 @@
+[submodule "artanis"]
+	path = artanis
+	url = https://github.com/NalaGinrut/artanis.git
