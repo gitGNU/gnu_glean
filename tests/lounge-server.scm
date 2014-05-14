@@ -73,6 +73,12 @@
                (and (auths? rs)
                     (string=? (auths-prof-server rt) %nlng)
                     (string=? (auths-mod-server  rs) %nlib))))
+(test-assert "Premature Fetch Challenge"
+             (let* ((tk (auths-token (server-dispatcher
+                                      (request (authq %name)))))
+                    (rs (server-dispatcher (request (chauthq tk)))))
+               (and (set!s? rs)
+                    (eqv? (set!s-field rs) 'active-modules))))
 (test-assert "Set Active Mod"
              (let* ((tk (auths-token (server-dispatcher
                                       (request (authq %name)))))

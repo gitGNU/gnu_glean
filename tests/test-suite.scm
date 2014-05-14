@@ -55,7 +55,9 @@
 		    (use-modules (tests comtools-online)
                                  ;; FIXME: Causes Crash
 				 ;;(tests server-responses)
-                                 (tests clients-min))
+                                 ;;DEPRECATED:
+                                 ;;(tests clients-min)
+                                 )
 		    (begin (format #t "
 No server is running; we will skip communication tests.\n")
 			   (newline)))))))

@@ -136,12 +136,15 @@ out of sync if they are."
            ((mlet* lounge-monad
                    ((new-tk            (authenticate token))
                     (lng               (fetch-lounge))
-                    (hash/counter-pair (scorecard-next new-tk lng))
-                    (hash       ->     (car hash/counter-pair))
-                    (counter    ->     (cdr hash/counter-pair)))
-                   (if (pair? hash/counter-pair)
-                       (chauths new-tk hash counter)
-                       (set!s new-tk 'scorecard hash/counter-pair)))
+                    (hash/counter-pair (scorecard-next new-tk lng)))
+                   (cond ((pair? hash/counter-pair)
+                          (chauths new-tk (car hash/counter-pair)
+                                   (cdr hash/counter-pair)))
+                         ((not hash/counter-pair)
+                          (set!s new-tk 'active-modules '()))
+                         (else
+                          (set!s new-tk 'scorecard
+                                 hash/counter-pair))))
             %lounge-dir%)))))
 
 (define (process-evauthq rq)

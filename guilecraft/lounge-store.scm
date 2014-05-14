@@ -150,7 +150,7 @@ applying MVALUE to MPROC."
     (let* ((profile (profile-from-token new-tk lng))
            (diff (missing-blobs profile)))
       (cond ((null? (profile-active-modules profile))
-             (statef (nothing 'no-active-modules '())))
+             (statef #f lng-dir))       ; no active-modules yet
             ;; If scorecard & active modules are in sync, proceed…
             ((null? diff)
              (statef (fetch-next-hash-counter-pair profile) lng-dir))
