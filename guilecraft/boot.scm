@@ -29,9 +29,9 @@
   #:use-module (ice-9 format)      ; Print output
   #:use-module (ice-9 getopt-long) ; Manipulate command-line options
   #:use-module (srfi srfi-19)      ; To store and manipulate time
-			           ; effectively
+                                   ; effectively
   #:use-module (tests test-suite)  ; In case of -t option: run
-				   ; test-suite
+                                   ; test-suite
   #:use-module (guilecraft config)
   #:use-module (guilecraft module-server)
   #:use-module (guilecraft profile-server)
@@ -42,39 +42,46 @@
   #:use-module (guilecraft utils)
   #:export (boot))
 
+(define clients `((repl . ,repl-client)
+                  (web  . ,web-client)))
+(define (client? value)
+  (if (boolean? value)
+      value
+      (assq-ref clients (string->symbol value))))
+
 ;; Define the list of accepted options and their special properties
-(define *option-grammar* '((client (single-char #\c) (value #f))
-			   (config (value #t))
-			   (edit (single-char #\e) (value #t))
-                           (help (single-char #\h))
-			   (install (single-char #\i) (value #t))
-			   (listen)
-			   (module-server (single-char #\m))
-			   (profile-server (single-char #\p))
-			   (retrieve (single-char #\r) (value #t))
-			   (test-suite (single-char #\t))
-                           (usage (single-char #\u))
-                           (version (single-char #\v))
-			   (web (single-char #\w) (value #f))))
+(define *option-grammar* `((client (single-char #\c) (value optional)
+                                   (predicate ,client?))
+                           (config (value #t))
+                           (edit (single-char #\e) (value #t))
+                           (help (single-char #\h) (value #f))
+                           (install (single-char #\i) (value #t))
+                           (listen (value #f))
+                           (module-server (single-char #\m) (value #f))
+                           (profile-server (single-char #\p) (value #f))
+                           (retrieve (single-char #\r) (value #t))
+                           (test-suite (single-char #\t) (value #f))
+                           (usage (single-char #\u) (value #f))
+                           (version (single-char #\v) (value #f))))
 
 (define usage
   (lambda ()
     "Dispatch a usage message, with permitted command-line options, to gdisplay for output."
     (define repr-option 
       (lambda (opt)
-	"Return, as string the car of OPT.
+        "Return, as string the car of OPT.
 Options will be surrounded by square brackets if optional."
-	(string-append "[--" (object->string (car opt)) "]")))
+        (string-append "[--" (object->string (car opt)) "]")))
     (format #t "usage: guilecraft ~a \n"
-	    (string-join (map repr-option *option-grammar*)))
+            (string-join (map repr-option *option-grammar*)))
     (format #t "For now you should run guilecraft with the --listen flag, or one of the other flags — else guilecraft will return a read prompt and exit.\n")))
   
   
 
 (define version (lambda ()
-		  (begin
-		    (display "Guilecraft version 0.1")
-		    (newline))))
+                  (begin
+                    (display "Guilecraft version 0.1")
+                    (newline))))
 
 ;; krap code
 (define parse-options (lambda (args)
@@ -86,12 +93,12 @@ Options will be surrounded by square brackets if optional."
           (usage)
           (exit 0)))
     (if (option-ref opts 'test-suite #f)
-	(begin (run-test-suite)
-	       (exit 0)))
+        (begin (run-test-suite)
+               (exit 0)))
     (if (option-ref opts 'test-server #f)
-	(begin
-	  (run-server-tests)
-	  (exit 0)))
+        (begin
+          (run-server-tests)
+          (exit 0)))
     (if (option-ref opts 'version #f)
         (begin
           (version)
@@ -102,9 +109,9 @@ Options will be surrounded by square brackets if optional."
 
 (define (boot args)
   "Set the locale, parse the options, drop into the main loop."
-  (setlocale LC_ALL "")		; sets the locale to the system locale
+  (setlocale LC_ALL "")                ; sets the locale to the system locale
   (let ((options (parse-options args))
-	(start-clock (current-time)))
+        (start-clock (current-time)))
     (let ((config (option-ref options 'config #f)))
       (if config (load-config config))
       (ensure-user-dirs %log-dir% %socket-dir% %library-dir%
@@ -114,24 +121,28 @@ Options will be surrounded by square brackets if optional."
       (cond ((option-ref options 'module-server #f)
              (ensure-config %library-config%)
              (load-config %library.conf%)
-	     (module-server %library-port%))
-	    ((option-ref options 'profile-server #f)
+             (module-server %library-port%))
+            ((option-ref options 'profile-server #f)
              (ensure-config %lounge-config%)
              (load-config %lounge.conf%)
-	     (profile-server %lounge-port%))
-	    ((option-ref options 'install #f)
-	     (install-module (option-ref options 'install #f)))
-	    ((option-ref options 'edit #f)
-	     (edit-module (option-ref options 'edit #f)))
-	    ((option-ref options 'retrieve #f)
-	     (retrieve-module (option-ref options 'retrieve #f)))
-	    (else (ensure-config %client-config%)
+             (profile-server %lounge-port%))
+            ((option-ref options 'install #f)
+             (install-module (option-ref options 'install #f)))
+            ((option-ref options 'edit #f)
+             (edit-module (option-ref options 'edit #f)))
+            ((option-ref options 'retrieve #f)
+             (retrieve-module (option-ref options 'retrieve #f)))
+            (else (ensure-config %client-config%)
                   (load-config %client.conf%)
-                  (client))))))
+                  (client (option-ref options 'client #f)
+                          %default-client%))))))
 
-(define (client)
-  (let ((clients `((repl . ,repl-client))))
-    ((assq-ref clients %default-client%))))
+(define (client client default)
+  (let ((selected (if (boolean? client)
+                      default
+                      (string->symbol client))))
+    (format #t "Client: ~a\nDefault: ~a\n" selected default)
+    ((assq-ref clients selected))))
 
 ;;; Just a place-holder
 (define (main-loop)

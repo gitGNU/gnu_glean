@@ -13,7 +13,9 @@ coding:utf-8
 ;;
 ;;; Code:
 
-(add-to-load-path (dirname (current-filename))) ;location of guilecraft libs
+(add-to-load-path (dirname (current-filename))) ; add guilecraft libs
+(add-to-load-path (string-append (dirname (current-filename))
+                                 "/artanis")) ; add artanis
 
 ((@ (guilecraft boot) boot) (program-arguments))
 
