@@ -104,13 +104,10 @@
 ;;;; state management, exception handling and logging.
 (define (logger st8ful)
   (if (relevant? 'debug)
-      (let ((st8  (state st8ful))
-            (port (if (string? %log-file%)
+      (let ((port (if (string? %log-file%)
                       (open-file %log-file% "a")
                       (current-output-port))))
-        (format port "Value: ~a, Token: ~a, Lounge: ~a, Library: ~a.\n"
-                (result st8ful) (state-tk st8) (state-lng st8)
-                (state-lib st8))
+        (format port "~a.\n" (object->string st8ful))
         (if (string? %log-file%) (close-output-port port)))))
 
 (define (state-lesser state)
