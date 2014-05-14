@@ -38,10 +38,9 @@
                (tests hash)
                ;; FIXME: Old style scorecards
                ;;(tests scorecards)
-               ;; FIXME: many failures
-               (tests gprofile-manager)
                ;; FIXME: Uses make-mod-blob
                ;; (tests comtools-offline)
+               (tests lounge-server)
                )
 	      (let* ((path %library-port%))
 		(if (and (access? path W_OK)
@@ -57,8 +56,8 @@
                                  ;; FIXME: Causes Crash
 				 ;;(tests server-responses)
                                  (tests clients-min))
-		    (begin (simple-format #t "No server is running; we will skip
-communication tests.")
+		    (begin (format #t "
+No server is running; we will skip communication tests.\n")
 			   (newline)))))))
 
 (define (with-cwd path thunk)
