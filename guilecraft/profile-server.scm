@@ -105,9 +105,9 @@ server, module server and the message contained in RQ."
            (raise '(process-echoq invalid-token)))
           (else
            ((mlet* lounge-monad
-                   ((new-token (authenticate token))
-                    (lng       (fetch-lounge))
-                    (profile   (profile-from-token new-token lng)))
+                   ((new-token  (authenticate token))
+                    (lng        (fetch-lounge))
+                    (profile -> (profile-from-token new-token lng)))
                    (echos new-token
                           (profile-prof-server profile)
                           (profile-mod-server profile)

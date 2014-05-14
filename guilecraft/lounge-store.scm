@@ -351,7 +351,7 @@ hashmap."
                     #t #f))
               #t active-modules))
       (cond ((not (list? active-modules))
-             (throw 'modify 'invalid-active-modules))
+             (throw 'modify `(invalid-active-modules ,active-modules)))
             ((not (parse-active-modules))
              (throw 'modify `(invalid-active-module ,active-modules)))
             ;; Structure OK: we can update the active-modules.
