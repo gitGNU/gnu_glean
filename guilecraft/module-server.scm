@@ -223,18 +223,21 @@ COUNTER, or raise 'invalid-set."
                (known-crownsets (library-hash %library-dir%)))))
 
 (define (hashmap-provider rq)
-  (if (and (list? (hashmapq-ids rq))
-           (fold (lambda (id previous) (and previous
-                                            (symbol? (car id))))
-                 #t (hashmapq-ids rq)))
-      (let ((sets (filter-map (lambda (id)
-                                (fetch-set-by-id (car id)
-                                                 (library-hash %library-dir%)))
-                              (hashmapq-ids rq))))
-        (if (not (null? sets))
-            (hashmaps (map crownset-hashmap sets))
-            (raise 'unknown-set-ids)))
-      (raise 'invalid-set-ids)))
+  (let ((ids (hashmapq-ids rq)))
+    (if (and (list? ids)
+             (fold (lambda (id previous)
+                     (and previous (pair? id) (symbol? (car id))))
+                   #t ids))
+        (let ((sets (filter-map
+                     (lambda (id)
+                       (fetch-set-by-id (car id)
+                                        (library-hash
+                                         %library-dir%)))
+                     ids)))
+          (if (not (null? sets))
+              (hashmaps (map crownset-hashmap sets))
+              (raise 'unknown-set-ids)))
+        (raise 'invalid-set-ids))))
 
 (define (sethashes-provider rq)
   (let ((set-ids (sethashesq-set-ids rq)))
