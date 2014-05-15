@@ -31,7 +31,7 @@
 	    hashmapq
 	    hashmapq?
 	    hashmapq-token
-	    hashmapq-ids
+	    hashmapq-hashpairs
 	    hashmaps
 	    hashmaps?
 	    hashmaps-token
@@ -40,12 +40,12 @@
 	    sethashesq
 	    sethashesq?
 	    sethashesq-token
-	    sethashesq-set-ids
+	    sethashesq-fullhashes
 
 	    sethashess
 	    sethashess?
 	    sethashess-token
-	    sethashess-set-ids))
+	    sethashess-hashpairs))
 
 ;;; Game Requests
 (define challq-rtd
@@ -116,12 +116,12 @@
 ;; set ids.
 (define hashmapq-rtd
   (make-record-type-descriptor 'hashmapq #f #f #f #f
-			       '#((immutable blobhashes))))
+			       '#((immutable hashpairs))))
 (define hashmapq-rcd
   (make-record-constructor-descriptor hashmapq-rtd #f #f))
 (define hashmapq (record-constructor hashmapq-rcd))
 (define hashmapq? (record-predicate hashmapq-rtd))
-(define hashmapq-ids (record-accessor hashmapq-rtd 0))
+(define hashmapq-hashpairs (record-accessor hashmapq-rtd 0))
 
 ;; hashmap responses provide a nested list of blobhashes, for the
 ;; requesting profile server.
@@ -137,19 +137,19 @@
 ;; Requires '(set-id …) pairs
 (define sethashesq-rtd
   (make-record-type-descriptor 'sethashesq #f #f #f #f
-			       '#((immutable set-ids))))
+			       '#((immutable fullhashes))))
 (define sethashesq-rcd
   (make-record-constructor-descriptor sethashesq-rtd #f #f))
 (define sethashesq (record-constructor sethashesq-rcd))
 (define sethashesq? (record-predicate sethashesq-rtd))
-(define sethashesq-set-ids (record-accessor sethashesq-rtd 0))
+(define sethashesq-fullhashes (record-accessor sethashesq-rtd 0))
 
 ;; Return '((set-id . sethash) …) pairs
 (define sethashess-rtd
   (make-record-type-descriptor 'sethashess #f #f #f #f
-			       '#((immutable set-ids))))
+			       '#((immutable hashpairs))))
 (define sethashess-rcd
   (make-record-constructor-descriptor sethashess-rtd #f #f))
 (define sethashess (record-constructor sethashess-rcd))
 (define sethashess? (record-predicate sethashess-rtd))
-(define sethashess-set-ids (record-accessor sethashess-rtd 0))
+(define sethashess-hashpairs (record-accessor sethashess-rtd 0))

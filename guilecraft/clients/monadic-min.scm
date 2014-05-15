@@ -43,11 +43,6 @@
   #:use-module (guilecraft data-types scorecards)
   #:use-module (srfi srfi-26)
   #:export (
-            ;; monad helpers
-            echor
-            mechor
-            state-lesser
-            logger
             ;; state generating transactions
             register-player
             authenticate-player
@@ -57,33 +52,21 @@
             submit-answer
             delete-player
             known-modules
-            ;; atomic/monadic transactions
-            fetch-known-modules
-            push-deletion
-            fetch-challenge-id
-            fetch-challenge
-            fetch-evaluation
-            push-evaluation
-            fetch-hashmap
-            fetch-id-hash-pairs
-            push-scorecard
-            push-active-modules
-            ;; Helper Procedures
-            lesser-call/exchange
-            call/exchange
-            push-data
             ))
 
-;; A monadic value in the lounge-monad context is a procedure taking
+;; A monadic value in the client-monad context is a procedure taking
 ;; TOKEN, LOUNGE and LIBRARY as arguments, and carrying out an
-;; exchange with the lounge through these. e.g:
+;; exchange with the lounge through these.
+;;
+;; Echor and Mechor server to test: they send a message to the lounge
+;; and receive the message echoed if authentication succeeded.
 (define (echor message)
   (lambda (state)
     (let ((rs (rs-content
                (exchange
                 (request (echoq (car state) message))
                 (cadr state)))))
-      (stateful `(,echos-message rs) (list (echos-token   rs)
+      (stateful (echos-message rs) (list (echos-token   rs)
                                            (echos-lounge  rs)
                                            (echos-library rs))))))
 (define (mechor message base)
@@ -93,7 +76,7 @@
                 (request (echoq (car state)
                                 (string-append message base)))
                 (cadr state)))))
-      (stateful `(,echos-message rs) (list (echos-token   rs)
+      (stateful (echos-message rs) (list (echos-token   rs)
                                            (echos-lounge  rs)
                                            (echos-library rs))))))
 
@@ -170,25 +153,23 @@ lounge using NAME. Raise an Exchange Error otherwise."
                   (auths-mod-server rs)))))
 
 ;;;;; Composite Transactions
-(define (add-active-modules module-ids state)
-  "Given a set of module-ids provided, for instance, by the player
+(define (add-active-modules fullhashes state)
+  "Given a set of FULLHASHES provided, for instance, by the player
 choosing from amongst a list of modules, carry out the necessary
 transactions to activate these modules for the player."
   ((mlet*
        client-monad
        ((test       (test-servers))
-        ;; Get sethash pairs
-        (hash-pairs (fetch-id-hash-pairs module-ids))
+        ;; Get set-hashpairs (minhash . fullhash)
+        (hashpairs  (fetch-hashpairs fullhashes))
         ;; Update profile active modules, retrieve newly required
         ;; hashmaps.
-        (req-maps   (push-active-modules (car hash-pairs)))
+        (req-maps   (push-active-modules (car hashpairs)))
         ;; Get hashmaps if necessary.
-        ;;FIXME: implement if clause for this.
         (hashmap    (if (eqv? req-maps 'unimportant)
                         (return req-maps)
                         (fetch-hashmap (car req-maps)))))
        ;; Update profile scorecards with hashmaps.
-       ;;FIXME: only if step above required.
        (if (eqv? hashmap 'unimportant)
            (return hashmap)
            (push-scorecard (car hashmap)))) state))
@@ -344,16 +325,16 @@ the token in STATE. Raise an Exchange Error otherwise."
           (stateful `(,(hashmaps-content rs))
                     state)))))
 
-(define (fetch-id-hash-pairs set-ids)
+(define (fetch-hashpairs fullhashes)
   "Return a sethashess or ERROR."
   (lambda (state)
     (let ((rs (call/exchange
                (state-lib state)        ; library connection
                sethashess? sethashesq   ; predicate, constructor
-               set-ids)))               ; input
+               fullhashes)))            ; input
       (if (nothing? rs)
           rs
-          (stateful `(,(sethashess-set-ids rs))
+          (stateful `(,(sethashess-hashpairs rs))
                     (mk-state (state-tk  state)
                               (state-lng state)
                               (state-lib state)))))))
@@ -379,13 +360,13 @@ or ERROR."
                                  (auths-prof-server rs)
                                  (auths-mod-server  rs))))))))
 
-(define (push-active-modules id-hash-pairs)
+(define (push-active-modules hashpairs)
   "Return an auths confirming success, a set!s requesting further data
 or ERROR."
   (lambda (state)
     (let* ((rs (apply push-data
                       'active-modules         ; thing to be updated,
-                      id-hash-pairs           ; input,
+                      hashpairs               ; input,
                       (state-lesser state)))) ; token, lounge
       (cond ((nothing? rs)
              rs)

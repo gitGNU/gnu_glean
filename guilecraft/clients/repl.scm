@@ -55,6 +55,7 @@
 
 (define id #f)                  ; Session data, mutable!
 (define data #f)                ; Last response, mutable!
+(define mods-assoc #f)          ; assoc of set-ids -> hashes, mutable!
 
 (define* (register name #:optional lounge library)
   (let* ((lng (if lounge lounge %default-lounge%))
@@ -89,15 +90,23 @@
     (cond ((stateful? rsp)
            (set! id (state rsp))
            (set! data (result rsp))
-           (for-each
-            (lambda (module)
-              (guide `("~a: ~a (~a)\n  ~a\n" ,(car module) ,(cadr module)
-                       ,(caddr module) ,(cadddr module))))
-            (result rsp))
+           (set! mods-assoc
+                 (map
+                  (lambda (module)
+                    ;; id, name, version, synopsis
+                    (guide `("~a: ~a (~a)\n  ~a\n" ,(cadr module)
+                             ,(caddr module) ,(cadddr module)
+                             ,(cadddr (cdr module))))
+                    ;; assoc list entry: (id . hash)
+                    (cons (cadr module) (car module)))
+                  (result rsp)))
            (suggest help-activate help-next help-detail))
           (else (nothing-handler rsp)))))
 (define (activate . ids)
-  (let ((rsp (add-active-modules ids id)))
+  (let* ((hashes (map (lambda (id)
+                        (assv-ref mods-assoc id))
+                      ids))
+         (rsp    (add-active-modules hashes id)))
     (cond ((stateful? rsp)
            (begin
              (set! id (state rsp))

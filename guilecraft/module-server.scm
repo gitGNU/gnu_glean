@@ -129,6 +129,7 @@ handling to request handler."
                             (eqv? err 'invalid-token)
                             (eqv? err 'invalid-auth-server)
                             (eqv? err 'invalid-set-ids)
+                            (eqv? err 'invalid-fullhashes)
                             (eqv? err 'unknown-set-ids)
                             (eqv? err 'invalid-answer)
                             (eqv? err 'invalid-counter)
@@ -214,40 +215,30 @@ COUNTER, or raise 'invalid-set."
                     (fetch-solution problem)))))))
 
 (define (known-mods-provider rq)
-  (knowns (map (lambda (set)
-                 (list (set-id set)
-                       (set-name set)
-                       (set-version set)
-                       (set-synopsis set)
-                       (set-description set)))
-               (known-crownsets (library-hash %library-dir%)))))
+  (knowns (known-crownsets (library-hash %library-dir%))))
 
 (define (hashmap-provider rq)
-  (let ((ids (hashmapq-ids rq)))
-    (if (and (list? ids)
-             (fold (lambda (id previous)
-                     (and previous (pair? id) (symbol? (car id))))
-                   #t ids))
+  (let ((hashpairs (hashmapq-hashpairs rq)))
+    (if (and (list? hashpairs)
+             (fold (lambda (hashpair previous)
+                     (and previous (pair? hashpair)
+                          (blobhash? (car hashpair))   ; minhash
+                          (blobhash? (cdr hashpair)))) ; fullhash
+                   #t hashpairs))
         (let ((sets (filter-map
-                     (lambda (id)
-                       (fetch-set-by-id (car id)
-                                        (library-hash
-                                         %library-dir%)))
-                     ids)))
+                     (lambda (hashpair)
+                       (fetch-set (cdr hashpair)
+                                  (library-hash %library-dir%)))
+                     hashpairs)))
           (if (not (null? sets))
               (hashmaps (map crownset-hashmap sets))
               (raise 'unknown-set-ids)))
         (raise 'invalid-set-ids))))
 
 (define (sethashes-provider rq)
-  (let ((set-ids (sethashesq-set-ids rq)))
-    (if (not (list? set-ids))
-        (raise 'invalid-set-ids)
-        (sethashess
-         (map (lambda (set-id)
-                (let ((hash (fetch-hash-by-id set-id
-                                              (library-hash %library-dir%))))
-                  (if hash
-                      (cons set-id hash)
-                      (cons set-id #f))))
-              set-ids)))))
+  (let ((fullhashes (sethashesq-fullhashes rq)))
+    (if (and (list? fullhashes)
+             (null? (filter (negate blobhash?) fullhashes)))
+        (sethashess (set-hashpairs fullhashes
+                                   (library-hash %library-dir%)))
+        (raise 'invalid-fullhashes))))

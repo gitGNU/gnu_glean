@@ -52,8 +52,8 @@
             library-hash
 
             fetch-set
-            fetch-hash-by-id
-            fetch-set-by-id
+            set-fullhash
+            set-hashpairs
             known-crownsets
             crownset-hashmap
             ))
@@ -237,28 +237,36 @@ LIBRARY-PAIR."
 LIBRARY-PAIR."
   (let ((set-pair? (libv-assoc hash (libv-cat library-pair))))
     (if set-pair? (cdr set-pair?) #f)))
-;; FIXME: Kludge: normally this should be a simple fetch-set, but
-;; sethashesq currently only provides set-ids, as a result of knowns
-;; not providing hashes yet.
-(define (fetch-hash-by-id id library-pair)
-  (libv-fold (lambda (hash set result)
-               (cond (result                 result)
-                     ((eqv? (set-id set) id) hash)
-                     (else                   #f)))
-             #f
-             (libv-cat library-pair)))
-(define (fetch-set-by-id id library-pair)
-  (libv-fold (lambda (hash set result)
-               (cond (result                 result)
-                     ((eqv? (set-id set) id) set)
-                     (else                   #f)))
-             #f
-             (libv-cat library-pair)))
 
 (define (known-crownsets library-pair)
-  (map (lambda (hash) (fetch-set hash library-pair))
-       (flatten (vlist->list (vlist-map cdr
-                                        (libv-ref library-pair))))))
+  "Return a list containing summary information on all known crownsets
+in the library derived from LIBRARY-PAIR."
+  (map (lambda (hash)
+         (let ((set (fetch-set hash library-pair)))
+           (list hash
+                 (set-id set)
+                 (set-name set)
+                 (set-version set)
+                 (set-synopsis set)
+                 (set-description set))))
+       (known-crownset-hashes library-pair)))
+
+(define (known-crownset-hashes library-pair)
+  "Return a list of all known crownset hashes in libv-ref derived
+from LIBRARY-PAIR."
+  (flatten (vlist->list (vlist-map cdr
+                                   (libv-ref library-pair)))))
+
+(define (set-hashpairs fullhashes library-pair)
+  "Return a list of (minhash . fullhash) for each hash in FULLHASH, if
+it is known in LIBRARY-PAIR."
+  (map (lambda (fullhash)
+         (let ((minhash (and=> (fetch-set fullhash library-pair)
+                               crownset-minhash)))
+           (if minhash
+               (cons minhash fullhash)    ; valid hashpair
+               (cons #f      fullhash)))) ; invalid fullhash
+       fullhashes))
 
 ;;;;; Composite Transactions
 (define (import-module filename)

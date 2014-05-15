@@ -360,8 +360,8 @@ hashmap."
         (fold (lambda (current previous)
                 (if (and previous
                          (pair? current)
-                         (symbol? (car current))
-                         (blobhash? (cdr current)))
+                         (blobhash? (car current))  ; minhash
+                         (blobhash? (cdr current))) ; fullhash
                     #t #f))
               #t active-modules))
       (cond ((not (list? active-modules))

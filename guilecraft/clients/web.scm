@@ -391,14 +391,17 @@
            (tbody
             ,(map (lambda (module)
                     `(tr
+                      ;; hash
                       ,(if active
                            `(td (input (@ (type "checkbox")
                                           (name ,(car module)))
                                        " "))
                            "")
-                      (td (p ,(sa (cadr module) " ("
-                                  (caddr module) ")")))
-                      (td (p ,(cadddr module)))))
+                      ;; name (version)
+                      (td (p ,(sa (caddr module) " ("
+                                  (cadddr module) ")")))
+                      ;; synopsis
+                      (td (p ,(cadddr (cdr module))))))
                   modules)))))
 
   (let ((rsp (known-modules state)))
