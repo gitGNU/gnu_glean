@@ -82,6 +82,16 @@
                 #:optional (value #f) (previous #f))
   (mecha-pdiff hash profile field value previous))
 
+(define-record-type <tk-entry>
+  (tk-entry hash time)
+  tk-entry?
+  (hash tk-hash)
+  (time tk-time))
+(define (mk-time ctime) (+ ctime (timeout)))
+(define (tk-expired? tk-time ctime)
+  (<= tk-time ctime))
+(define timeout (const 600))
+
 ;;; for monads:
 ;; synonym for stateful, to force list around value(s)
 (define* (statef value #:optional (state 'unimportant))
@@ -285,31 +295,36 @@ value is unspecified."
 (define (fresh-tk hash tokens profiles time)
   (if (vhash-assoc hash profiles)
       (let ((tk  (make-token hash time))
-            (tks (clear-tokens hash tokens)))
-        (cons (vhash-cons tk hash tks) tk))
+            (tks (clear-tokens hash tokens time)))
+        (cons (vhash-cons tk (tk-entry hash (mk-time time)) tks) tk))
       #f))
 (define (renew-tk token tokens time)
   (let ((auth-pair (vhash-assoc token tokens)))
-    (if auth-pair
-        (let ((tk (make-token (cdr auth-pair) time)))
-          (cons (vhash-cons tk
-                            (cdr auth-pair)
-                            (vhash-delete token tokens))
-                tk))
-        #f)))
+    (cond ((and auth-pair
+                (tk-expired? (tk-time (cdr auth-pair)) time))
+           (cons (vhash-delete token tokens) #f))
+          (auth-pair
+           (let ((tk (make-token (tk-hash (cdr auth-pair)) time)))
+             (cons (vhash-cons tk
+                               (tk-entry (tk-hash (cdr auth-pair))
+                                         (mk-time time))
+                               (vhash-delete token tokens))
+                   tk)))
+          (else #f))))
 (define (profile-from-token token lounge)
   (let* ((hash    (vhash-assoc token (lounge-tokens lounge)))
          (profile (if hash
-                      (vhash-assoc (cdr hash)
+                      (vhash-assoc (tk-hash (cdr hash))
                                    (lounge-profiles lounge))
                       hash)))
     (if profile (cdr profile) profile)))
 
 (define (token? obj) (number? obj))
 
-(define (clear-tokens hash tokens)
+(define (clear-tokens hash tokens time)
   (vhash-fold (lambda (k v result)
-                (if (string=? v hash)
+                (if (or (string=?    (tk-hash v) hash)
+                        (tk-expired? (tk-time v) time))
                     result
                     (vhash-cons k v result)))
               vlist-null
