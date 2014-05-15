@@ -225,11 +225,16 @@ represented by LIBRARY-HASH-PAIR."
                  (libv-cons minhash (list fullhash) ref)))))
 
 (define (libv-cat library-pair)
+  "Return the catalogue of sets derived from LIBRARY-PAIR."
   (library-cat (compile-library library-pair)))
 (define (libv-ref library-pair)
+  "Return the min-hash->full-hash catalogue derived from
+LIBRARY-PAIR."
   (library-ref (compile-library library-pair)))
 
 (define (fetch-set hash library-pair)
+  "Return the set identified by HASH from the library derived from
+LIBRARY-PAIR."
   (let ((set-pair? (libv-assoc hash (libv-cat library-pair))))
     (if set-pair? (cdr set-pair?) #f)))
 ;; FIXME: Kludge: normally this should be a simple fetch-set, but

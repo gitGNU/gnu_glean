@@ -210,10 +210,9 @@ applying MVALUE to MPROC."
     (statef (lounge lng-dir diff) lng-dir)))
 
 ;;;;; I/O Lounge Store Operations
-;; A lounge is a database of all known sets indexed by their
-;; fullhashes. A secondary index is stored in reference: minhash to
-;; fullhash. The latter can be used to ensure continuity even after
-;; set upgrades.
+;; A lounge is a database of all known profiles stored in a vhash
+;; table. A secondary index of tokens to hashes is maintained in the
+;; lounge to manage transactional authentication.
 
 (define lounge
   (let ((profiles vlist-null)
