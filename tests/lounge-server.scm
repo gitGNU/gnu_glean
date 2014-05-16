@@ -24,7 +24,10 @@
   #:use-module (guilecraft config)
   #:use-module (guilecraft data-types base-requests)
   #:use-module (guilecraft data-types profile-requests)
-  #:use-module (guilecraft profile-server))
+  #:use-module (guilecraft monads)
+  #:use-module (guilecraft lounge-store)
+  #:use-module (guilecraft profile-server)
+  #:use-module (ice-9 vlist))
 
 (define (server-dispatcher rq)
   ((@@  (guilecraft profile-server) server-dispatcher) rq))
@@ -124,6 +127,9 @@
                                       (request (authq %name)))))
                     (dels (server-dispatcher (request (delq tk)))))
                (and (acks? dels)
-                    (delq? (ack-orig dels)))))
+                    (delq? (ack-orig dels))
+                    (let ((lng (car (result ((fetch-lounge) "")))))
+                      (and (vlist-null? (lounge-profiles lng))
+                           (vlist-null? (lounge-tokens   lng)))))))
 
 (test-end "lounge-server")

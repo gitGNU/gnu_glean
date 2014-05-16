@@ -58,6 +58,7 @@
             view-profile
             modify-profile
             delete-profile
+            purge-profile
             scorecard-diff
             scorecard-next
 
@@ -211,8 +212,16 @@ NEW-TK."
 
 (define (delete-profile token lounge)
   (lambda (lng-dir)
-    (let ((hash (cdr (vhash-assoc token (lounge-tokens lounge)))))
+    (let* ((tk-entry (cdr (vhash-assoc token
+                                       (lounge-tokens lounge))))
+           (hash     (tk-hash tk-entry)))
       (statef (pdiff hash #f 'delete) lng-dir))))
+
+(define (purge-profile token)
+  "Return a lounge mvalue which, when resolved, forces the lounge to
+destroy TOKEN in its token table."
+  (lambda (lng-dir)
+    (statef (lounge lng-dir 'purge token) lng-dir)))
 
 (define (fetch-lounge)
   (lambda (lng-dir)
@@ -230,40 +239,44 @@ NEW-TK."
 (define lounge
   (let ((profiles vlist-null)
         (tokens   vlist-null))
-    (lambda*
-     (lng-dir #:optional operation)
-     (if (vlist-null? profiles)
-         (set! profiles (compile-lounge lng-dir)))
-     (cond ((not operation) (make-lounge profiles tokens))
-           ((eqv? 'tks operation) tokens)
-           ((pdiff? operation)
-            ;; use futures to write to disk as well as set!
-            (write-pdiff lng-dir operation)
-            (set! profiles (store-profile (pdiff-hash     operation)
-                                          (pdiff-profile  operation)
-                                          (pdiff-field    operation)
-                                          (pdiff-value    operation)
-                                          (pdiff-previous operation)
-                                          profiles)))
-           ((token?        operation)
-            (let ((tk-pair (renew-tk operation
-                                     tokens
-                                     (current-time))))
-              (if tk-pair
-                  (begin
-                    (set! tokens (car tk-pair))
-                    (cdr tk-pair))
-                  #f)))
-           (else
-            (let ((tk-pair (fresh-tk operation
-                                     tokens
-                                     profiles
-                                     (current-time))))
-              (if tk-pair
-                  (begin
-                    (set! tokens (car tk-pair))
-                    (cdr tk-pair))
-                  #f)))))))
+    (lambda* (lng-dir #:optional operation . params)
+      (if (vlist-null? profiles)
+          (set! profiles (compile-lounge lng-dir)))
+      (cond ((not operation) (make-lounge profiles tokens))
+            ;; Update Profile
+            ((pdiff? operation)
+             ;; use futures to write to disk as well as set!
+             (write-pdiff lng-dir operation)
+             (set! profiles (store-profile (pdiff-hash     operation)
+                                           (pdiff-profile  operation)
+                                           (pdiff-field    operation)
+                                           (pdiff-value    operation)
+                                           (pdiff-previous operation)
+                                           profiles)))
+            ;; Delete Token (Delete Profile step 2)
+            ((eqv? operation 'purge)
+             (set! tokens (vhash-delete (car params) tokens)))
+            ;; Authenticate
+            ((token?        operation)
+             (let ((tk-pair (renew-tk operation
+                                      tokens
+                                      (current-time))))
+               (if tk-pair
+                   (begin
+                     (set! tokens (car tk-pair))
+                     (cdr tk-pair))
+                   #f)))
+            ;; Login
+            (else
+             (let ((tk-pair (fresh-tk operation
+                                      tokens
+                                      profiles
+                                      (current-time))))
+               (if tk-pair
+                   (begin
+                     (set! tokens (car tk-pair))
+                     (cdr tk-pair))
+                   #f)))))))
 
 (define (compile-lounge lng-dir)
   ;; Perform ftw etc.

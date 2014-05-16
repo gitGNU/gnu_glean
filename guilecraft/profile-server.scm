@@ -232,6 +232,7 @@ if RQ parses correctly. Otherwise raise a an error."
                 ((new-tk  (authenticate tk))
                  (lng     (fetch-lounge))
                  (diff    (delete-profile new-tk lng))
-                 (ignore  (update-lounge diff)))
+                 (ignore  (update-lounge diff))
+                 (ignore2 (purge-profile tk)))
                 (acks rq)) %lounge-dir%)
         (raise '(process-delq invalid-token)))))
