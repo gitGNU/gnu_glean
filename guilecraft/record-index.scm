@@ -77,6 +77,8 @@ known-rcs."
     (echoq . ,echoq)
     (echos . ,echos)
     (regq . ,regq)
+    (viewq . ,viewq)
+    (views . ,views)
     (set!q . ,set!q)
     (set!s . ,set!s)
     (delq . ,delq)

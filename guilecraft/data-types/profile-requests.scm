@@ -20,6 +20,14 @@
 	    regq-prof-server
 	    regq-mod-server
 
+            viewq
+            viewq?
+            viewq-token
+            views
+            views?
+            views-token
+            views-details
+
 	    set!q
 	    set!q?
 	    set!q-token
@@ -103,6 +111,30 @@
 (define regq-name (record-accessor regq-rtd 0))
 (define regq-prof-server (record-accessor regq-rtd 1))
 (define regq-mod-server (record-accessor regq-rtd 2))
+
+;; View requests provide a means to retriew profile details from the
+;; lounge. They should contain a valid token. They are responded to
+;; with a view response.
+(define viewq-rtd
+  (make-record-type-descriptor 'viewq #f #f #f #f
+			       '#((immutable token))))
+(define viewq-rcd
+  (make-record-constructor-descriptor viewq-rtd #f #f))
+(define viewq (record-constructor viewq-rcd))
+(define viewq? (record-predicate viewq-rtd))
+(define viewq-token (record-accessor viewq-rtd 0))
+
+(define views-rtd
+  (make-record-type-descriptor 'views #f #f #f #f
+			       '#((immutable token)
+                                  (immutable details))))
+(define views-rcd
+  (make-record-constructor-descriptor views-rtd #f #f))
+(define views (record-constructor views-rcd))
+(define views? (record-predicate views-rtd))
+(define views-token (record-accessor views-rtd 0))
+(define views-details (record-accessor views-rtd 1))
+
 
 ;; Set! Requests provide a token, a symbol identifier of the field
 ;; indicated for modification (e.g. 'active-modules, 'name,

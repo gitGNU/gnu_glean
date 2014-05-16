@@ -55,6 +55,7 @@
             fetch-lounge
             update-lounge
             register-profile
+            view-profile
             modify-profile
             delete-profile
             scorecard-diff
@@ -187,6 +188,18 @@ applying MVALUE to MPROC."
                        (make-bare-profile name lng-port lib-port)
                        'register)
                 lng-dir))))
+
+(define (view-profile new-tk lng)
+  "Return a lounge-monad mvalue which, when resolved, will return the
+profile stored in the lounge LNG that corresponds to the token
+NEW-TK."
+  (lambda (lng-dir)
+    (let ((profile (profile-from-token new-tk lng)))
+      (statef (list (profile-name           profile)
+                    (profile-prof-server    profile)
+                    (profile-mod-server     profile)
+                    (profile-active-modules profile))
+              lng-dir))))
 
 (define (modify-profile new-tk field value lng)
   (lambda (lng-dir)

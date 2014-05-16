@@ -88,6 +88,14 @@
                (and (set!s? rs)
                     (eqv? (set!s-field rs) 'scorecard)
                     (equal? (set!s-value rs) %act-mods))))
+(test-assert "View Profile"
+             (let* ((tk (auths-token (server-dispatcher
+                                      (request (authq %name)))))
+                    (rs (server-dispatcher (request (viewq tk)))))
+               (and (views? rs)
+                    (equal? (views-details rs)
+                            (list %name %nlng %nlib
+                                  %act-mods)))))
 (test-assert "Update Scorecard"
              (let* ((tk (auths-token (server-dispatcher
                                       (request (authq %name)))))
