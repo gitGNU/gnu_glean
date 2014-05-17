@@ -97,6 +97,8 @@
 ;;; for monads:
 ;; synonym for stateful, to force list around value(s)
 (define* (statef value #:optional (state 'unimportant))
+  "Return a stateful with VALUE wrapped in a list and a default STATE
+of 'unimportant."
   (stateful (list value) state))
 
 ;; synonym for result, to take into account nothing possibility.
@@ -146,20 +148,27 @@ applying MVALUE to MPROC."
 ;;;;; Monadic Procedures
 
 (define (login hash)
+  "Return a lounge mvalue which, when resolved, returns a new token
+for HASH if the user identified by it is known or nothing if they are
+not."
   (lambda (lng-dir)
     (let* ((tk  (lounge lng-dir hash))
            (ret (if tk tk (nothing 'unknown-user '()))))
       (statef ret lng-dir))))
 
 (define (authenticate token)
+  "Return a lounge mvalue which, when resolved, returns a new token if
+TOKEN is currently a valid token, or nothing if it is not."
   (lambda (lng-dir)
     (let* ((tk  (lounge lng-dir token))
            (ret (if tk tk (nothing 'invalid-token (list token)))))
       (statef ret lng-dir))))
 
-(define (scorecard-next new-tk lng)
+(define (scorecard-next token lounge)
+  "Return a lounge mvalue which, when resolved, returns the next
+eligible challenge for the profile associated with TOKEN in LOUNGE."
   (lambda (lng-dir)
-    (let* ((profile (profile-from-token new-tk lng))
+    (let* ((profile (profile-from-token token lounge))
            (diff (missing-blobs profile)))
       (cond ((null? (profile-active-modules profile))
              (statef #f lng-dir))       ; no active-modules yet
@@ -170,9 +179,12 @@ applying MVALUE to MPROC."
             (else
              (statef diff lng-dir))))))
 
-(define (scorecard-diff new-tk result lng)
+(define (scorecard-diff token result lounge)
+  "Return a lounge mvalue which, when resolved, returns a pdiff for
+the profile associated with TOKEN in LOUNGE on the basis of the
+challenge evaluation RESULT."
   (lambda (lng-dir)
-    (let* ((profile (profile-from-token new-tk lng))
+    (let* ((profile (profile-from-token token lounge))
            (scores  (update-scorecard
                      (profile-scorecard profile)
                      (car (fetch-next-hash-counter-pair profile))
@@ -182,6 +194,9 @@ applying MVALUE to MPROC."
               lng-dir))))
 
 (define (register-profile name password lng-port lib-port lounge)
+  "Return a lounge mvalue which, when resolved, returns a pdiff for
+a new profile created using NAME, PASSWORD, LNG-PORT and LIB-PORT in
+LOUNGE."
   (lambda (lng-dir)
     (if (check-name name (lounge-profiles lounge))
         (statef (nothing 'username-taken (list name)))
@@ -190,27 +205,32 @@ applying MVALUE to MPROC."
                        'register)
                 lng-dir))))
 
-(define (view-profile new-tk lng)
+(define (view-profile token lounge)
   "Return a lounge-monad mvalue which, when resolved, will return the
-profile stored in the lounge LNG that corresponds to the token
-NEW-TK."
+profile stored in the lounge LOUNGE that corresponds to the token
+TOKEN."
   (lambda (lng-dir)
-    (let ((profile (profile-from-token new-tk lng)))
+    (let ((profile (profile-from-token token lounge)))
       (statef (list (profile-name           profile)
                     (profile-prof-server    profile)
                     (profile-mod-server     profile)
                     (profile-active-modules profile))
               lng-dir))))
 
-(define (modify-profile new-tk field value lng)
+(define (modify-profile token field value lounge)
+  "Return a lounge mvalue which, when resolved, returns a pdiff for
+the profile identified by TOKEN in LOUNGE, where FIELD has been
+updated according to VALUE."
   (lambda (lng-dir)
     (catch 'modify
       (lambda ()
-        (statef (modify new-tk field value lng) lng-dir))
+        (statef (modify token field value lounge) lng-dir))
       (lambda (k v)
         (statef (nothing (car v) (cdr v)))))))
 
 (define (delete-profile token lounge)
+  "Return a lounge mvalue which, when resolved, returns a pdiff for
+the profile identified by TOKEN in LOUNGE requesting its deletion."
   (lambda (lng-dir)
     (let* ((tk-entry (cdr (vhash-assoc token
                                        (lounge-tokens lounge))))
@@ -224,10 +244,13 @@ destroy TOKEN in its token table."
     (statef (lounge lng-dir 'purge token) lng-dir)))
 
 (define (fetch-lounge)
+  "Return a lounge mvalue which, when resolved, returns a lounge."
   (lambda (lng-dir)
     (statef (lounge lng-dir) lng-dir)))
 
 (define (update-lounge diff)
+  "Return a lounge mvalue which, when resolved, updates the lounge on
+the basis of DIFF. The return value is irrelevant."
   (lambda (lng-dir)
     (statef (lounge lng-dir diff) lng-dir)))
 
@@ -236,6 +259,10 @@ destroy TOKEN in its token table."
 ;; table. A secondary index of tokens to hashes is maintained in the
 ;; lounge to manage transactional authentication.
 
+;; FIXME: The current implementation of lounge is likely to become a
+;; serious bottle-neck and requires further consideration. At the very
+;; least it might be worth considering to split tokens into a
+;; separately maintained procedure, allowing for more parrallelism.
 (define lounge
   (let ((profiles vlist-null)
         (tokens   vlist-null))
@@ -286,44 +313,56 @@ destroy TOKEN in its token table."
   "Write PDIFF to LNG-DIR according to contents of PDIFF. The return
 value is unspecified."
   (let ((field (pdiff-field pdiff)))
-    (cond ((eqv? field 'register)
+    (cond ((eqv? field 'register)       ; Create profile
            '(save (pdiff-hash pdiff) (pdiff-profile pdiff)))
-          ((eqv? field 'delete)
+          ((eqv? field 'delete)         ; Delete profile
            '(delete (pdiff-hash pdiff)))
-          ((eqv? field 'rescore)
+          ((eqv? field 'rescore)        ; Evaluation result
            '(save-score (pdiff-hash pdiff)))
-          ((or (eqv? field 'name)
+          ((or (eqv? field 'name)       ; New name/password
                (eqv? field 'password))
            '(link-profs-and-save (pdiff-hash pdiff) (pdiff-field pdiff)
                                  (pdiff-value pdiff)
                                  (pdiff-field previous)))
-          (else '(save-field (pdiff-hash pdiff) (pdiff-field pdiff)
-                             (pdiff-value pdiff))))
+          (else                         ; Other field update
+           '(save-field (pdiff-hash pdiff) (pdiff-field pdiff)
+                        (pdiff-value pdiff))))
     'undefined))
 
 ;;;;; Safe I/O Helpers
 (define (store-profile hash profile field value previous profiles)
-  (cond ((eqv? field 'name)
+  "Return a new profiles vhash based on PROFILES, taking into account
+the instructions carried by HASH, PROFILE, FIELD, VALUE and PREVIOUS."
+  (cond ((eqv? field 'name)             ; New name
          (vhash-cons hash profile
                      (vhash-delete
                       (profile-hash previous "")
                       profiles)))
-        ((eqv? field 'password)
+        ((eqv? field 'password)         ; New password
          (vhash-cons hash profile
                      (vhash-delete
                       (profile-hash (profile-name profile) previous)
                       profiles)))
-        ((eqv? field 'delete)
+        ((eqv? field 'delete)           ; Delete profile
          (vhash-delete hash profiles))
-        (else (vhash-cons hash profile (vhash-delete hash profiles)))))
+        (else                           ; Update profile
+         (vhash-cons hash profile (vhash-delete hash profiles)))))
 
 (define (fresh-tk hash tokens profiles time)
+  "Return a new tokens/token pair if HASH corresponds to an entry in
+PROFILES.  TIME is used to create the new tk-entry for HASH in the
+tokens vhash based on TOKENS.  If HASH cannot be found in PROFILES,
+return #f."
   (if (vhash-assoc hash profiles)
       (let ((tk  (make-token hash time))
             (tks (clear-tokens hash tokens time)))
         (cons (vhash-cons tk (tk-entry hash (mk-time time)) tks) tk))
       #f))
 (define (renew-tk token tokens time)
+  "Return a new tokens/token pair if TOKEN corresponds to a token in
+TOKENS and is not expired.  TIME is used to create the new
+tk-entry. Return a tokens/#f pair if TOKEN in TOKENS is expired.  If
+TOKEN cannot be found in TOKENS, return #f."
   (let ((auth-pair (vhash-assoc token tokens)))
     (cond ((and auth-pair
                 (tk-expired? (tk-time (cdr auth-pair)) time))
@@ -337,6 +376,8 @@ value is unspecified."
                    tk)))
           (else #f))))
 (define (profile-from-token token lounge)
+  "Return the profile associated with TOKEN in LOUNGE or #f if TOKEN
+does not identify a profile."
   (let* ((hash    (vhash-assoc token (lounge-tokens lounge)))
          (profile (if hash
                       (vhash-assoc (tk-hash (cdr hash))
@@ -344,9 +385,14 @@ value is unspecified."
                       hash)))
     (if profile (cdr profile) profile)))
 
-(define (token? obj) (number? obj))
+(define (token? obj)
+  "Return #t if OBJ satisfies all criteria for being considered a
+valid token, #f otherwise."
+  (number? obj))
 
 (define (clear-tokens hash tokens time)
+  "Return a new tokens table based on TOKENS with all entries of HASH
+or all expired tokens (on the basis of TIME) removed."
   (vhash-fold (lambda (k v result)
                 (if (or (string=?    (tk-hash v) hash)
                         (tk-expired? (tk-time v) time))
@@ -379,8 +425,10 @@ hashmap."
              '()
              (profile-active-modules profile)))
 
-(define (modify new-tk field value lng)
-  (let ((profile (profile-from-token new-tk lng)))
+(define (modify token field value lounge)
+  "Return a pdiff for the profile identified by TOKEN in LOUNGE,
+requesting an update of FIELD with VALUE."
+  (let ((profile (profile-from-token token lounge)))
     (define (make-active-modules active-modules)
       (define (parse-active-modules)
         (fold (lambda (current previous)
@@ -405,7 +453,7 @@ hashmap."
     (define (make-name name)
       (cond ((not (string? name))
              (throw 'modify 'invalid-name))
-            ((check-name name (lounge-profiles lng))
+            ((check-name name (lounge-profiles lounge))
              (throw 'modify 'name-already-in-use))
             (else name)))
     (define (make-prof-server server)
@@ -553,6 +601,7 @@ car of the 2 elem pairs."
                          (hashmap (cadr 2-els) (list (car 2-els))))))
              subtree)))
 
+;; Example hashmap.
 (define hmap '((dyucztliu5g4llkslb3bo4w4rvq3pmff2ib2vqxlcssldcy4jcpa
                 ((x4c2x5v2tx2qyjupiicu6ljsteqyjbl7hwgonbyrkdn22kcaateq
                   ((uxxrthejznsxxld3bnd6vzitpmoja77rgeivqwfqslv4ulg2yazq)
