@@ -41,6 +41,7 @@
                ;; FIXME: Uses make-mod-blob
                ;; (tests comtools-offline)
                (tests lounge-server)
+               (tests library-server)
                )
 	      (let* ((path %library-port%))
 		(if (and (access? path W_OK)
