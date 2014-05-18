@@ -5,6 +5,7 @@
   #:use-module (guilecraft hash)
   #:use-module (guilecraft utils)
   #:use-module (rnrs)
+  #:use-module (srfi srfi-1)
   #:export (make-profile
             make-bare-profile
             profile?
@@ -22,6 +23,7 @@
 
             first-active-module
             rest-active-modules
+            parse-active-modules
             empty-active-modules?
             active-modules-ids
             active-modules-hashes
@@ -31,6 +33,7 @@
             name->hash
             id->hash
             profile-hash
+            update-profile
             ))
 
 (define profile-rtd
@@ -89,6 +92,15 @@
 (define id-stamp (record-accessor id-rtd 1))
 
 ;;;; Convenience
+(define (parse-active-modules active-modules)
+  (fold (lambda (current previous)
+          (if (and previous
+                   (pair? current)
+                   (blobhash? (car current))  ; minhash
+                   (blobhash? (cdr current))) ; fullhash
+              #t #f))
+        #t active-modules))
+
 (define first-active-module
   (lambda (active-modules)
     (car active-modules)))
@@ -143,5 +155,16 @@
        "PROFILE-NAME is not a profile string."
        profile-name)))
 
-(define* (profile-hash name #:optional (password ""))
+(define (update-profile field value profile)
+  (define (update-if this-field accessor)
+    (if (eqv? this-field field) value (accessor profile)))
+  (make-profile (update-if 'name           profile-name)
+                ;; obsolete?
+                (create-profile-id (update-if 'name profile-name))
+                (update-if 'prof-server    profile-prof-server)
+                (update-if 'mod-server     profile-mod-server)
+                (update-if 'active-modules profile-active-modules)
+                (update-if 'scorecard      profile-scorecard)))
+
+(define* (profile-hash name password)
   (sha256-string name password))

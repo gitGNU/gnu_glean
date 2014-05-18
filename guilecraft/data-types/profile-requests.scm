@@ -17,6 +17,7 @@
             regq
 	    regq?
 	    regq-name
+	    regq-password
 	    regq-prof-server
 	    regq-mod-server
 
@@ -47,6 +48,7 @@
 	    authq
 	    authq?
 	    authq-name
+	    authq-password
 	    auths
 	    auths?
 	    auths-token
@@ -102,6 +104,7 @@
 (define regq-rtd
   (make-record-type-descriptor 'regq #f #f #f #f
 			       '#((immutable name)
+                                  (immutable password)
 				  (immutable prof-server)
 				  (immutable mod-server))))
 (define regq-rcd
@@ -109,8 +112,9 @@
 (define regq (record-constructor regq-rcd))
 (define regq? (record-predicate regq-rtd))
 (define regq-name (record-accessor regq-rtd 0))
-(define regq-prof-server (record-accessor regq-rtd 1))
-(define regq-mod-server (record-accessor regq-rtd 2))
+(define regq-password (record-accessor regq-rtd 1))
+(define regq-prof-server (record-accessor regq-rtd 2))
+(define regq-mod-server (record-accessor regq-rtd 3))
 
 ;; View requests provide a means to retriew profile details from the
 ;; lounge. They should contain a valid token. They are responded to
@@ -171,12 +175,14 @@
 ;; responded to with a auth-response.
 (define authq-rtd
   (make-record-type-descriptor 'authq #f #f #f #f
-			       '#((immutable name))))
+			       '#((immutable name)
+                                  (immutable password))))
 (define authq-rcd
   (make-record-constructor-descriptor authq-rtd #f #f))
 (define authq (record-constructor authq-rcd))
 (define authq? (record-predicate authq-rtd))
 (define authq-name (record-accessor authq-rtd 0))
+(define authq-password (record-accessor authq-rtd 1))
 
 ;; Auth responses provide a token to be used by the client for future
 ;; requests

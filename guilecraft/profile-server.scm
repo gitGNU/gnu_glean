@@ -116,16 +116,21 @@ server, module server and the message contained in RQ."
                           (echoq-message rq))) %lounge-dir%)))))
 
 (define (process-authq rq)
-  (let ((name (authq-name rq)))
-    (if (string? name)
-        ((mlet* lounge-monad
-                ((new-tk     (login (profile-hash name)))
-                 (lng        (fetch-lounge))
-                 (profile -> (profile-from-token new-tk lng)))
-                (auths new-tk
-                       (profile-prof-server profile)
-                       (profile-mod-server profile))) %lounge-dir%)
-        (raise '(process-authq invalid-username)))))
+  (let ((name   (authq-name     rq))
+        (passwd (authq-password rq)))
+    (cond ((not (string? name))
+           (raise '(process-authq invalid-username)))
+          ((not (string? passwd))
+           (raise '(process-authq invalid-password)))
+          (else
+           ((mlet* lounge-monad
+                   ((new-tk     (login (profile-hash name passwd)))
+                    (lng        (fetch-lounge))
+                    (profile -> (profile-from-token new-tk lng)))
+                   (auths new-tk
+                          (profile-prof-server profile)
+                          (profile-mod-server profile)))
+            %lounge-dir%)))))
 
 (define (process-chauthq rq)
   "Return a chauths, containing a new token and the next hash/counter
@@ -172,10 +177,13 @@ out of sync if they are."
   "Return a regq, containing a new token, the profile's profile
 server, module server, a nothing value, or raise an error."
   (let ((name    (regq-name        rq))
+        (passwd  (regq-password    rq))
         (lounge  (regq-prof-server rq))
         (library (regq-mod-server  rq)))
     (cond ((not (string? name))
            (raise '(process-regq invalid-username)))
+          ((not (string? passwd))
+           (raise '(process-regq invalid-passwd)))
           ((not (string? lounge))
            (raise '(process-regq invalid-mod-server)))
           ((not (string? library))
@@ -183,10 +191,10 @@ server, module server, a nothing value, or raise an error."
           (else
            ((mlet* lounge-monad
                    ((lng       (fetch-lounge))
-                    (diff      (register-profile name "" ; password
+                    (diff      (register-profile name passwd
                                                  lounge library lng))
                     (ignore    (update-lounge diff))
-                    (new-token (login (profile-hash name ""))))
+                    (new-token (login (profile-hash name passwd))))
                    (auths new-token lounge library)) %lounge-dir%)))))
 
 (define (process-viewq rq)
@@ -200,7 +208,7 @@ if RQ parses correctly. Otherwise raise a an error."
                  (lng     (fetch-lounge))
                  (details (view-profile new-tk lng)))
                 (views new-tk details)) %lounge-dir%)
-        (raise '(process viewq 'invalid-token)))))
+        (raise '(process-viewq invalid-token)))))
 
 (define (process-set!q rq)
   (let ((token (set!q-token rq))
@@ -210,14 +218,41 @@ if RQ parses correctly. Otherwise raise a an error."
            (raise '(process-set!q invalid-field)))
           ((not (token? token))
            (raise '(process-set!q invalid-token)))
+          ;; Validate value:
+          ((and (eqv? field 'mod-server) ; mod-server
+                (not (string? value)))
+           (raise '(process-set!q invalid-mod-server)))
+          ((and (eqv? field 'prof-server) ; prof-server
+                (not (string? value)))
+           (raise '(process-set!q invalid-prof-server)))
+          ((and (eqv? field 'name)      ; name
+                (or (not (pair? value))
+                    (not (string? (car value)))
+                    (not (string? (cdr value)))))
+           (raise '(process-set!q invalid-name-password)))
+          ((and (eqv? field 'password)
+                (not (string? value)))
+           (raise '(process-set!q invalid-password)))
+          ;; Validate value: new hashmap->scorecard.
+          ;; FIXME: needs to be more rigorous
+          ((and (eqv? field 'scorecard) ; scorecard
+                (not (list? value)))
+           (raise '(process-set!q invalid-hashmap)))
+          ;; Validate value: new active-modules.
+          ((and (eqv? field 'active-modules) ; active-modules
+                (not (list? value))
+                (not (parse-active-modules value)))
+           (raise '(process-set!q invalid-active-modules)))
           (else
            ((mlet* lounge-monad
-                   ((new-tk  (authenticate token))
+                   ((tmp-tk  (authenticate token))
                     (lng     (fetch-lounge))
-                    (diff    (modify-profile new-tk field value lng))
+                    (diff    (modify-profile tmp-tk field value lng))
                     (profile -> (pdiff-profile diff))
                     (sc-diff -> (missing-blobs profile))
-                    (ignore  (update-lounge diff)))
+                    (ignore  (update-lounge diff))
+                    (ignore2 (purge-profile tmp-tk))
+                    (new-tk  (login (pdiff-hash diff))))
                    (if (null? sc-diff)
                        (auths new-tk
                               (profile-prof-server profile)

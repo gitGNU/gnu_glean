@@ -46,6 +46,7 @@
             lounge-profiles
             lounge-tokens
             pdiff
+            pdiff-hash
             pdiff-profile
             lounge-monad
             token?
@@ -73,16 +74,16 @@
   (tokens   lounge-tokens))
 
 (define-record-type <pdiff>
-  (mecha-pdiff hash profile field value previous)
+  (mecha-pdiff hash profile field value oldhash)
   pdiff?
   (hash      pdiff-hash)
   (profile   pdiff-profile)
   (field     pdiff-field)
   (value     pdiff-value)
-  (previous  pdiff-previous))
+  (oldhash  pdiff-oldhash))
 (define* (pdiff hash profile field
-                #:optional (value #f) (previous #f))
-  (mecha-pdiff hash profile field value previous))
+                #:optional (value #f) (oldhash #f))
+  (mecha-pdiff hash profile field value oldhash))
 
 (define-record-type <tk-entry>
   (tk-entry hash time)
@@ -189,7 +190,7 @@ challenge evaluation RESULT."
                      (profile-scorecard profile)
                      (car (fetch-next-hash-counter-pair profile))
                      result)))
-      (statef (pdiff (profile-hash (profile-name profile) "")
+      (statef (pdiff (hash-from-token token (lounge-tokens lounge))
                      profile 'rescore scores)
               lng-dir))))
 
@@ -198,7 +199,7 @@ challenge evaluation RESULT."
 a new profile created using NAME, PASSWORD, LNG-PORT and LIB-PORT in
 LOUNGE."
   (lambda (lng-dir)
-    (if (check-name name (lounge-profiles lounge))
+    (if (name-taken? name (lounge-profiles lounge))
         (statef (nothing 'username-taken (list name)))
         (statef (pdiff (profile-hash name password)
                        (make-bare-profile name lng-port lib-port)
@@ -222,11 +223,18 @@ TOKEN."
 the profile identified by TOKEN in LOUNGE, where FIELD has been
 updated according to VALUE."
   (lambda (lng-dir)
-    (catch 'modify
-      (lambda ()
-        (statef (modify token field value lounge) lng-dir))
-      (lambda (k v)
-        (statef (nothing (car v) (cdr v)))))))
+    (cond ((eqv? field 'name)           ; Name change
+           (cond ((name-taken? (car value) (lounge-profiles lounge))
+                  (statef (nothing 'username-taken (list value))))
+                 ;; double-check the supplied password.
+                 ((wrong-password? (cdr value) ; supplied password
+                                   (profile-from-token token lounge)
+                                   (lounge-profiles lounge))
+                  (statef (nothing 'incorrect-password (list value))))
+                 (else
+                  (statef (modify token field value lounge) lng-dir))))
+          (else                         ; Any other field change
+           (statef (modify token field value lounge) lng-dir)))))
 
 (define (delete-profile token lounge)
   "Return a lounge mvalue which, when resolved, returns a pdiff for
@@ -274,11 +282,11 @@ the basis of DIFF. The return value is irrelevant."
             ((pdiff? operation)
              ;; use futures to write to disk as well as set!
              (write-pdiff lng-dir operation)
-             (set! profiles (store-profile (pdiff-hash     operation)
-                                           (pdiff-profile  operation)
-                                           (pdiff-field    operation)
-                                           (pdiff-value    operation)
-                                           (pdiff-previous operation)
+             (set! profiles (store-profile (pdiff-hash    operation)
+                                           (pdiff-profile operation)
+                                           (pdiff-field   operation)
+                                           (pdiff-value   operation)
+                                           (pdiff-oldhash operation)
                                            profiles)))
             ;; Delete Token (Delete Profile step 2)
             ((eqv? operation 'purge)
@@ -321,28 +329,25 @@ value is unspecified."
            '(save-score (pdiff-hash pdiff)))
           ((or (eqv? field 'name)       ; New name/password
                (eqv? field 'password))
-           '(link-profs-and-save (pdiff-hash pdiff) (pdiff-field pdiff)
+           '(link-profs-and-save (pdiff-hash pdiff)
+                                 (pdiff-field pdiff)
                                  (pdiff-value pdiff)
-                                 (pdiff-field previous)))
+                                 (pdiff-field oldhash)))
           (else                         ; Other field update
            '(save-field (pdiff-hash pdiff) (pdiff-field pdiff)
                         (pdiff-value pdiff))))
     'undefined))
 
 ;;;;; Safe I/O Helpers
-(define (store-profile hash profile field value previous profiles)
+(define (store-profile hash profile field value oldhash profiles)
   "Return a new profiles vhash based on PROFILES, taking into account
-the instructions carried by HASH, PROFILE, FIELD, VALUE and PREVIOUS."
+the instructions carried by HASH, PROFILE, FIELD, VALUE and OLDHASH."
   (cond ((eqv? field 'name)             ; New name
          (vhash-cons hash profile
-                     (vhash-delete
-                      (profile-hash previous "")
-                      profiles)))
+                     (vhash-delete oldhash profiles)))
         ((eqv? field 'password)         ; New password
          (vhash-cons hash profile
-                     (vhash-delete
-                      (profile-hash (profile-name profile) previous)
-                      profiles)))
+                     (vhash-delete oldhash profiles)))
         ((eqv? field 'delete)           ; Delete profile
          (vhash-delete hash profiles))
         (else                           ; Update profile
@@ -375,15 +380,20 @@ TOKEN cannot be found in TOKENS, return #f."
                                (vhash-delete token tokens))
                    tk)))
           (else #f))))
+(define (hash-from-token token tokens)
+  "Return the hash associated with TOKEN in TOKENS."
+  (let ((prelim (vhash-assoc token tokens)))
+    (if prelim                          ; match
+        (tk-hash (cdr prelim))          ; get hash
+        #f)))                           ; no match
 (define (profile-from-token token lounge)
   "Return the profile associated with TOKEN in LOUNGE or #f if TOKEN
 does not identify a profile."
-  (let* ((hash    (vhash-assoc token (lounge-tokens lounge)))
-         (profile (if hash
-                      (vhash-assoc (tk-hash (cdr hash))
-                                   (lounge-profiles lounge))
-                      hash)))
-    (if profile (cdr profile) profile)))
+  (let* ((token   (hash-from-token token (lounge-tokens lounge)))
+         (profile (if token
+                      (vhash-assoc token (lounge-profiles lounge))
+                      #f)))
+    (if profile (cdr profile) #f)))
 
 (define (token? obj)
   "Return #t if OBJ satisfies all criteria for being considered a
@@ -428,63 +438,49 @@ hashmap."
 (define (modify token field value lounge)
   "Return a pdiff for the profile identified by TOKEN in LOUNGE,
 requesting an update of FIELD with VALUE."
-  (let ((profile (profile-from-token token lounge)))
-    (define (make-active-modules active-modules)
-      (define (parse-active-modules)
-        (fold (lambda (current previous)
-                (if (and previous
-                         (pair? current)
-                         (blobhash? (car current))  ; minhash
-                         (blobhash? (cdr current))) ; fullhash
-                    #t #f))
-              #t active-modules))
-      (cond ((not (list? active-modules))
-             (throw 'modify `(invalid-active-modules ,active-modules)))
-            ((not (parse-active-modules))
-             (throw 'modify `(invalid-active-module ,active-modules)))
-            ;; Structure OK: we can update the active-modules.
-            (else (append active-modules
-                          (profile-active-modules profile)))))
-    (define (make-scorecart hashmap)
-      (let ((blobs (hashmap->blobs hashmap))
-            (scorecard (profile-scorecard profile)))
-        ;; Add new blobs to scorecard-data
-        (add-blobs blobs scorecard)))
-    (define (make-name name)
-      (cond ((not (string? name))
-             (throw 'modify 'invalid-name))
-            ((check-name name (lounge-profiles lounge))
-             (throw 'modify 'name-already-in-use))
-            (else name)))
-    (define (make-prof-server server)
-      (cond ((not (string? server))
-             (throw 'modify 'invalid-prof-server))
-            (else server)))
-    (define (make-mod-server server)
-      (cond ((not (string? server))
-             (throw 'modify 'invalid-mod-server))
-            (else server)))
-    (define (make-field field-name field-accessor constructor)
-      (cond ((eqv? field field-name)
-             (constructor value))
-            (else (field-accessor profile))))
-    (let* ((name (make-field 'name profile-name make-name))
-           ;; Id is automatically created and depends on name.
-           (id (create-profile-id name))
-           (prof-server (make-field 'prof-server profile-prof-server
-                                    make-prof-server))
-           (mod-server (make-field 'mod-server profile-mod-server
-                                   make-mod-server))
-           (active-modules
-            (make-field 'active-modules profile-active-modules
-                        make-active-modules))
-           (scorecard (make-field 'scorecard profile-scorecard
-                                  make-scorecart))
-           (new-profile (make-profile name id prof-server mod-server
-                                      active-modules scorecard)))
-      ;; cycle through field names, when FIELD matches field name, make
-      ;; value the value the new FIELD
-      (pdiff (profile-hash name "") new-profile field value))))
+  (let ((oldhash (hash-from-token    token (lounge-tokens lounge)))
+        (profile (profile-from-token token lounge)))
+    (cond ((eqv? field 'name)           ; Name
+           ;; Name is stored in profile and newhash, generated
+           ;; from the '(name . password) stored in value.
+           ;; Its pdiff should not include the password value, hence
+           ;; (car value).
+           (let ((newhash (profile-hash (car value) (cdr value))))
+             (pdiff newhash (update-profile field (car value) profile)
+                    field (car value) oldhash)))
+          ((eqv? field 'password)       ; Password
+           ;; Password is saved in newhash, generated from its new
+           ;; value and the old profile name.
+           ;; Its pdiff should not include the new value, hence #f.
+           (let ((newhash (profile-hash (profile-name profile)
+                                        value)))
+             (pdiff newhash profile field #f oldhash)))
+          ((eqv? field 'active-modules) ; Active-modules
+           ;; We have parsed the input, all we need to do now is
+           ;; prepare it for merging into profile and return it in a
+           ;; pdiff.
+           (pdiff oldhash
+                  (update-profile field
+                                  (append value
+                                          (profile-active-modules
+                                           profile))
+                                  profile)
+                  field value))
+          ((eqv? field 'scorecard)      ; Scorecard: new hashmap
+           ;; We have parsed the input, all we need to do now is
+           ;; prepare it for merging into profile and return it in a
+           ;; pdiff.
+           (let ((blobs (hashmap->blobs value))
+                 (scorecard (profile-scorecard profile)))
+             (pdiff oldhash
+                    (update-profile field
+                                    (add-blobs blobs scorecard)
+                                    profile)
+                    field value)))
+          (else                         ; prof-server, mod-server
+           (pdiff oldhash
+                  (update-profile field value profile)
+                  field value)))))
 
 (define (fetch-next-hash-counter-pair profile)
   "Return the next highest priority blobhash and the blob's counter
@@ -534,12 +530,19 @@ identified by CURRENT-BLOBHASH. Otherwise return the latter blob."
         (throw 'no-blob-found-in-scorecard!)
         (cons (blob-hash selected-blob) (blob-counter selected-blob)))))
 
-(define (check-name name profiles)
+(define (name-taken? name profiles)
+  "Return #t if NAME is already in use by a profile in
+PROFILES. Return #f otherwise."
   (vhash-fold (lambda (hash profile found)
                 (if (not found)
                     (string=? name (profile-name profile))
                     found))
               #f profiles))
+(define (wrong-password? password profile profiles)
+  "Return #t if the hash of PASSWORD and the name in PROFILE is not a
+key in profiles. Return #f otherwise."
+  (not (vhash-assoc (profile-hash (profile-name profile) password)
+                    profiles)))
 
 
 ;;;;;; On Scorecards and Blobhashes
