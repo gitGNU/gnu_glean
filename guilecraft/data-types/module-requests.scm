@@ -28,6 +28,13 @@
 	    knowns?
 	    knowns-list
 
+            detailq
+            detailq?
+            detailq-hash
+            details
+            details?
+            details-list
+
 	    hashmapq
 	    hashmapq?
 	    hashmapq-token
@@ -110,6 +117,26 @@
 (define knowns (record-constructor knowns-rcd))
 (define knowns? (record-predicate knowns-rtd))
 (define knowns-list (record-accessor knowns-rtd 0))
+
+;; Request detail for a specific module
+(define detailq-rtd
+  (make-record-type-descriptor 'detailq #f #f #f #f
+			       '#((immutable hash))))
+(define detailq-rcd
+  (make-record-constructor-descriptor detailq-rtd #f #f))
+(define detailq (record-constructor detailq-rcd))
+(define detailq? (record-predicate detailq-rtd))
+(define detailq-hash (record-accessor detailq-rtd 0))
+
+;; Return detail for a specific module
+(define details-rtd
+  (make-record-type-descriptor 'details #f #f #f #f
+			       '#((immutable list))))
+(define details-rcd
+  (make-record-constructor-descriptor details-rtd #f #f))
+(define details (record-constructor details-rcd))
+(define details? (record-predicate details-rtd))
+(define details-list (record-accessor details-rtd 0))
 
 ;; hashmap requests ask the mod server for a nested list of sethashes
 ;; reflecting the set structure for the sets identified by the

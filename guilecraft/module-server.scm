@@ -130,6 +130,7 @@ handling to request handler."
                             (eqv? err 'invalid-auth-server)
                             (eqv? err 'invalid-set-ids)
                             (eqv? err 'invalid-fullhashes)
+                            (eqv? err 'unknown-sethash)
                             (eqv? err 'unknown-set-ids)
                             (eqv? err 'invalid-answer)
                             (eqv? err 'invalid-counter)
@@ -155,6 +156,8 @@ handling to request handler."
                          (eval-provider rq))
                         ((knownq? rq)
                          (known-mods-provider rq))
+                        ((detailq? rq)
+                         (details-provider rq))
                         ((sethashesq? rq)
                          (sethashes-provider rq))
                         ((hashmapq? rq)
@@ -216,6 +219,12 @@ COUNTER, or raise 'invalid-set."
 
 (define (known-mods-provider rq)
   (knowns (known-crownsets (library-hash %library-dir%))))
+
+(define (details-provider rq)
+  (let ((hash (detailq-hash rq)))
+    (if (blobhash? hash)
+        (details (set-details hash (library-hash %library-dir%)))
+        (raise 'invalid-sethash))))
 
 (define (hashmap-provider rq)
   (let ((hashpairs (hashmapq-hashpairs rq)))

@@ -55,6 +55,7 @@
             set-fullhash
             set-hashpairs
             known-crownsets
+            set-details
             crownset-hashmap
             ))
 
@@ -242,14 +243,36 @@ LIBRARY-PAIR."
   "Return a list containing summary information on all known crownsets
 in the library derived from LIBRARY-PAIR."
   (map (lambda (hash)
-         (let ((set (fetch-set hash library-pair)))
-           (list hash
-                 (set-id set)
-                 (set-name set)
-                 (set-version set)
-                 (set-synopsis set)
-                 (set-description set))))
+         (set-summary (fetch-set hash library-pair) hash))
        (known-crownset-hashes library-pair)))
+
+(define* (set-summary set #:optional (hash #f))
+  "Return a list containing summary information on SET."
+  (list (if hash hash (set-fullhash set))
+        (set-id set)
+        (set-name set)
+        (set-version set)
+        (set-synopsis set)))
+
+(define (set-details hash library-pair)
+  "Return a list containing detailed information on SET, or #f if it
+cannot be found in LIBRARY-PAIR."
+  (let ((set (fetch-set hash library-pair)))
+    (if set
+        (list hash
+              (set-id set)
+              (set-name set)
+              (set-version set)
+              (set-synopsis set)
+              (set-description set)
+              (set-creator set)
+              (set-attribution set)
+              (set-resources set)
+              (set-module set)
+              (if (rootset? set)
+                  '()
+                  (map set-summary (set-contents set))))
+        #f)))
 
 (define (known-crownset-hashes library-pair)
   "Return a list of all known crownset hashes in libv-ref derived
@@ -458,7 +481,7 @@ it is known in LIBRARY-PAIR."
   "Return a list containing pairs of every set-fullhash and set
 contained referred to by SET."
   (define (minor-index set index)
-    (cond ((problem? (car (set-contents set)))
+    (cond ((rootset? set)
            (cons (cons (rootset-hash set) set) index))
           (else (cons (cons (set-fullhash set) set)
                       (fold minor-index index (set-contents set))))))

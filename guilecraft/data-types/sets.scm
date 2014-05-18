@@ -68,6 +68,8 @@
 	    mecha-set
 	    set-rcd
 	    set?
+            rootset?
+            module?
 	    set-id
 	    set-contents
 	    set-info
@@ -368,6 +370,14 @@ and the rnrs records definition."
 (define set-attribution (record-accessor set-rtd 7))
 (define set-resources (record-accessor set-rtd 8))
 (define set-module (record-accessor set-rtd 9))
+
+(define (rootset? set)
+  "Return #t if set-contents contains problems (which means it's a
+rootset). #f otherwise."
+  (problem? (car (set-contents set))))
+(define (module? set)
+  "Return #t if set is a module, #f otherwise."
+  (set-module set))
 
 ;;;;; Validators
 ;;;; VALIDATOR and VALIDATE work together to try to detect mistakes in

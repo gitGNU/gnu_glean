@@ -95,6 +95,8 @@ known-rcs."
     (evals . ,evals)
     (knownq . ,knownq)
     (knowns . ,knowns)
+    (detailq . ,detailq)
+    (details . ,details)
     (hashmapq . ,hashmapq)
     (hashmaps . ,hashmaps)
     (sethashesq . ,sethashesq)
