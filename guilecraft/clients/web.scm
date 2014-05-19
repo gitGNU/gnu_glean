@@ -269,7 +269,7 @@
   (let* ((name     (params rc "username"))
          (password (params rc "password"))
          ;;(params rc "lounge") (params rc "library")
-         (st8      (authenticate-player name %lounge-port%))) ; passwd
+         (st8      (authenticate-player name password %lounge-port%)))
     (post-auth st8 rc "aut-success")))
 (define (reg-action rc)
   (let ((name     (params rc "username"))
@@ -282,7 +282,7 @@
            (lib   (if (string=? library "Automatic")
                       %library-port%
                       library))
-           (st8   (register-player name lng lib)))
+           (st8   (register-player name password lng lib)))
       (post-auth st8 rc "reg-success"))))
 (define (post-auth st8 rc msg)
   (if (state? st8)

@@ -132,21 +132,22 @@ applying MVALUE to MPROC."
 
 ;;;;; 'State' Generating Procedures
 
-(define (register-player name profile-server module-server)
+(define (register-player name password profile-server module-server)
   "Return 'lounge state' upon successful registration with the
 lounge using NAME. Raise an Exchange Error otherwise."
   (let ((rs (call/exchange profile-server auths? regq
-                           name profile-server module-server)))
+                           name password profile-server
+                           module-server)))
     (if (nothing? rs)
         rs
         (mk-state (auths-token rs) (auths-prof-server rs)
                   (auths-mod-server rs)))))
 
-(define (authenticate-player name profile-server)
+(define (authenticate-player name password profile-server)
   "Return 'lounge state' upon successful authentication with the
 lounge using NAME. Raise an Exchange Error otherwise."
   (let ((rs (call/exchange profile-server auths? authq
-                           name)))
+                           name password)))
     (if (nothing? rs)
         rs
         (mk-state (auths-token rs) (auths-prof-server rs)

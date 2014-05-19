@@ -57,19 +57,19 @@
 (define data #f)                ; Last response, mutable!
 (define mods-assoc #f)          ; assoc of set-ids -> hashes, mutable!
 
-(define* (register name #:optional lounge library)
+(define* (register name password #:optional lounge library)
   (let* ((lng (if lounge lounge %default-lounge%))
          (lib (if library library %default-library%))
-         (rsp (register-player name lng lib)))
+         (rsp (register-player name password lng lib)))
     (cond ((state? rsp)
            (set! id rsp)
            (set! data 'unimportant)
            (guide `("~a has been registered.\n" ,name))
            (suggest help-available help-activate))
           (else (nothing-handler rsp)))))
-(define* (login name #:optional lounge)
+(define* (login name password #:optional lounge)
   (let* ((lng (if lounge lounge %default-lounge%))
-         (rsp (authenticate-player name lng)))
+         (rsp (authenticate-player name password lng)))
     (cond ((state? rsp)
            (set! id rsp)
            (set! data 'unimportant)
