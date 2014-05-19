@@ -130,6 +130,8 @@ handling to request handler."
                             (eqv? err 'invalid-auth-server)
                             (eqv? err 'invalid-set-ids)
                             (eqv? err 'invalid-fullhashes)
+                            (eqv? err 'invalid-operator)
+                            (eqv? err 'invalid-search)
                             (eqv? err 'unknown-sethash)
                             (eqv? err 'unknown-set-ids)
                             (eqv? err 'invalid-answer)
@@ -218,7 +220,34 @@ COUNTER, or raise 'invalid-set."
                     (fetch-solution problem)))))))
 
 (define (known-mods-provider rq)
-  (knowns (known-crownsets (library-hash %library-dir%))))
+  (define (valid-search? pair)
+    "Return #t if pair is a pair and contains a valid search pattern."
+    (and (pair? pair)
+         (cond ((eqv? (car pair) 'hash) ; hash
+                (and (list? (cdr pair))
+                     (null? (filter (negate symbol?)
+                                    (cdr pair)))))
+               ((eqv? (car pair) 'name) ; name
+                (and (list? (cdr pair))
+                     (null? (filter (negate string?)
+                                    (cdr pair)))))
+               (else                    ; fail
+                #f))))
+  (let ((operator (knownq-operator rq))
+        (search   (knownq-search   rq)))
+    (cond ((and (not operator)
+                (not search))           ; known-crownsets
+           (knowns (known-crownsets (library-hash %library-dir%))))
+          ;; search contains an invalid operator
+          ((not (or (eqv? operator 'match))) ; operator
+           (raise 'invalid-operator))
+          ;; search contains only valid terms
+          ((and (list? search)
+                (valid-search? search)) ; search
+           (knowns (search-sets operator search
+                                (library-hash %library-dir%))))
+          (else                         ;fail
+           (raise 'invalid-search)))))
 
 (define (details-provider rq)
   (let ((hash (detailq-hash rq)))

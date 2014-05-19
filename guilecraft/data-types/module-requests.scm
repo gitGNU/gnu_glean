@@ -23,6 +23,8 @@
 	    evals-solution
 
 	    knownq
+            knownq-operator
+            knownq-search
 	    knownq?
 	    knowns
 	    knowns?
@@ -102,11 +104,14 @@
 ;; Request a list of known modules
 (define knownq-rtd
   (make-record-type-descriptor 'knownq #f #f #f #f
-			       '#()))
+			       '#((immutable operator)
+                                  (immutable search))))
 (define knownq-rcd
   (make-record-constructor-descriptor knownq-rtd #f #f))
 (define knownq (record-constructor knownq-rcd))
 (define knownq? (record-predicate knownq-rtd))
+(define knownq-operator (record-accessor knownq-rtd 0))
+(define knownq-search (record-accessor knownq-rtd 1))
 
 ;; Return a list of known modules
 (define knowns-rtd

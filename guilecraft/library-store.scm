@@ -55,6 +55,7 @@
             set-fullhash
             set-hashpairs
             known-crownsets
+            search-sets
             set-details
             crownset-hashmap
             ))
@@ -245,6 +246,35 @@ in the library derived from LIBRARY-PAIR."
   (map (lambda (hash)
          (set-summary (fetch-set hash library-pair) hash))
        (known-crownset-hashes library-pair)))
+
+(define (search-sets operator search library-pair)
+  "Return a list containing summary information for all sets matching
+the criteria specified by OPERATOR and SEARCH in LIBRARY-PAIR."
+  (define (search-by-hash hashes)
+    "Return the set summary of any sets identified by one of the
+hashes in HASHES."
+    (map (lambda (hash/set-pair)
+           (set-summary (car hash/set-pair)   ; set
+                        (cdr hash/set-pair))) ; fullhash
+         (filter-map (lambda (hash)
+                       (let ((set (fetch-set hash library-pair)))
+                         (if set
+                             (cons set hash)
+                             #f)))
+                     hashes)))
+  (define (search-by-name strings)
+    "Return the set summary of any sets matching a string in STRINGS
+in their name."
+    '())                                  ; not implemented yet.
+  (cond ((eqv? operator 'match)           ; match operation
+         (cond ((eqv? (car search) 'hash) ; hash search
+                (search-by-hash (cdr search)))
+               ((eqv? (car search) 'name) ; name search
+                (search-by-name (cdr search)))
+               (else
+                '())))                  ; no other searches yet
+        (else                           ; no other operation yet
+         '())))
 
 (define* (set-summary set #:optional (hash #f))
   "Return a list containing summary information on SET."
