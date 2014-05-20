@@ -47,6 +47,7 @@
             register-player
             authenticate-player
             ;; composite transactions
+            view-player
             add-active-modules
             next-challenge
             submit-answer
@@ -154,6 +155,15 @@ lounge using NAME. Raise an Exchange Error otherwise."
                   (auths-mod-server rs)))))
 
 ;;;;; Composite Transactions
+(define (view-player state)
+  "Return a user-friendly list of profile fields for display for the
+profile identified by the token in STATE."
+  ((mlet* client-monad
+          ((test         (test-servers))
+           (details      (fetch-profile))
+           (full-details (details->full-details (car details))))
+          (return full-details)) state))
+
 (define (add-active-modules fullhashes state)
   "Given a set of FULLHASHES provided, for instance, by the player
 choosing from amongst a list of modules, carry out the necessary
@@ -235,12 +245,28 @@ servers is down."
     (let ((rs (call/exchange
                (state-lib state)        ; library connection
                knowns? knownq           ; predicate, constructor
-               ;; add search?           ; input
+               #f #f                    ; input
                )))
       (if (nothing? rs)
           rs
           (stateful (knowns-list rs)
                     state)))))
+(define (details->full-details details)
+  "Return a client-monad mval, resolving to new DETAILS with
+human-friendly information about active-modules."
+  (lambda (state)
+    (let ((fullhashes (map cdr (cadddr details))))
+      (let ((rs (call/exchange
+                 (state-lib state)
+                 knowns? knownq
+                 'match `(hash . ,fullhashes))))
+        (if (nothing? rs)
+            rs
+            (stateful (list (car   details)
+                            (cadr  details)
+                            (caddr details)
+                            (knowns-list rs))
+                      state))))))
 (define (push-deletion)
   "Return a client-monad mval for a delq request."
   (lambda (state)
@@ -257,6 +283,21 @@ the token in STATE. Raise an Exchange Error otherwise."
                     (mk-state #f
                               #f
                               #f))))))
+
+(define (fetch-profile)
+  "Return a client mvalue which, when invoked, returns the result of a
+viewq request."
+  (lambda (state)
+    (let ((rs (call/exchange
+               (state-lng state)        ; lounge connection
+               views? viewq             ; predicate, constructor
+               (state-tk state))))      ; input
+      (if (nothing? rs)
+          rs
+          (stateful `(,(views-details rs))
+                    (mk-state (views-token rs)
+                              (state-lng   state)
+                              (state-lib   state)))))))
 
 (define (fetch-challenge-id)
   "Return chauths or ERROR."
