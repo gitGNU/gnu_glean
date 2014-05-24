@@ -124,32 +124,14 @@ handling to request handler."
 
         ((request? request)
          (let ((rq (rq-content request)))
-           (guard (err ((or (eqv? err 'no-profile)
-                            (eqv? err 'no-modules)
-                            (eqv? err 'invalid-token)
-                            (eqv? err 'invalid-auth-server)
-                            (eqv? err 'invalid-set-ids)
-                            (eqv? err 'invalid-fullhashes)
-                            (eqv? err 'invalid-operator)
-                            (eqv? err 'invalid-search)
-                            (eqv? err 'unknown-sethash)
-                            (eqv? err 'unknown-set-ids)
-                            (eqv? err 'invalid-answer)
-                            (eqv? err 'invalid-counter)
-                            (eqv? err 'invalid-blobhash)
-                            (eqv? err 'unknown-set))
-                        (begin (clog err)
-                               (negs rq err)))
-                       ((equal? err '(exchange (server system-error)))
-                        (begin (clog err)
-                               (negs rq 'offline-auth-server)))
-                       ((eqv? err 'false-result)
-                        (begin (llog err)
-                               (assertion-violation
-                                'challenge-provider
-                                "We were returned a false chall result!"
-                                err))))
-
+           (guard (err
+                   (err
+                    (begin
+                      (clog err)
+                      (format #t
+                              "Error in dispatcher: ~a.\n"
+                              err)
+                      (negs rq err))))
                   (cond ((aliveq? rq)
                          (acks rq))
                         ((challq? rq)
