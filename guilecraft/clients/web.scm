@@ -159,6 +159,7 @@
                   (div (@ (class "row"))
                        (div (@ (class "col-md-8"))
                             ,(list-available))))))
+
 (define (login rc)
   (frame #:state (query-string->state rc)
          #:title ("Guilecraft — Sign In")
@@ -203,53 +204,128 @@
                                     "Sign Up"))))))
 
 (define (account rc)
-  (let ((st8 (query-string->state rc)))
-    (frame
-     #:state st8
-     #:rc    rc
-     #:title "Guilecraft — My Account"
-     #:page  `((h1 "Check Your Account Details")
-               (h2 "Activity")
-               (p ,(sa "Select the modules in which you are"
-                       " interested by checking their checkboxes."))
-               (p "You can then enable them by clicking ‘Activate’.")
-               (form (@ (action "/mod-action")
-                        (method "post")
-                        (role   "form"))
-                     ,(list-available 'active st8)
-                     ,(state->form-fields st8)
-                     (input (@ (type  "hidden")
-                               (name  "operation")
-                               (value "activate-modules")))
-                     (button (@ (class "btn btn-primary")
-                                (type  "submit"))
-                             "Activate")
-                     (button (@ (class "btn btn-primary")
-                                (type  "reset"))
-                             "Reset"))
-               (h2 "Identity")
-               (p "Username")
-               (p "Password")
-               (button (@ (class "btn btn-primary")
-                          (type  "submit"))
-                       "Update Identity")
-               (h2 "Servers")
-               (p "Lounge")
-               (p "Library")
-               (button (@ (class "btn btn-primary")
-                          (type  "submit"))
-                       "Update Servers")
-               (h2 "Expiration")
-               (p ,(sa "You can delete your account by clicking on"
-                       " the button below. This action is immediate"
-                       " and cannot be undone."))
-               (form (@ (action "/del-action")
-                        (method "post")
-                        (role   "form"))
-                     ,(state->form-fields st8)
-                     (button (@ (class "btn btn-danger")
-                                (type  "submit"))
-                             "Delete Account"))))))
+  (let* ((st8     (query-string->state rc))
+         (rsp     (view-player st8)))
+    (if (stateful? rsp)
+        (match (result rsp)
+          ((username lng-port lib-port active-modules)
+           (let ((st8 (state rsp)))
+             (frame
+              #:state st8
+              #:rc    rc
+              #:title "Guilecraft — My Account"
+              #:page  `((h1 "Check Your Account Details")
+                        ,(activity-form active-modules st8)
+                        ,(identity-form username st8)
+                        ,(server-form lng-port lib-port st8)
+                        ,(expiration-form st8))))))
+        (let ((rsp (fallback-view-player st8)))
+          (if (stateful? rsp)
+              (match (car (result rsp))
+                ((username lng-port lib-port raw-active-modules)
+                 (frame
+                  #:state st8
+                  #:rc    rc
+                  #:title "Guilecraft — Fallback Account Management"
+                  #:page  `((h1 "Check your Account Details")
+                            ,(alert "The library server seems to be \
+down. Perhaps your selected server is invalid?" 'danger)
+                            ,(identity-form username st8)
+                            ,(server-form lng-port lib-port st8)
+                            ,(expiration-form st8)))))
+              (frame #:page (nothing-handler rsp)))))))
+
+(define (expiration-form st8)
+  (form "/del-action"
+        `((h2 "Expiration")
+          (p "You can delete your account by clicking on the button \
+the button below. This action is immediate and cannot be undone.")
+          ,(state->form-fields st8)
+          (button (@ (class "btn btn-danger")
+                     (type  "submit"))
+                  "Delete Account"))))
+
+(define (server-form lng-port lib-port st8)
+  (form "/mod-action"
+        `((h2 "Servers")
+          (p "This lounge is at: "  ,lng-port)
+          (p "Please enter your desired new library port, or \
+clear the field to set it back to the default for this space.")
+          (div (@ (class "form-group"))
+               (label (@ (for "value")) "Library Address:")
+               (input (@ (name        "value")
+                         (type        "text")
+                         (value       ,lib-port)
+                         (class       "form-control"))))
+          ,(state->form-fields st8)
+          (input (@ (type  "hidden")
+                    (name  "operation")
+                    (value "mod-server")))
+          (button (@ (class "btn btn-primary")
+                     (type  "submit"))
+                  "Update Library"))))
+
+(define (identity-form username st8)
+  `(,(form "/mod-action"
+           `((h2 "Identity — Username")
+             (p "Please enter a new username and your current \
+password to change your username.")
+             (div (@ (class "form-group"))
+                  (label (@ (for "username")) "Username:")
+                  (input (@ (name        "username")
+                            (type        "text")
+                            (value       ,username)
+                            (class       "form-control"))))
+             (div (@ (class "form-group"))
+                  (label (@ (for "password")) "Password:")
+                  (input (@ (name        "password")
+                            (type        "password")
+                            (placeholder "Password")
+                            (class       "form-control"))))
+             ,(state->form-fields st8)
+             (input (@ (type  "hidden")
+                       (name  "operation")
+                       (value "name")))
+             (button (@ (class "btn btn-primary")
+                        (type  "submit"))
+                     "Update Username")))
+    ,(form "/mod-action"
+           `((h2 "Identity — Password")
+             (p "Please enter a new password to change your current \
+password.")
+             (div (@ (class "form-group"))
+                  (label (@ (for "value")) "New password:")
+                  (input (@ (name        "value")
+                            (type        "password")
+                            (placeholder "New password")
+                            (class       "form-control"))))
+             ,(state->form-fields st8)
+             (input (@ (type  "hidden")
+                       (name  "operation")
+                       (value "password")))
+             (button (@ (class "btn btn-primary")
+                        (type  "submit"))
+                     "Update Password")))))
+
+(define (activity-form active-modules st8)
+  (define (list-active)
+    (if (null? active-modules)
+        `(p "You have no active modules yet.")
+        (render-modules active-modules "Active Modules" st8)))
+  (form  "/mod-action"
+         `((h2 "Activity")
+           (p ,(sa "Select the modules in which you are"
+                   " interested by checking their checkboxes."))
+           (p "You can then enable them by clicking ‘Activate’.")
+           ,(list-active)
+           ,(list-available "Enable" st8)
+           ,(state->form-fields st8)
+           (input (@ (type  "hidden")
+                     (name  "operation")
+                     (value "activate-modules")))
+           (button (@ (class "btn btn-primary")
+                      (type  "submit"))
+                   "Activate"))))
 
 (define (detail rc)
   (define (render-set detail st8)
@@ -378,7 +454,49 @@
                                        "result=add-success"))
                  (response-emit
                   (tpl->html
-                   (frame #:page (nothing-handler rsp))))))))))
+                   (frame #:page (nothing-handler rsp)))))))
+          ((string=? op "name")
+           (let* ((value (cons (params rc "username")
+                               (params rc "password")))
+                  (rsp (modify-player (string->symbol op)
+                                      value
+                                      st8)))
+             (if (stateful? rsp)
+                 (redirect-to rc (wrap (state rsp) "/session"
+                                       "result=mod-success"))
+                 (response-emit
+                  (tpl->html
+                   (frame #:page (nothing-handler rsp)))))))
+          ((string=? op "password")
+           (let ((rsp (modify-player (string->symbol op)
+                                     (params rc "value")
+                                     st8)))
+             (if (stateful? rsp)
+                 (redirect-to rc (wrap (state rsp) "/session"
+                                       "result=mod-success"))
+                 (response-emit
+                  (tpl->html
+                   (frame #:page (nothing-handler rsp)))))))
+          ((or (string=? op "prof-server")
+               (string=? op "mod-server"))
+           (let* ((value (if (string=? (params rc "value") "")
+                             (if (string=? op "prof-server")
+                                 %lounge-port%
+                                 %library-port%)
+                             (params rc "value")))
+                  (rsp (modify-player (string->symbol op)
+                                      value
+                                      st8)))
+             (if (stateful? rsp)
+                 (redirect-to rc (wrap (state rsp) "/session"
+                                       "result=mod-success"))
+                 (response-emit
+                  (tpl->html
+                   (frame #:page (nothing-handler rsp)))))))
+          (else
+           (response-emit
+            (tpl->html
+             (frame #:page (nothing-handler (nothing 'invalid-form "")))))))))
 (define (del-action rc)
   (let* ((st8 (query-string->state rc))
          (rsp (delete-player st8)))
