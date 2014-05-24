@@ -110,9 +110,12 @@
            (if st8
                (response-emit (tpl->html (account rc)))
                (redirect-to rc (wrap st8 "/login"))))))
-  (get "/session"
+    (get "/session"
        (lambda (rc)
          (response-emit (tpl->html (session rc)))))
+    (get "/detail"
+       (lambda (rc)
+         (response-emit (tpl->html (detail rc)))))
   (get "/hello"
        (lambda (rc)
          (response-emit
@@ -247,6 +250,46 @@
                      (button (@ (class "btn btn-danger")
                                 (type  "submit"))
                              "Delete Account"))))))
+
+(define (detail rc)
+  (define (render-set detail st8)
+    (match detail
+      ((hash id name version synopsis description creator attribution
+             resources module contents)
+       (panel name
+              `(dl
+                (dt "Name"
+                    (dd ,(if (string-null? name)
+                             (symbol->string id)
+                             (string-append name " (" version ")"))))
+                (dt "Synopsis"
+                    (dd ,synopsis))
+                (dt "Description"
+                    (dd ,description))
+                (dt "Author(s)"
+                    (dd ,creator))
+                (dt "Attribution"
+                    (dd attribution))
+                (dt "Further Resources"
+                    (dd resources))
+                (dt "Selectable Set?"
+                    (dd ,(if module "Yes" "No")))
+                ,(if (null? contents)
+                     ""
+                     `(dt "Contents"
+                          (dd ,(render-modules contents
+                                               "Contents" st8)))))))))
+  (let* ((st8 (query-string->state rc))
+         (rsp (view-set (string->symbol (params rc "hash")) st8))
+         (content (if (stateful? rsp)
+                      (render-set (result rsp) (state rsp))
+                      (nothing-handler rsp))))
+    (frame
+     #:state (if (stateful? rsp) (state rsp) #f)
+     #:rc    rc
+     #:title "Guilecraft — Set Details"
+     #:page  `(,content))))
+
 (define (session rc)
   (define (render-challenge question st8)
     (define (parse-q)
@@ -401,40 +444,52 @@
                      (class "btn btn-success"))
                   "Play"))))
 
-(define* (list-available #:optional (active #f)
-                         (state (mk-state 'unimportant
-                                          %lounge-port%
-                                          %library-port%)))
-  (define (gen-table modules)
-    `(div (@ (class "table-responsive"))
-          (table
-           (@ (class "table table-stripped"))
-           (thead
-            (tr ,(if active `(th "enable") "")
-                (th "name (version)")
-                (th "synopsis")))
-           (tbody
-            ,(map (lambda (module)
-                    `(tr
-                      ;; hash
-                      ,(if active
-                           `(td (input (@ (type "checkbox")
-                                          (name ,(car module)))
-                                       " "))
-                           "")
-                      ;; name (version)
-                      (td (p ,(sa (caddr module) " ("
-                                  (cadddr module) ")")))
-                      ;; synopsis
-                      (td (p ,(cadddr (cdr module))))))
-                  modules)))))
+(define* (render-modules modules title st8
+                         #:optional (active #f) (format 'table))
+  ;; format is ignored for now: defaults to table.
+  (define (render-module module)
+    (match module
+      ((hash id name version synopsis)
+       `(tr
+         ,(if active
+              `((td (input (@ (type "checkbox")
+                              (name ,hash)) " ")))
+              " ")
+         (td (p (a (@ (href ,(wrap st8 "/detail"
+                                   (string-append
+                                    "hash="
+                                    (if (symbol? hash)
+                                        (symbol->string hash)
+                                        hash))))
+                      (title "Click to view details about this set"))
+                   ,(if (string-null? name)
+                        (symbol->string id)
+                        (string-append name " (" version ")")))))
+         (td (p ,synopsis))))))
+  (panel title
+         (if (nothing? modules)
+             (nothing-handler modules)
+             `(div (@ (class "table-responsive"))
+                   (table
+                    (@ (class "table table-stripped"))
+                    (thead
+                     (tr ,(if active `(th ,active) "")
+                         (th "name (version)")
+                         (th "synopsis")))
+                    (tbody
+                     ,(map render-module modules)))))))
 
-  (let ((rsp (known-modules state)))
-    (panel "Available Modules"
-           (cond ((stateful? rsp)
-                  (gen-table (result rsp)))
-                 (else
-                  (nothing-handler rsp))))))
+(define* (list-available #:optional (active #f)
+                         (st8 (mk-state 37146
+                                        %lounge-port%
+                                        %library-port%)))
+  (let ((rsp (known-modules st8)))
+    (cond ((stateful? rsp)
+           (render-modules (result rsp) "Available Modules"
+                           st8 active))
+          (else
+           (render-modules rsp "Available Modules"
+                           st8 active)))))
 
 (define* (frame #:key (state #f) (page `(p "This is a test page"))
                 (title "Guilecraft — Fast Learning Tool")
