@@ -1,6 +1,6 @@
 ;;; guilecraft --- fast learning tool.         -*- coding: utf-8 -*-
 
-;;;; REPL Client
+;;;; Web Client
 
 ;; Copyright (C) 2008, 2010, 2012 Alex Sassmannshausen
 
@@ -62,6 +62,36 @@
   (get "/$"
        (lambda (rc)
          (response-emit (tpl->html (index rc)))))
+  (get "/css/bootstrap-theme.css"
+       (lambda (rc)
+         (emit-response-with-file
+          (string-append %guilecraft-dir%
+                         "/www/css/bootstrap-theme.min.css"))))
+  (get "/css/bootstrap.css"
+       (lambda (rc)
+         (emit-response-with-file
+          (string-append %guilecraft-dir%
+                         "/www/css/bootstrap.min.css"))))
+  (get "/css/sticky-footer-navbar.css"
+       (lambda (rc)
+         (emit-response-with-file
+          (string-append %guilecraft-dir%
+                         "/www/css/sticky-footer-navbar.css"))))
+  (get "/css/guilecraft.css"
+       (lambda (rc)
+         (emit-response-with-file
+          (string-append %guilecraft-dir%
+                         "/www/css/guilecraft.css"))))
+  (get "/js/jquery.min.js"
+       (lambda (rc)
+         (emit-response-with-file
+          (string-append %guilecraft-dir%
+                         "/www/js/jquery.min.js"))))
+  (get "/js/bootstrap.min.js"
+       (lambda (rc)
+         (emit-response-with-file
+          (string-append %guilecraft-dir%
+                         "/www/js/bootstrap.min.js"))))
   (get "/login"
        (lambda (rc)
          (let ((st8 (query-string->state rc)))
@@ -444,17 +474,20 @@
           (title ,title)
           ;; Minified bootstrap css
           (link (@ (rel  "stylesheet")
-                   (href
-                    "//netdna.bootstrapcdn.com/bootstrap/3.1.1/css/bootstrap.min.css")))
+                   (type "text/css")
+                   (href "/css/bootstrap.css")))
           (link (@ (rel  "stylesheet")
-                   (href
-                    "http://getbootstrap.com/examples/sticky-footer-navbar/sticky-footer-navbar.css")))
+                   (type "text/css")
+                   (href "/css/sticky-footer-navbar.css")))
           ;; Optional Theme
           ;; (link (@ (href "starter-template.css")
           ;;          (rel  "stylesheet")))>
           (link (@ (rel  "stylesheet")
-                   (href
-                    "//netdna.bootstrapcdn.com/bootstrap/3.1.1/css/bootstrap-theme.min.css")))
+                   (type "text/css")
+                   (href "/css/bootstrap-theme.css")))
+          (link (@ (rel  "stylesheet")
+                   (type "text/css")
+                   (href "/css/guilecraft.css")))
           ;; <!-- HTML5 shim and Respond.js IE8 support of HTML5 elements and media queries -->
           ;; <!--[if lt IE 9]>
           ;;   <script src="https://oss.maxcdn.com/libs/html5shiv/3.7.0/html5shiv.js"></script>
@@ -469,15 +502,15 @@
                     ,page)
                ,(footer-region)
                ;; jQuery (necessary for Bootstrap's JavaScript plugins)
-               (script (@ (src
-                           "https://ajax.googleapis.com/ajax/libs/jquery/1.11.0/jquery.min.js"))
+               (script (@ (src "/js/jquery.min.js"))
+                       (type "text/javascript")
                        "test")
                ;; Include all compiled plugins (below), or include individual
                ;; files as needed
 
                ;; Latest compiled and minified JavaScript
-               (script (@ (src
-                           "//netdna.bootstrapcdn.com/bootstrap/3.1.1/js/bootstrap.min.js"))
+               (script (@ (src "/js/bootstrap.min.js"))
+                       (type "text/javascript")
                        "test"))))
 
 (define* (header-region #:optional st8)
@@ -491,9 +524,9 @@
                              (data-target ".navbar-collapse"))
                           (span (@ (class "sr-only"))
                                 "Toggle navigation")
-                          (span (@ (class "icon-bar")) "a")
-                          (span (@ (class "icon-bar")) "a")
-                          (span (@ (class "icon-bar")) "a"))
+                          (span (@ (class "icon-bar")) " ")
+                          (span (@ (class "icon-bar")) " ")
+                          (span (@ (class "icon-bar")) " "))
                   (a (@ (class "navbar-brand")
                         (href  ,(wrap st8 "/")))
                      "Guilecraft"))
