@@ -67,11 +67,14 @@ handling to request handler."
          #f)
         ((request? request)
          (let* ((rq (rq-content request))
-                (re (guard (err (err
-                                 (begin (clog err)
-                                        (display "Error in dispatcher")
-                                        (newline)
-                                        (negs rq err))))
+                (re (guard (err
+                            (err
+                             (begin
+                               (clog err)
+                               (format #t
+                                       "Error in dispatcher: ~a.\n"
+                                       err)
+                               (negs rq err))))
                            (cond ((aliveq?  rq) (acks rq))
                                  ((quitq?   rq) (acks rq))
                                  ((echoq?   rq)
