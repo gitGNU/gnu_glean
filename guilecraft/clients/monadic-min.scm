@@ -47,7 +47,9 @@
             register-player
             authenticate-player
             ;; composite transactions
+            fallback-view-player
             view-player
+            modify-player
             add-active-modules
             next-challenge
             submit-answer
@@ -171,6 +173,22 @@ profile identified by the token in STATE."
            (details      (fetch-profile))
            (full-details (details->full-details (car details))))
           (return full-details)) state))
+
+(define (fallback-view-player state)
+  "Return a module-less list of profile fields for display for the
+profile identified by the token in STATE."
+  ((mlet* client-monad
+          ((test         (test-servers 'lounge))
+           (details      (fetch-profile)))
+          (return details)) state))
+
+(define (modify-player id value state)
+  "Return an auths confirming that the profile identified by STATE has
+had its field (ID) updated with string VALUE."
+  ((mlet* client-monad
+          ((test      (test-servers 'lounge))
+           (auths     (push-profile id value)))
+          (return auths)) state))
 
 (define (add-active-modules fullhashes state)
   "Given a set of FULLHASHES provided, for instance, by the player
@@ -445,6 +463,20 @@ or ERROR."
                                  (state-lib state))))
             (else
              (stateful 'unimportant
+                       (mk-state (auths-token       rs)
+                                 (auths-prof-server rs)
+                                 (auths-mod-server  rs))))))))
+
+(define (push-profile id data)
+  "Return a client mvalue built with ID and DATA, which when invoked
+attempts to perform a profile update, returning an auths confirming
+success or a nothing value."
+  (lambda (state)
+    (let* ((rs (apply push-data id data (state-lesser state))))
+      (cond ((nothing? rs)
+             rs)
+            (else
+             (stateful 'unimport
                        (mk-state (auths-token       rs)
                                  (auths-prof-server rs)
                                  (auths-mod-server  rs))))))))
