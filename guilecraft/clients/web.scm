@@ -727,11 +727,9 @@ Please visit your account page where you will be able to enable some."
                 "Copyright © 2014 Alex Sassmannshausen"))))
 
 (define (nothing-handler nothing)
-  (rprinter nothing)
   (match (list (nothing-id nothing)
                (nothing-context nothing))
     ((noth-id noth-con)
-     (rprinter nothing-context)
      (cond ((eqv? 'servers-down noth-id)
             (alert "The lounge and library seem to be down." 'danger))
            ((eqv? 'lounge-down noth-id)
@@ -749,9 +747,14 @@ Please visit your account page where you will be able to enable some."
                      (alert
                       "Your chosen username is not a valid user name."
                       'warning))
-                    ((eqv? 'unknown-name neg-msg)
+                    ((eqv? 'unknown-user neg-msg)
                      (alert
                       "The username you entered is unknown here."
+                      'warning))
+                    ((eqv? 'incorrect-password neg-msg)
+                     (alert
+                      "The password you supplied is not your currently
+registered password."
                       'warning))
                     ((eqv? 'invalid-token neg-msg)
                      (alert "Your session is no longer valid." 'info))
@@ -760,8 +763,8 @@ Please visit your account page where you will be able to enable some."
 Please visit your account page where you will be able to enable some."
                             'info))
                     ((eqv? 'exchange-error noth-id)
-                     (alert "We got a negative response." 'danger)
-                     (alert (object->string neg-ori)))
+                     (alert (string-append "We got a negative
+response. Message: " (symbol->string neg-msg)) 'danger))
                     (else
                      (alert "Unknown error." 'danger)))))))))
 
@@ -782,14 +785,11 @@ Please visit your account page where you will be able to enable some."
       (state->query-string state target extra)
       target))
 (define* (state->query-string state #:optional (target #f) (extra #f))
-  (format #t "state: ~a\ntarget: ~a\n" (object->string state) target)
-  (format #t "extra: ~a\n" (object->string extra))
   (let ((result (sa (if target (sa target "?") "")
                     "token=" (number->string (state-tk state))
                     "&lounge=" (state-lng state)
                     "&library=" (state-lib state)
                     (if extra (sa "&" extra) ""))))
-    (format #t "~a\n" result)
     result))
 
 (define (query-string->state rc)
