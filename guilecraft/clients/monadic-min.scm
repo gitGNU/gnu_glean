@@ -225,17 +225,22 @@ delete the player identified by token."
 provides us with details of available modules."
   ((mlet*
     client-monad
-    ((test (test-servers)))
+    ((test (test-servers 'library)))
     (fetch-known-modules)) state))
 
 ;;;;; Atomic Transactions / Monadic Transactions
-(define (test-servers)
+(define* (test-servers #:optional (server #f))
   "Return a client-monad mval which returns a nothing if one of the
-servers is down."
+servers is down. If SERVER is 'library or 'lounge, only test that
+server."
   (lambda (state)
-    (cond ((not (alive? (state-lib state)))
+    (cond ((and (or (eqv? server 'library)
+                    (not server))
+                (not (alive? (state-lib state))))
            (nothing 'library-down (state-lib state)))
-          ((not (alive? (state-lng state)))
+          ((and (or (eqv? server 'lounge)
+                    (not server))
+                (not (alive? (state-lng state))))
            (nothing 'lounge-down (state-lng state)))
           (else (stateful '(unimportant)
                           state)))))
