@@ -219,8 +219,12 @@ next-challenge for the player associated with token."
     ((test              (test-servers))
      ;; Get next challenge blobhash/counter
      (challenge-details (fetch-challenge-id)))
-    ;; Get next problem
-    (apply fetch-challenge challenge-details)) state))
+    ;; check we have active modules
+    (if (eqv? (car challenge-details) 'active-modules)
+        ;; no, pass on message
+        (return '(no-active-modules))
+        ;; yes, get next problem
+        (apply fetch-challenge challenge-details))) state))
 
 (define (submit-answer answer state)
   "Given the usual STATE of token, lounge and library, submit the
@@ -348,15 +352,23 @@ viewq request."
   (lambda (state)
     (let ((rs (call/exchange
                (state-lng state)        ; lounge connection
-               chauths? chauthq         ; predicate, constructor
+               (lambda (rs)
+                 (or (chauths? rs)
+                     (set!s? rs)))      ; predicate
+               chauthq                  ; constructor
                (state-tk state))))      ; input
-      (if (nothing? rs)
-          rs
-          (stateful `(,(chauths-hash    rs)
-                      ,(chauths-counter rs))
-                    (mk-state (chauths-token rs)
-                              (state-lng     state)
-                              (state-lib     state)))))))
+      (cond ((nothing? rs)
+             rs)
+            ((set!s? rs)
+             (stateful `(,(set!s-field rs) ,(set!s-value rs))
+                       (mk-state (set!s-token   rs)
+                                 (state-lng     state)
+                                 (state-lib     state))))
+            (else
+             (stateful `(,(chauths-hash rs) ,(chauths-counter rs))
+                       (mk-state (chauths-token rs)
+                                 (state-lng     state)
+                                 (state-lib     state))))))))
 
 (define (fetch-challenge blobhash blobcounter)
   "Return challs or ERROR."

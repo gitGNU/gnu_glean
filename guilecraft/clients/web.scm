@@ -401,16 +401,22 @@ password.")
                                  (type  "submit"))
                               "Solve"))))))
   (let* ((st8 (query-string->state rc))
-         (rsp (next-challenge st8))
-         (content (if (stateful? rsp)
-                      (render-challenge (car (result rsp))
-                                        (state rsp))
-                      (nothing-handler rsp))))
+         (rsp (next-challenge st8)))
     (frame
      #:state (if (stateful? rsp) (state rsp) #f)
      #:rc    rc
      #:title "Guilecraft — Next Challenge…"
-     #:page  `(,content))))
+     #:page  (cond ((and (stateful? rsp)
+                         (eqv? (car (result rsp))
+                               'no-active-modules))
+                    (alert "You have not yet enabled any modules. \
+Please visit your account page where you will be able to enable some."
+                           'info))
+                   ((stateful? rsp)
+                    (render-challenge (car (result rsp))
+                                      (state rsp)))
+                   (else
+                    (nothing-handler rsp))))))
 (define (auth-action rc)
   (let* ((name     (params rc "username"))
          (password (params rc "password"))
