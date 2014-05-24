@@ -53,6 +53,7 @@
             submit-answer
             delete-player
             known-modules
+            view-set
             ))
 
 ;; A monadic value in the client-monad context is a procedure taking
@@ -155,6 +156,13 @@ lounge using NAME. Raise an Exchange Error otherwise."
                   (auths-mod-server rs)))))
 
 ;;;;; Composite Transactions
+(define (view-set fullhash state)
+  "Return a user-friendly list of full set fields as provided by the
+details response, for the set identified by FULLHASH."
+  ((mlet* client-monad
+          ((test         (test-servers 'library))
+           (detail       (fetch-detail fullhash)))
+          (return detail)) state))
 (define (view-player state)
   "Return a user-friendly list of profile fields for display for the
 profile identified by the token in STATE."
@@ -255,6 +263,19 @@ server."
       (if (nothing? rs)
           rs
           (stateful (knowns-list rs)
+                    state)))))
+(define (fetch-detail fullhash)
+  "Return a client-monad mval which, when invoked, returns details
+about the set identified by FULLHASH or nothing."
+  (lambda (state)
+    (let ((rs (call/exchange
+               (state-lib state)        ; library connection
+               details? detailq         ; predicate, constructor
+               fullhash                 ; input
+               )))
+      (if (nothing? rs)
+          rs
+          (stateful (details-list rs)
                     state)))))
 (define (details->full-details details)
   "Return a client-monad mval, resolving to new DETAILS with
