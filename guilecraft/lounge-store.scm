@@ -31,6 +31,7 @@
 (define-module (guilecraft lounge-store)
   #:use-module (guilecraft data-types gprofiles)
   #:use-module (guilecraft data-types scorecards)
+  #:use-module (guilecraft lounge-filesystem)
   #:use-module (guilecraft monads)
   #:use-module (guilecraft utils)
   #:use-module (ice-9 ftw)
@@ -185,13 +186,23 @@ eligible challenge for the profile associated with TOKEN in LOUNGE."
 the profile associated with TOKEN in LOUNGE on the basis of the
 challenge evaluation RESULT."
   (lambda (lng-dir)
-    (let* ((profile (profile-from-token token lounge))
-           (scores  (update-scorecard
-                     (profile-scorecard profile)
-                     (car (fetch-next-hash-counter-pair profile))
-                     result)))
+    (let* ((profile  (profile-from-token token lounge))
+           (blobhash (car (fetch-next-hash-counter-pair profile)))
+           (scores   (update-scorecard
+                      (profile-scorecard profile) blobhash result)))
+      ;; This can be deleted 6 months after 25 May 2014
+      ;; (statef (pdiff (hash-from-token token (lounge-tokens lounge))
+      ;;                profile 'rescore scores)
+      ;;         lng-dir))))
       (statef (pdiff (hash-from-token token (lounge-tokens lounge))
-                     profile 'rescore scores)
+                     (make-profile (profile-name profile)
+                                   (profile-id profile)
+                                   (profile-prof-server profile)
+                                   (profile-mod-server profile)
+                                   (profile-active-modules profile)
+                                   scores)
+                     'rescore
+                     `(,blobhash ,result))
               lng-dir))))
 
 (define (register-profile name password lng-port lib-port lounge)
@@ -280,14 +291,16 @@ the basis of DIFF. The return value is irrelevant."
       (cond ((not operation) (make-lounge profiles tokens))
             ;; Update Profile
             ((pdiff? operation)
-             ;; use futures to write to disk as well as set!
-             (write-pdiff lng-dir operation)
-             (set! profiles (store-profile (pdiff-hash    operation)
-                                           (pdiff-profile operation)
-                                           (pdiff-field   operation)
-                                           (pdiff-value   operation)
-                                           (pdiff-oldhash operation)
-                                           profiles)))
+             (let ((hash    (pdiff-hash    operation))
+                   (profile (pdiff-profile operation))
+                   (field   (pdiff-field   operation))
+                   (value   (pdiff-value   operation))
+                   (oldhash (pdiff-oldhash operation)))
+               ;; use futures to write to disk as well as set!
+               (write-pdiff hash profile field value oldhash lng-dir
+                            (current-time))
+               (set! profiles (store-profile hash profile field value
+                                             oldhash profiles))))
             ;; Delete Token (Delete Profile step 2)
             ((eqv? operation 'purge)
              (set! tokens (vhash-delete (car params) tokens)))
@@ -312,31 +325,6 @@ the basis of DIFF. The return value is irrelevant."
                      (set! tokens (car tk-pair))
                      (cdr tk-pair))
                    #f)))))))
-
-(define (compile-lounge lng-dir)
-  ;; Perform ftw etc.
-  vlist-null)
-
-(define (write-pdiff lng-dir pdiff)
-  "Write PDIFF to LNG-DIR according to contents of PDIFF. The return
-value is unspecified."
-  (let ((field (pdiff-field pdiff)))
-    (cond ((eqv? field 'register)       ; Create profile
-           '(save (pdiff-hash pdiff) (pdiff-profile pdiff)))
-          ((eqv? field 'delete)         ; Delete profile
-           '(delete (pdiff-hash pdiff)))
-          ((eqv? field 'rescore)        ; Evaluation result
-           '(save-score (pdiff-hash pdiff)))
-          ((or (eqv? field 'name)       ; New name/password
-               (eqv? field 'password))
-           '(link-profs-and-save (pdiff-hash pdiff)
-                                 (pdiff-field pdiff)
-                                 (pdiff-value pdiff)
-                                 (pdiff-field oldhash)))
-          (else                         ; Other field update
-           '(save-field (pdiff-hash pdiff) (pdiff-field pdiff)
-                        (pdiff-value pdiff))))
-    'undefined))
 
 ;;;;; Safe I/O Helpers
 (define (store-profile hash profile field value oldhash profiles)
@@ -476,7 +464,8 @@ requesting an update of FIELD with VALUE."
                     (update-profile field
                                     (add-blobs blobs scorecard)
                                     profile)
-                    field value)))
+                    field
+                    (map (lambda (blob) (blob-hash blob)) blobs))))
           (else                         ; prof-server, mod-server
            (pdiff oldhash
                   (update-profile field value profile)
