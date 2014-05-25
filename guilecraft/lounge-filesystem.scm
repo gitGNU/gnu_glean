@@ -35,109 +35,45 @@
   #:use-module (ice-9 vlist)
   #:use-module (ice-9 match)
   #:export (compile-lounge
-            write-pdiff))
+            write-diff))
 
-(define (burning-brick)
-  "Prepare a brick that should as its action delete the place it will
-be provided with. For now it creates a 'fire-brick'. This will cause
-problems."
-  (brick (lambda (place time)
-           (brick-write (string-append place "/" time "-fire")
-                        (list 'fire place time)))))
-(define (meta-brick name lounge library oldhash)
-  "Prepare a brick that will as its action write updated account
-meta information to thp place it will be provided with."
-  (define (false-or-values . values)
-    (map (lambda (value) (if value value 'false)) values))
-  (brick (lambda (place time)
-           (brick-write (string-append place "/" time "-meta")
-                        (false-or-values 'meta name lounge library
-                                         time))
-           (if oldhash
-               (brick-write (string-append place "/" oldhash "-link")
-                            (list oldhash))))))
-(define (active-brick active-modules)
-  "Prepare a brick that will, when invoked, add information about the
-active modules to the actives subdir of the place it is provided
-with."
-  (brick (lambda (place time)
-           (brick-write (string-append place "/actives/"
-                                       time "-active")
-                        (list 'active-modules active-modules time)))))
-(define (counter-brick blobhash assessment-result)
-  "Prepare a brick that will, when invoked, add information on
-BLOBHASH and ASSESSMENT-RESULT to the counters subdir of the place it
-will be provided with."
-  (brick (lambda (place time)
-           (brick-write (string-append place "/counters/"
-                                       time "-counter")
-                        (list 'counter blobhash assessment-result
-                              time)))))
-(define (brick mortar)
+(define (make-brick diff)
   "A general brick. This could probably be killed. But does it add
 clarity?"
-  (lambda (place time)
-    (mortar place (number->string time))))
+  (lambda (lng-dir time)
+    (match diff
+      (('diff hash field value)
+       (let ((place (string-append lng-dir "/" hash)))
+         (mkdir-p place)
+         (mkdir-p (string-append place "/actives"))
+         (mkdir-p (string-append place "/counters"))
+         (brick-write place diff time field))))))
 
-(define (brick-write place contents)
+(define (brick-write profile-dir diff time field)
   "A procedure to ensure CONTENTS that are valid get written to
 PLACE."
-  (define (make-counter counter)
-    (let ((suffix (string-append "-" (number->string counter))))
-      (if (access? (string-append place suffix) R_OK)
-          (make-counter (1+ counter))
-          suffix)))
-  (if (and (string? place)
-           (list    contents))
-      (let ((counter (make-counter 0)))
-        (with-output-to-file (string-append place counter)
-          (lambda ()
-            (write contents)
-            (newline))))
-      (error "Srsly? Check the brick code.")))
+  (let ((place (string-append profile-dir "/" (number->string time)
+                              "-" (symbol->string field))))
+    (define (make-counter counter)
+      (let ((suffix (string-append "-" (number->string counter))))
+        (if (access? (string-append place suffix) R_OK)
+            (make-counter (1+ counter))
+            suffix)))
 
-(define (kiln brick hash lng-dir time)
+    (with-output-to-file (string-append place (make-counter 0))
+      (lambda ()
+        (write (list diff time))
+        (newline)))))
+
+(define (fire-kiln brick lng-dir time)
   "Ensure the folder identified by the string HASH exists in LNG-DIR,
 then ask BRICK to write itself to that folder, against TIME."
-  (let ((place (string-append lng-dir "/" hash)))
-    (mkdir-p place)
-    (mkdir-p (string-append place "/actives"))
-    (mkdir-p (string-append place "/counters"))
-    (brick place time)))
+  (brick lng-dir time))
 
-(define (write-pdiff hash profile field value oldhash lng-dir time)
+(define (write-diff diff lng-dir time)
   "Use HASH, PROFILE, FIELD, VALUE and OLDHASH to determine what needs
 to be written to disk in LNG-DIR. The return value is unspecified."
-  (cond ((eqv? field 'rescore)        ; Evaluation result
-         (match value
-           ((blobhash assessment-result)
-            (kiln (counter-brick blobhash assessment-result)
-                  hash lng-dir time))))
-        ((eqv? field 'scorecard)
-         (for-each (lambda (blobhash)
-                     (kiln (counter-brick blobhash 0)
-                           hash lng-dir time))
-                   value))
-        ((eqv? field 'register)       ; Create profile
-         (kiln (meta-brick (profile-name profile)
-                           (profile-prof-server profile)
-                           (profile-mod-server profile)
-                           #f)
-               hash lng-dir time))
-        ((eqv? field 'active-modules)       ; Active Modules
-         (kiln (active-brick value) hash lng-dir time))
-        ((eqv? field 'name)       ; New name
-         (kiln (meta-brick value #f #f oldhash) hash lng-dir time))
-        ((eqv? field 'password)    ; New password
-         (kiln (meta-brick #f #f #f oldhash) hash lng-dir time))
-        ((eqv? field 'prof-server) ; Lounge
-         (kiln (meta-brick #f value #f #f) hash lng-dir time))
-        ((eqv? field 'mod-server)  ; Library update
-         (kiln (meta-brick #f #f value #f) hash lng-dir time))
-        ((eqv? field 'delete)      ; Delete profile
-         (kiln (burning-brick) hash lng-dir time))
-        (else
-         (error 'No-such-brick-type))))
+  (fire-kiln (make-brick diff) lng-dir time))
 
 ;;; General Method:
 ;;; - Traverse lounge dir.

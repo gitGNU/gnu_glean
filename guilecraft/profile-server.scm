@@ -170,8 +170,7 @@ out of sync if they are."
              ((new-tk     (authenticate token))
               (lng        (fetch-lounge))
               (diff       (scorecard-diff new-tk result lng))
-              (profile -> (pdiff-profile diff))
-              (ignore     (update-lounge diff)))
+              (profile (update-lounge diff)))
              (auths new-tk
                     (profile-prof-server profile)
                     (profile-mod-server  profile))) %lounge-dir%)))))
@@ -251,11 +250,10 @@ if RQ parses correctly. Otherwise raise a an error."
                    ((tmp-tk  (authenticate token))
                     (lng     (fetch-lounge))
                     (diff    (modify-profile tmp-tk field value lng))
-                    (profile -> (pdiff-profile diff))
+                    (profile (update-lounge diff))
                     (sc-diff -> (missing-blobs profile))
-                    (ignore  (update-lounge diff))
                     (ignore2 (purge-profile tmp-tk))
-                    (new-tk  (login (pdiff-hash diff))))
+                    (new-tk  (login (cadr diff))))
                    (if (null? sc-diff)
                        (auths new-tk
                               (profile-prof-server profile)
