@@ -272,18 +272,18 @@ the profile identified by TOKEN in LOUNGE requesting its deletion."
   "Return a lounge mvalue which, when resolved, forces the lounge to
 destroy TOKEN in its token table."
   (lambda (lng-dir)
-    (statef (lounge lng-dir 'purge token) lng-dir)))
+    (statef (lounge lng-dir 'purge #:token token) lng-dir)))
 
 (define (fetch-lounge)
   "Return a lounge mvalue which, when resolved, returns a lounge."
   (lambda (lng-dir)
     (statef (lounge lng-dir) lng-dir)))
 
-(define (update-lounge diff)
+(define (update-lounge diff save?)
   "Return a lounge mvalue which, when resolved, updates the lounge on
 the basis of DIFF. The return value is irrelevant."
   (lambda (lng-dir)
-    (statef (lounge lng-dir diff) lng-dir)))
+    (statef (lounge lng-dir diff #:save? save?) lng-dir)))
 
 ;;;;; I/O Lounge Store Operations
 ;; A lounge is a database of all known profiles stored in a vhash
@@ -297,14 +297,15 @@ the basis of DIFF. The return value is irrelevant."
 (define lounge
   (let ((profiles vlist-null)
         (tokens   vlist-null))
-    (lambda* (lng-dir #:optional operation . params)
+    (lambda* (lng-dir #:optional operation #:key (save? #f)
+                      (token #f))
       (if (vlist-null? profiles)
           (set! profiles (compile-lounge lng-dir)))
       (cond ((not operation) (make-lounge profiles tokens))
             ;; Update Profile
             ((diff? operation)
              ;; use futures to write to disk as well as set!
-             (write-diff operation lng-dir (current-time))
+             (if save? (write-diff operation lng-dir (current-time)))
              (match (store-profile operation profiles)
                ((profile . profilez)
                 (set! profiles profilez)
@@ -312,7 +313,7 @@ the basis of DIFF. The return value is irrelevant."
                (_ (error "lounge -- Cache unsuccessfull."))))
             ;; Delete Token (Delete Profile step 2)
             ((eqv? operation 'purge)
-             (set! tokens (vhash-delete (car params) tokens)))
+             (set! tokens (vhash-delete token tokens)))
             ;; Authenticate
             ((token?        operation)
              (let ((tk-pair (renew-tk operation

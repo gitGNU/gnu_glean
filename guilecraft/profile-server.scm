@@ -170,7 +170,7 @@ out of sync if they are."
              ((new-tk     (authenticate token))
               (lng        (fetch-lounge))
               (diff       (scorecard-diff new-tk result lng))
-              (profile (update-lounge diff)))
+              (profile (update-lounge diff %lounge-persist%)))
              (auths new-tk
                     (profile-prof-server profile)
                     (profile-mod-server  profile))) %lounge-dir%)))))
@@ -195,7 +195,7 @@ server, module server, a nothing value, or raise an error."
                    ((lng       (fetch-lounge))
                     (diff      (register-profile name passwd
                                                  lounge library lng))
-                    (ignore    (update-lounge diff))
+                    (ignore    (update-lounge diff %lounge-persist%))
                     (new-token (login (profile-hash name passwd))))
                    (auths new-token lounge library)) %lounge-dir%)))))
 
@@ -250,7 +250,7 @@ if RQ parses correctly. Otherwise raise a an error."
                    ((tmp-tk  (authenticate token))
                     (lng     (fetch-lounge))
                     (diff    (modify-profile tmp-tk field value lng))
-                    (profile (update-lounge diff))
+                    (profile (update-lounge diff %lounge-persist%))
                     (sc-diff -> (missing-blobs profile))
                     (ignore2 (purge-profile tmp-tk))
                     (new-tk  (login (cadr diff))))
@@ -268,7 +268,7 @@ if RQ parses correctly. Otherwise raise a an error."
                 ((new-tk  (authenticate tk))
                  (lng     (fetch-lounge))
                  (diff    (delete-profile new-tk lng))
-                 (ignore  (update-lounge diff))
+                 (ignore  (update-lounge diff %lounge-persist%))
                  (ignore2 (purge-profile tk)))
                 (acks rq)) %lounge-dir%)
         (raise '(process-delq invalid-token)))))
