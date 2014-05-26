@@ -77,6 +77,7 @@
 	    set-version
 	    set-synopsis
 	    set-description
+            set-keywords
 	    set-creator
 	    set-attribution
 	    set-resources
@@ -126,20 +127,20 @@
 ;;;; This section details porcelain commands that should normally be
 ;;;; used by humans to generate sets and/or modules.
 (define* (module id #:key (contents '()) (name "") (version "")
-	   (synopsis "") (description "") (creator "")
-	   (attribution '()) (resources '()))
+	   (synopsis "") (description "") (keywords '())
+           (creator "") (attribution '()) (resources '()))
   "High level convenenience interface to make-set, for the
 creation of modules."
-  (make-set id contents name version synopsis description creator
-	    attribution resources #t))
+  (make-set id contents name version synopsis description keywords
+            creator attribution resources #t))
 
 (define* (set id #:key (contents '()) (name "") (version "")
-	       (synopsis "") (description "") (creator "")
-	       (attribution '()) (resources '()))
+              (synopsis "") (description "") (keywords '())
+              (creator "") (attribution '()) (resources '()))
   "High level convenenience interface to make-set, for the
 creation of sets."
-  (make-set id contents name version synopsis description creator
-	    attribution resources #f))
+  (make-set id contents name version synopsis description keywords
+            creator attribution resources #f))
 
 ;;;;; Set Structure
 ;;;; The (rnrs records syntactic) record definitions for all things
@@ -322,7 +323,8 @@ and the rnrs records definition."
 				  (immutable name)
 				  (immutable version)
 				  (immutable synopsis)
-				  (immutable description)
+                                  (immutable description)
+				  (immutable keywords)
 				  (immutable creator)
 				  (immutable attribution)
 				  (immutable resources)
@@ -343,7 +345,7 @@ and the rnrs records definition."
    ;; layer to set creation is hence located in the porcelain
    ;; commands.
    (lambda (new)
-     (lambda (id contents name version synopsis description
+     (lambda (id contents name version synopsis description keywords
 		 creator attribution resources module)
        (validator new
 		  (list (vid? 'err-set-id)
@@ -351,13 +353,14 @@ and the rnrs records definition."
 			(vstring? 'err-set-name)
 			(vstring? 'err-set-version)
 			(vstring? 'err-set-synopsis)
-			(vstring? 'err-set-description)
+                        (vstring? 'err-set-description)
+			(vlist? vstring? 'err-set-keywords)
 			(vstring? 'err-set-creator)
 			(vlist? vmedia? 'err-set-attribution)
 			(vlist? vmedia? 'err-set-resources)
 			(vboolean? 'err-set-module))
 		  id contents name version synopsis description
-		  creator attribution resources module)))))
+                  keywords creator attribution resources module)))))
 (define make-set (record-constructor set-rcd))
 (define set? (record-predicate set-rtd))
 (define set-id (record-accessor set-rtd 0))
@@ -366,10 +369,11 @@ and the rnrs records definition."
 (define set-version (record-accessor set-rtd 3))
 (define set-synopsis (record-accessor set-rtd 4))
 (define set-description (record-accessor set-rtd 5))
-(define set-creator (record-accessor set-rtd 6))
-(define set-attribution (record-accessor set-rtd 7))
-(define set-resources (record-accessor set-rtd 8))
-(define set-module (record-accessor set-rtd 9))
+(define set-keywords (record-accessor set-rtd 6))
+(define set-creator (record-accessor set-rtd 7))
+(define set-attribution (record-accessor set-rtd 8))
+(define set-resources (record-accessor set-rtd 9))
+(define set-module (record-accessor set-rtd 10))
 
 (define (rootset? set)
   "Return #t if set-contents contains problems (which means it's a

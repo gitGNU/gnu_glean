@@ -282,6 +282,7 @@ in their name."
         (set-id set)
         (set-name set)
         (set-version set)
+        (set-keywords set)
         (set-synopsis set)))
 
 (define (set-details hash library-pair)
@@ -293,6 +294,7 @@ cannot be found in LIBRARY-PAIR."
               (set-id set)
               (set-name set)
               (set-version set)
+              (set-keywords set)
               (set-synopsis set)
               (set-description set)
               (set-creator set)
