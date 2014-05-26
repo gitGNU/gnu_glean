@@ -24,7 +24,6 @@
   #:use-module (srfi srfi-64)      ; Provide test suite
   #:use-module (guilecraft config)
   #:use-module (guilecraft comtools)
-  #:use-module (guilecraft clients min)
   #:use-module (guilecraft data-types base-requests)
   #:use-module (guilecraft data-types module-requests)
   #:use-module (quickcheck quickcheck)

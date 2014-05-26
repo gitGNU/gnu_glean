@@ -23,7 +23,6 @@
   #:use-module (srfi srfi-64)      ; Provide test suite
   #:use-module (guilecraft config)
   #:use-module (guilecraft comtools)
-  #:use-module (guilecraft clients min)
   ) ; Provide functions to be tested.
 
 (test-begin "server-tests")
