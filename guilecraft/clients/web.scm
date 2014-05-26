@@ -310,22 +310,32 @@ password.")
 (define (activity-form active-modules st8)
   (define (list-active)
     (if (null? active-modules)
-        `(p "You have no active modules yet.")
-        (render-modules active-modules "Active Modules" st8)))
-  (form  "/mod-action"
-         `((h2 "Activity")
-           (p ,(sa "Select the modules in which you are"
-                   " interested by checking their checkboxes."))
-           (p "You can then enable them by clicking ‘Activate’.")
-           ,(list-active)
-           ,(list-available "Enable" st8)
-           ,(state->form-fields st8)
-           (input (@ (type  "hidden")
-                     (name  "operation")
-                     (value "activate-modules")))
-           (button (@ (class "btn btn-primary")
-                      (type  "submit"))
-                   "Activate"))))
+        ""
+        (form  "/mod-action"
+               `((p "You can disable any of your active modules by
+checking their checkbox and clicking on ‘De-activate.‘")
+                 ,(render-modules active-modules "Active Modules" st8
+                                  "Disable")
+                 ,(state->form-fields st8)
+                 (input (@ (type  "hidden")
+                           (name  "operation")
+                           (value "deactivate-modules")))
+                 (button (@ (class "btn btn-primary")
+                            (type  "submit"))
+                         "De-activate")))))
+  `((h2 "Activity")
+    ,(list-active)
+    ,(form "/mod-action"
+           `((p "You can enable new modules by checking their checkbox
+and clicking on ‘Activate’.")
+             ,(list-available "Enable" st8)
+             ,(state->form-fields st8)
+             (input (@ (type  "hidden")
+                       (name  "operation")
+                       (value "activate-modules")))
+             (button (@ (class "btn btn-primary")
+                        (type  "submit"))
+                     "Activate")))))
 
 (define (detail rc)
   (define (render-set detail st8)
@@ -460,6 +470,15 @@ Please visit your account page where you will be able to enable some."
              (if (stateful? rsp)
                  (redirect-to rc (wrap (state rsp) "/session"
                                        "result=add-success"))
+                 (response-emit
+                  (tpl->html
+                   (frame #:page (nothing-handler rsp)))))))
+          ((string=? op "deactivate-modules")
+           (let* ((ids (parse-ids))
+                  (rsp (add-active-modules ids st8 'negate)))
+             (if (stateful? rsp)
+                 (redirect-to rc (wrap (state rsp) "/session"
+                                       "result=rem-success"))
                  (response-emit
                   (tpl->html
                    (frame #:page (nothing-handler rsp)))))))
@@ -636,6 +655,9 @@ Please visit your account page where you will be able to enable some."
                 ((string=? msg "add-success")
                  (alert "Your selected modules have been activated."
                         'success))
+                ((string=? msg "rem-success")
+                 (alert "Your selected modules have been
+de-activated." 'success))
                 ((string=? msg "aut-success")
                  (alert "You are now logged in." 'success))
                 ((string=? msg "reg-success")

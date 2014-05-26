@@ -243,7 +243,9 @@ if RQ parses correctly. Otherwise raise a an error."
           ;; Validate value: new active-modules.
           ((and (eqv? field 'active-modules) ; active-modules
                 (not (list? value))
-                (not (parse-active-modules value)))
+                (if (eqv? (car value) 'negate)
+                    (not (parse-active-modules (cdr value)))
+                    (not (parse-active-modules value))))
            (raise '(process-set!q invalid-active-modules)))
           (else
            ((mlet* lounge-monad

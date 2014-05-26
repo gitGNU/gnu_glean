@@ -378,6 +378,17 @@ instructions carried by HASH, FIELD and VALUE."
                               value)
                         oldprofile)
                        (vhash-delete hash profiles))))
+              ;; FIXME: Quick 'n dirty active-mods de-activation: will
+              ;; not clean the scorecard, which should happen!
+              (('negate ((? blobhash?) . (? blobhash?)) ...)
+               (let* ((oldprofile (profile-from-hash hash profiles))
+                      (actives    (profile-active-modules oldprofile)))
+                 (save hash
+                       (update-profile
+                        'active-modules
+                        (lset-difference equal? actives (cdr value))
+                        oldprofile)
+                       (vhash-delete hash profiles))))
               (_ (error "store-profile -- invalid active-modules"))))
            ((eqv? field 'hashmap)
             (let* ((blobs      (hashmap->blobs value))

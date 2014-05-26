@@ -190,7 +190,7 @@ had its field (ID) updated with string VALUE."
            (auths     (push-profile id value)))
           (return auths)) state))
 
-(define (add-active-modules fullhashes state)
+(define* (add-active-modules fullhashes state #:optional (negate? #f))
   "Given a set of FULLHASHES provided, for instance, by the player
 choosing from amongst a list of modules, carry out the necessary
 transactions to activate these modules for the player."
@@ -201,7 +201,10 @@ transactions to activate these modules for the player."
         (hashpairs  (fetch-hashpairs fullhashes))
         ;; Update profile active modules, retrieve newly required
         ;; hashmaps.
-        (req-maps   (push-active-modules (car hashpairs)))
+        (req-maps   (push-active-modules (if negate?
+                                             (cons 'negate
+                                                   (car hashpairs))
+                                             (car hashpairs))))
         ;; Get hashmaps if necessary.
         (hashmap    (if (eqv? req-maps 'unimportant)
                         (return req-maps)
