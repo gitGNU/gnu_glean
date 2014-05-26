@@ -737,18 +737,21 @@ Please visit your account page where you will be able to enable some."
                (nothing-context nothing))
     ((noth-id noth-con)
      (cond ((eqv? 'servers-down noth-id)
-            (alert "The lounge and library seem to be down." 'danger))
+            (alert "The lounge and library which you make use of seem
+to currently be down. Please try again later." 'warning))
            ((eqv? 'lounge-down noth-id)
-            (alert "The lounge at ~a is currently down." 'danger))
+            (alert "The lounge you are registered with seems to
+currently be down. Please try again later." 'warning))
            ((eqv? 'library-down noth-id)
-            (alert "The library at ~a is currently down." 'danger))
+            (alert "The library which you make use of seems to
+currently be down. Please try again later." 'warning))
            (else
             (let ((neg-ori (neg-orig noth-con))
                   (neg-msg (neg-msg  noth-con)))
               (cond ((eqv? 'username-taken neg-msg)
                      (alert
                       "Your chosen username is no longer available."
-                      'info))
+                      'warning))
                     ((eqv? 'invalid-username neg-msg)
                      (alert
                       "Your chosen username is not a valid user name."
@@ -770,7 +773,7 @@ Please visit your account page where you will be able to enable some."
                             'info))
                     ((eqv? 'exchange-error noth-id)
                      (alert (string-append "We got a negative
-response. Message: " (symbol->string neg-msg)) 'danger))
+response. Message: " (object->string neg-msg)) 'danger))
                     (else
                      (alert "Unknown error." 'danger)))))))))
 
