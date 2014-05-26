@@ -329,32 +329,34 @@ password.")
 
 (define (detail rc)
   (define (render-set detail st8)
+    (define* (render-if empty-pred obj title #:optional (renderer #f))
+      (if (empty-pred obj)
+          "" `(dt ,title (dd ,(if renderer (renderer obj) obj)))))
     (match detail
-      ((hash id name version synopsis description creator attribution
-             resources module contents)
+      ((hash id name version keywords synopsis description creator
+             attribution resources module contents)
        (panel name
               `(dl
                 (dt "Name"
                     (dd ,(if (string-null? name)
                              (symbol->string id)
                              (string-append name " (" version ")"))))
-                (dt "Synopsis"
-                    (dd ,synopsis))
-                (dt "Description"
-                    (dd ,description))
-                (dt "Author(s)"
-                    (dd ,creator))
-                (dt "Attribution"
-                    (dd attribution))
-                (dt "Further Resources"
-                    (dd resources))
-                (dt "Selectable Set?"
-                    (dd ,(if module "Yes" "No")))
-                ,(if (null? contents)
-                     ""
-                     `(dt "Contents"
-                          (dd ,(render-modules contents
-                                               "Contents" st8)))))))))
+                ,(render-if null? keywords "Keywords"
+                            (lambda (k) (string-join k ", ")))
+                ,(render-if string-null? synopsis "Synopsis")
+                ,(render-if string-null? description "Description")
+                ,(render-if string-null? creator "Author(s)")
+                ;; Tricky format? No plain string?
+                ;; (dt "Attribution"
+                ;;     (dd attribution))
+                ;; (dt "Further Resources"
+                ;;     (dd resources))
+                ,(render-if (const #t) module "Selectable Set?"
+                            (lambda (k) (if k "Yes" "No")))
+                ,(render-if null? contents "Contents"
+                            (lambda (k) (render-modules k
+                                                        "Contents"
+                                                        st8))))))))
   (let* ((st8 (query-string->state rc))
          (rsp (view-set (string->symbol (params rc "hash")) st8))
          (content (if (stateful? rsp)
@@ -573,7 +575,7 @@ Please visit your account page where you will be able to enable some."
   ;; format is ignored for now: defaults to table.
   (define (render-module module)
     (match module
-      ((hash id name version synopsis)
+      ((hash id name version keywords synopsis)
        `(tr
          ,(if active
               `((td (input (@ (type "checkbox")
@@ -589,7 +591,11 @@ Please visit your account page where you will be able to enable some."
                    ,(if (string-null? name)
                         (symbol->string id)
                         (string-append name " (" version ")")))))
-         (td (p ,synopsis))))))
+         (td ,(if (null? keywords)
+                  ""
+                  `(p ,(string-append "Keywords: "
+                                      (string-join keywords ", "))))
+             (p ,synopsis))))))
   (panel title
          (if (nothing? modules)
              (nothing-handler modules)
