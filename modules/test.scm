@@ -1,6 +1,6 @@
 ;;; guilecraft --- learning the world using Guile.         -*- coding: utf-8 -*-
 
-(define-module (modules test)
+(define-module (library test)
   #:use-module (guilecraft data-types sets)
   #:export (test-module))
 
@@ -9,6 +9,7 @@
     'test
     #:name "A Test Module"
     #:version "0.1"
+    #:keywords '("test" "simple" "open" "multiple-choice")
     #:synopsis "This is a bare skeleton of a module."
     #:description "The aim is to have a module that:
 a) illustrates fields and their acceptable values;

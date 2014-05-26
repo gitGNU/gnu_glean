@@ -240,12 +240,19 @@ LIBRARY-PAIR."
   (let ((set-pair? (libv-assoc hash (libv-cat library-pair))))
     (if set-pair? (cdr set-pair?) #f)))
 
-(define (known-crownsets library-pair)
+(define (known-crownsets library-pair config-ignore-keywords)
   "Return a list containing summary information on all known crownsets
-in the library derived from LIBRARY-PAIR."
-  (map (lambda (hash)
-         (set-summary (fetch-set hash library-pair) hash))
-       (known-crownset-hashes library-pair)))
+in the library derived from LIBRARY-PAIR, ignoring those that contain
+keywords blacklisted in CONFIG-IGNORE-KEYWORDS."
+  (fold (lambda (hash sets)
+          (let ((set (fetch-set hash library-pair)))
+            (if (null? (lset-intersection string=?
+                                          config-ignore-keywords
+                                          (set-keywords set)))
+                (cons (set-summary set hash) sets)
+                sets)))
+        '()
+        (known-crownset-hashes library-pair)))
 
 (define (search-sets operator search library-pair)
   "Return a list containing summary information for all sets matching

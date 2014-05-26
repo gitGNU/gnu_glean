@@ -1,6 +1,6 @@
 ;;; guilecraft --- learning the world using Guile.         -*- coding: utf-8 -*-
 
-(define-module (modules git)
+(define-module (library git)
   #:use-module (guilecraft data-types sets)
   #:export (git-gmodule))
 
@@ -121,6 +121,8 @@ and switch to it?")
     'git
     #:name "Git: fast version control"
     #:version "0.1"
+    #:keywords '("programming" "version-control" "project-management"
+                "source-code")
     #:synopsis "Learn to use git to manage your projects."
     #:description "Long Description: background on git, introductory text"
     #:creator "Alex Sassmannshausen"
