@@ -1,0 +1,38 @@
+-*- mode: org -*-
+
+Guilecraft is a ...
+
+It provides [[http://www.gnu.org/software/guile/][Guile]] Scheme APIs, including a high-level embedded
+domain-specific ...
+
+* Requirements
+
+Guilecraft currently depends on the following packages:
+
+  - [[http://gnu.org/software/guile/][GNU Guile 2.0.x]], version 2.0.5 or later
+  - [[http://gnupg.org/][GNU libgcrypt]]
+  - Artanis, which you will need to install in your Guile site directory.
+
+* Installation
+
+See the manual for the installation instructions, either by running
+
+  info -f doc/guilecraft.info "(guilecraft) Installation"
+
+or by checking the [[http://www.gnu.org/software/guix/manual/guix.html#Installation][web copy of the manual]].
+
+For information on installation from a Git checkout, please see the ‘HACKING’
+file.
+
+* Contact
+
+Guilecraft is hosted at http://guilecraft.org.
+
+* Related software
+
+  - [[http://nixos.org][Nix, Nixpkgs, and NixOS]], functional package manager and associated
+    software distribution, are the inspiration of Guix
+  - Guide on the Side
+  - Mnemosyne
+  - Wink
+  - Org-Drill

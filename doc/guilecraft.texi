@@ -1,0 +1,3111 @@
+\input texinfo
+@c -*-texinfo-*-
+
+@c %**start of header
+@setfilename guix.info
+@documentencoding UTF-8
+@settitle GNU Guix Reference Manual
+@c %**end of header
+
+@include version.texi
+
+@copying
+Copyright @copyright{} 2012, 2013, 2014 Ludovic Courtès@*
+Copyright @copyright{} 2013 Andreas Enge@*
+Copyright @copyright{} 2013 Nikita Karetnikov
+
+Permission is granted to copy, distribute and/or modify this document
+under the terms of the GNU Free Documentation License, Version 1.3 or
+any later version published by the Free Software Foundation; with no
+Invariant Sections, no Front-Cover Texts, and no Back-Cover Texts.  A
+copy of the license is included in the section entitled ``GNU Free
+Documentation License''.
+@end copying
+
+@dircategory Package management
+@direntry
+* guix: (guix).       Guix, the functional package manager.
+* guix package: (guix)Invoking guix package
+                      Managing packages with Guix.
+* guix build: (guix)Invoking guix build
+                      Building packages with Guix.
+@end direntry
+
+@titlepage
+@title GNU Guix Reference Manual
+@subtitle Using the GNU Guix Functional Package Manager
+@author Ludovic Courtès
+@author Andreas Enge
+@author Nikita Karetnikov
+
+@page
+@vskip 0pt plus 1filll
+Edition @value{EDITION} @*
+@value{UPDATED} @*
+
+@insertcopying
+@end titlepage
+
+@contents
+
+@c *********************************************************************
+@node Top
+@top GNU Guix
+
+This document describes GNU Guix version @value{VERSION}, a functional
+package management tool written for the GNU system.
+
+@menu
+* Introduction::                What is Guix about?
+* Installation::                Installing Guix.
+* Package Management::          Package installation, upgrade, etc.
+* Programming Interface::       Using Guix in Scheme.
+* Utilities::                   Package management commands.
+* GNU Distribution::            Software for your friendly GNU system.
+* Contributing::                Your help needed!
+
+* Acknowledgments::             Thanks!
+* GNU Free Documentation License::  The license of this manual.
+* Concept Index::               Concepts.
+* Function Index::              Functions.
+@end menu
+
+@c *********************************************************************
+@node Introduction
+@chapter Introduction
+
+GNU Guix@footnote{``Guix'' is pronounced like ``geeks'', or ``ɡiːks''
+using the international phonetic alphabet (IPA).} is a functional
+package management tool for the GNU system.  Package management consists
+of all activities that relate to building packages from sources,
+honoring their build-time and run-time dependencies,
+installing packages in user environments, upgrading installed packages
+to new versions or rolling back to a previous set, removing unused
+software packages, etc.
+
+@cindex functional package management
+The term @dfn{functional} refers to a specific package management
+discipline.  In Guix, the package build and installation process is seen
+as a function, in the mathematical sense.  That function takes inputs,
+such as build scripts, a compiler, and libraries, and
+returns an installed package.  As a pure function, its result depends
+solely on its inputs---for instance, it cannot refer to software or
+scripts that were not explicitly passed as inputs.  A build function
+always produces the same result when passed a given set of inputs.  It
+cannot alter the system's environment in
+any way; for instance, it cannot create, modify, or delete files outside
+of its build and installation directories.  This is achieved by running
+build processes in isolated environments (or @dfn{containers}), where only their
+explicit inputs are visible.
+
+@cindex store
+The result of package build functions is @dfn{cached} in the file
+system, in a special directory called @dfn{the store} (@pxref{The
+Store}).  Each package is installed in a directory of its own, in the
+store---by default under @file{/gnu/store}.  The directory name contains
+a hash of all the inputs used to build that package; thus, changing an
+input yields a different directory name.
+
+This approach is the foundation of Guix's salient features: support for
+transactional package upgrade and rollback, per-user installation, and
+garbage collection of packages (@pxref{Features}).
+
+Guix has a command-line interface, which allows users to build, install,
+upgrade, and remove packages, as well as a Scheme programming interface.
+
+Last but not least, Guix is used to build a distribution of the GNU
+system, with many GNU and non-GNU free software packages.  @xref{GNU
+Distribution}.
+
+@c *********************************************************************
+@node Installation
+@chapter Installation
+
+GNU Guix is available for download from its website at
+@url{http://www.gnu.org/software/guix/}.  This section describes the
+software requirements of Guix, as well as how to install it and get
+ready to use it.
+
+The build procedure for Guix is the same as for other GNU software, and
+is not covered here.  Please see the files @file{README} and
+@file{INSTALL} in the Guix source tree for additional details.
+
+@menu
+* Requirements::                Software needed to build and run Guix.
+* Setting Up the Daemon::       Preparing the build daemon's environment.
+* Invoking guix-daemon::        Running the build daemon.
+@end menu
+
+@node Requirements
+@section Requirements
+
+GNU Guix depends on the following packages:
+
+@itemize
+@item @url{http://gnu.org/software/guile/, GNU Guile}, version 2.0.5 or later;
+@item @url{http://gnupg.org/, GNU libgcrypt}
+@end itemize
+
+Unless @code{--disable-daemon} was passed to @command{configure}, the
+following packages are also needed:
+
+@itemize
+@item @url{http://sqlite.org, SQLite 3}
+@item @url{http://www.bzip.org, libbz2}
+@item @url{http://gcc.gnu.org, GCC's g++}
+@end itemize
+
+When a working installation of @url{http://nixos.org/nix/, the Nix package
+manager} is available, you
+can instead configure Guix with @code{--disable-daemon}.  In that case,
+Nix replaces the three dependencies above.
+
+Guix is compatible with Nix, so it is possible to share the same store
+between both.  To do so, you must pass @command{configure} not only the
+same @code{--with-store-dir} value, but also the same
+@code{--localstatedir} value.  The latter is essential because it
+specifies where the database that stores metadata about the store is
+located, among other things.  The default values for Nix are
+@code{--with-store-dir=/nix/store} and @code{--localstatedir=/nix/var}.
+Note that @code{--disable-daemon} is not required if
+your goal is to share the store with Nix.
+
+@node Setting Up the Daemon
+@section Setting Up the Daemon
+
+@cindex daemon
+Operations such as building a package or running the garbage collector
+are all performed by a specialized process, the @dfn{build daemon}, on
+behalf of clients.  Only the daemon may access the store and its
+associated database.  Thus, any operation that manipulates the store
+goes through the daemon.  For instance, command-line tools such as
+@command{guix package} and @command{guix build} communicate with the
+daemon (@i{via} remote procedure calls) to instruct it what to do.
+
+The following sections explain how to prepare the build daemon's
+environment.
+
+@menu
+* Build Environment Setup::     Preparing the isolated build environment.
+* Daemon Offload Setup::        Offloading builds to remote machines.
+@end menu
+
+@node Build Environment Setup
+@subsection Build Environment Setup
+
+In a standard multi-user setup, Guix and its daemon---the
+@command{guix-daemon} program---are installed by the system
+administrator; @file{/gnu/store} is owned by @code{root} and
+@command{guix-daemon} runs as @code{root}.  Unprivileged users may use
+Guix tools to build packages or otherwise access the store, and the
+daemon will do it on their behalf, ensuring that the store is kept in a
+consistent state, and allowing built packages to be shared among users.
+
+@cindex build users
+When @command{guix-daemon} runs as @code{root}, you may not want package
+build processes themselves to run as @code{root} too, for obvious
+security reasons.  To avoid that, a special pool of @dfn{build users}
+should be created for use by build processes started by the daemon.
+These build users need not have a shell and a home directory: they will
+just be used when the daemon drops @code{root} privileges in build
+processes.  Having several such users allows the daemon to launch
+distinct build processes under separate UIDs, which guarantees that they
+do not interfere with each other---an essential feature since builds are
+regarded as pure functions (@pxref{Introduction}).
+
+On a GNU/Linux system, a build user pool may be created like this (using
+Bash syntax and the @code{shadow} commands):
+
+@c See http://lists.gnu.org/archive/html/bug-guix/2013-01/msg00239.html
+@c for why `-G' is needed.
+@example
+# groupadd guix-builder
+# for i in `seq 1 10`;
+  do
+    useradd -g guix-builder -G guix-builder           \
+            -d /var/empty -s `which nologin`          \
+            -c "Guix build user $i" --system          \
+            guix-builder$i;
+  done
+@end example
+
+@noindent
+The @code{guix-daemon} program may then be run as @code{root} with:
+
+@example
+# guix-daemon --build-users-group=guix-builder
+@end example
+
+@cindex chroot
+@noindent
+This way, the daemon starts build processes in a chroot, under one of
+the @code{guix-builder} users.  On GNU/Linux, by default, the chroot
+environment contains nothing but:
+
+@c Keep this list in sync with libstore/build.cc! -----------------------
+@itemize
+@item
+a minimal @code{/dev} directory, created mostly independently from the
+host @code{/dev}@footnote{``Mostly'', because while the set of files
+that appear in the chroot's @code{/dev} is fixed, most of these files
+can only be created if the host has them.};
+
+@item
+the @code{/proc} directory; it only shows the container's processes
+since a separate PID name space is used;
+
+@item
+@file{/etc/passwd} with an entry for the current user and an entry for
+user @file{nobody};
+
+@item
+@file{/etc/group} with an entry for the user's group;
+
+@item
+@file{/etc/hosts} with an entry that maps @code{localhost} to
+@code{127.0.0.1};
+
+@item
+a writable @file{/tmp} directory.
+@end itemize
+
+If you are installing Guix as an unprivileged user, it is still
+possible to run @command{guix-daemon}.  However, build processes will
+not be isolated from one another, and not from the rest of the system.
+Thus, build processes may interfere with each other, and may access
+programs, libraries, and other files available on the system---making it
+much harder to view them as @emph{pure} functions.
+
+
+@node Daemon Offload Setup
+@subsection Using the Offload Facility
+
+@cindex offloading
+@cindex build hook
+When desired, the build daemon can @dfn{offload}
+derivation builds to other machines
+running Guix, using the @code{offload} @dfn{build hook}.  When that
+feature is enabled, a list of user-specified build machines is read from
+@file{/etc/guix/machines.scm}; anytime a build is requested, for
+instance via @code{guix build}, the daemon attempts to offload it to one
+of the machines that satisfies the derivation's constraints, in
+particular its system type---e.g., @file{x86_64-linux}.  Missing
+prerequisites for the build are copied over SSH to the target machine,
+which then proceeds with the build; upon success the output(s) of the
+build are copied back to the initial machine.
+
+The @file{/etc/guix/machines.scm} file typically looks like this:
+
+@example
+(list (build-machine
+        (name "eightysix.example.org")
+        (system "x86_64-linux")
+        (user "bob")
+        (speed 2.))    ; incredibly fast!
+
+      (build-machine
+        (name "meeps.example.org")
+        (system "mips64el-linux")
+        (user "alice")
+        (private-key
+         (string-append (getenv "HOME")
+                        "/.ssh/id-rsa-for-guix"))))
+@end example
+
+@noindent
+In the example above we specify a list of two build machines, one for
+the @code{x86_64} architecture and one for the @code{mips64el}
+architecture.
+
+In fact, this file is---not surprisingly!---a Scheme file that is
+evaluated when the @code{offload} hook is started.  Its return value
+must be a list of @code{build-machine} objects.  While this example
+shows a fixed list of build machines, one could imagine, say, using
+DNS-SD to return a list of potential build machines discovered in the
+local network (@pxref{Introduction, Guile-Avahi,, guile-avahi, Using
+Avahi in Guile Scheme Programs}).
+
+The compulsory fields for a @code{build-machine} declaration are:
+
+@table @code
+
+@item name
+The remote machine's host name.
+
+@item system
+The remote machine's system type.
+
+@item user
+The user account to use when connecting to the remote machine over SSH.
+Note that the SSH key pair must @emph{not} be passphrase-protected, to
+allow non-interactive logins.
+
+@end table
+
+@noindent
+A number of optional fields may be specified:
+
+@table @code
+
+@item port
+Port number of the machine's SSH server (default: 22).
+
+@item private-key
+The SSH private key file to use when connecting to the machine.
+
+@item parallel-builds
+The number of builds that may run in parallel on the machine (1 by
+default.)
+
+@item speed
+A ``relative speed factor''.  The offload scheduler will tend to prefer
+machines with a higher speed factor.
+
+@item features
+A list of strings denoting specific features supported by the machine.
+An example is @code{"kvm"} for machines that have the KVM Linux modules
+and corresponding hardware support.  Derivations can request features by
+name, and they will be scheduled on matching build machines.
+
+@end table
+
+The @code{guix} command must be in the search path on the build
+machines, since offloading works by invoking the @code{guix archive} and
+@code{guix build} commands.
+
+There's one last thing to do once @file{machines.scm} is in place.  As
+explained above, when offloading, files are transferred back and forth
+between the machine stores.  For this to work, you need to generate a
+key pair to allow the daemon to export signed archives of files from the
+store (@pxref{Invoking guix archive}):
+
+@example
+# guix archive --generate-key
+@end example
+
+@noindent
+Thus, when receiving files, a machine's build daemon can make sure they
+are genuine, have not been tampered with, and that they are signed by an
+authorized key.
+
+
+@node Invoking guix-daemon
+@section Invoking @command{guix-daemon}
+
+The @command{guix-daemon} program implements all the functionality to
+access the store.  This includes launching build processes, running the
+garbage collector, querying the availability of a build result, etc.  It
+is normally run as @code{root} like this:
+
+@example
+# guix-daemon --build-users-group=guix-builder
+@end example
+
+@noindent
+For details on how to set it up, @ref{Setting Up the Daemon}.
+
+@cindex chroot
+@cindex container, build environment
+@cindex build environment
+@cindex reproducible builds
+By default, @command{guix-daemon} launches build processes under
+different UIDs, taken from the build group specified with
+@code{--build-users-group}.  In addition, each build process is run in a
+chroot environment that only contains the subset of the store that the
+build process depends on, as specified by its derivation
+(@pxref{Programming Interface, derivation}), plus a set of specific
+system directories.  By default, the latter contains @file{/dev} and
+@file{/dev/pts}.  Furthermore, on GNU/Linux, the build environment is a
+@dfn{container}: in addition to having its own file system tree, it has
+a separate mount name space, its own PID name space, network name space,
+etc.  This helps achieve reproducible builds (@pxref{Features}).
+
+The following command-line options are supported:
+
+@table @code
+@item --build-users-group=@var{group}
+Take users from @var{group} to run build processes (@pxref{Setting Up
+the Daemon, build users}).
+
+@item --no-substitutes
+@cindex substitutes
+Do not use substitutes for build products.  That is, always build things
+locally instead of allowing downloads of pre-built binaries
+(@pxref{Substitutes}).
+
+By default substitutes are used, unless the client---such as the
+@command{guix package} command---is explicitly invoked with
+@code{--no-substitutes}.
+
+When the daemon runs with @code{--no-substitutes}, clients can still
+explicitly enable substitution @i{via} the @code{set-build-options}
+remote procedure call (@pxref{The Store}).
+
+@cindex build hook
+@item --no-build-hook
+Do not use the @dfn{build hook}.
+
+The build hook is a helper program that the daemon can start and to
+which it submits build requests.  This mechanism is used to offload
+builds to other machines (@pxref{Daemon Offload Setup}).
+
+@item --cache-failures
+Cache build failures.  By default, only successful builds are cached.
+
+@item --cores=@var{n}
+@itemx -c @var{n}
+Use @var{n} CPU cores to build each derivation; @code{0} means as many
+as available.
+
+The default value is @code{1}, but it may be overridden by clients, such
+as the @code{--cores} option of @command{guix build} (@pxref{Invoking
+guix build}).
+
+The effect is to define the @code{NIX_BUILD_CORES} environment variable
+in the build process, which can then use it to exploit internal
+parallelism---for instance, by running @code{make -j$NIX_BUILD_CORES}.
+
+@item --max-jobs=@var{n}
+@itemx -M @var{n}
+Allow at most @var{n} build jobs in parallel.  The default value is
+@code{1}.
+
+@item --debug
+Produce debugging output.
+
+This is useful to debug daemon start-up issues, but then it may be
+overridden by clients, for example the @code{--verbosity} option of
+@command{guix build} (@pxref{Invoking guix build}).
+
+@item --chroot-directory=@var{dir}
+Add @var{dir} to the build chroot.
+
+Doing this may change the result of build processes---for instance if
+they use optional dependencies found in @var{dir} when it is available,
+and not otherwise.  For that reason, it is not recommended to do so.
+Instead, make sure that each derivation declares all the inputs that it
+needs.
+
+@item --disable-chroot
+Disable chroot builds.
+
+Using this option is not recommended since, again, it would allow build
+processes to gain access to undeclared dependencies.
+
+@item --disable-log-compression
+Disable compression of the build logs.
+
+Unless @code{--lose-logs} is used, all the build logs are kept in the
+@var{localstatedir}.  To save space, the daemon automatically compresses
+them with bzip2 by default.  This option disables that.
+
+@item --disable-store-optimization
+Disable automatic file ``deduplication'' in the store.
+
+By default, files added to the store are automatically ``deduplicated'':
+if a newly added file is identical as another one found in the store,
+the daemon makes the new file a hard link to the other file.  This
+slightly increases the input/output load at the end of a build process.
+This option disables this.
+
+@item --gc-keep-outputs[=yes|no]
+Tell whether the garbage collector (GC) must keep outputs of live
+derivations.
+
+When set to ``yes'', the GC will keep the outputs of any live derivation
+available in the store---the @code{.drv} files.  The default is ``no'',
+meaning that derivation outputs are kept only if they are GC roots.
+
+@item --gc-keep-derivations[=yes|no]
+Tell whether the garbage collector (GC) must keep derivations
+corresponding to live outputs.
+
+When set to ``yes'', as is the case by default, the GC keeps
+derivations---i.e., @code{.drv} files---as long as at least one of their
+outputs is live.  This allows users to keep track of the origins of
+items in their store.  Setting it to ``no'' saves a bit of disk space.
+
+Note that when both @code{--gc-keep-derivations} and
+@code{--gc-keep-outputs} are used, the effect is to keep all the build
+prerequisites (the sources, compiler, libraries, and other build-time
+tools) of live objects in the store, regardless of whether these
+prerequisites are live.  This is convenient for developers since it
+saves rebuilds or downloads.
+
+@item --impersonate-linux-2.6
+On Linux-based systems, impersonate Linux 2.6.  This means that the
+kernel's @code{uname} system call will report 2.6 as the release number.
+
+This might be helpful to build programs that (usually wrongfully) depend
+on the kernel version number.
+
+@item --lose-logs
+Do not keep build logs.  By default they are kept under
+@code{@var{localstatedir}/nix/log}.
+
+@item --system=@var{system}
+Assume @var{system} as the current system type.  By default it is the
+architecture/kernel pair found at configure time, such as
+@code{x86_64-linux}.
+
+@item --listen=@var{socket}
+Listen for connections on @var{socket}, the file name of a Unix-domain
+socket.  The default socket is
+@file{@var{localstatedir}/daemon-socket/socket}.  This option is only
+useful in exceptional circumstances, such as if you need to run several
+daemons on the same machine.
+@end table
+
+
+@c *********************************************************************
+@node Package Management
+@chapter Package Management
+
+The purpose of GNU Guix is to allow users to easily install, upgrade, and
+remove software packages, without having to know about their build
+procedure or dependencies.  Guix also goes beyond this obvious set of
+features.
+
+This chapter describes the main features of Guix, as well as the package
+management tools it provides.
+
+@menu
+* Features::                    How Guix will make your life brighter.
+* Invoking guix package::       Package installation, removal, etc.
+* Substitutes::                 Downloading pre-built binaries.
+* Packages with Multiple Outputs::  Single source package, multiple outputs.
+* Invoking guix gc::            Running the garbage collector.
+* Invoking guix pull::          Fetching the latest Guix and distribution.
+* Invoking guix archive::       Exporting and importing store files.
+@end menu
+
+@node Features
+@section Features
+
+When using Guix, each package ends up in the @dfn{package store}, in its
+own directory---something that resembles
+@file{/gnu/store/xxx-package-1.2}, where @code{xxx} is a base32 string.
+
+Instead of referring to these directories, users have their own
+@dfn{profile}, which points to the packages that they actually want to
+use.  These profiles are stored within each user's home directory, at
+@code{$HOME/.guix-profile}.
+
+For example, @code{alice} installs GCC 4.7.2.  As a result,
+@file{/home/alice/.guix-profile/bin/gcc} points to
+@file{/gnu/store/@dots{}-gcc-4.7.2/bin/gcc}.  Now, on the same machine,
+@code{bob} had already installed GCC 4.8.0.  The profile of @code{bob}
+simply continues to point to
+@file{/gnu/store/@dots{}-gcc-4.8.0/bin/gcc}---i.e., both versions of GCC
+coexist on the same system without any interference.
+
+The @command{guix package} command is the central tool to manage
+packages (@pxref{Invoking guix package}).  It operates on those per-user
+profiles, and can be used @emph{with normal user privileges}.
+
+The command provides the obvious install, remove, and upgrade
+operations.  Each invocation is actually a @emph{transaction}: either
+the specified operation succeeds, or nothing happens.  Thus, if the
+@command{guix package} process is terminated during the transaction,
+or if a power outage occurs during the transaction, then the user's
+profile remains in its previous state, and remains usable.
+
+In addition, any package transaction may be @emph{rolled back}.  So, if,
+for example, an upgrade installs a new version of a package that turns
+out to have a serious bug, users may roll back to the previous instance
+of their profile, which was known to work well.  Similarly, the global
+system configuration is subject to transactional upgrades and roll-back
+(@pxref{Using the Configuration System}).
+
+All those packages in the package store may be @emph{garbage-collected}.
+Guix can determine which packages are still referenced by the user
+profiles, and remove those that are provably no longer referenced
+(@pxref{Invoking guix gc}).  Users may also explicitly remove old
+generations of their profile so that the packages they refer to can be
+collected.
+
+@cindex reproducibility
+@cindex reproducible builds
+Finally, Guix takes a @dfn{purely functional} approach to package
+management, as described in the introduction (@pxref{Introduction}).
+Each @file{/gnu/store} package directory name contains a hash of all the
+inputs that were used to build that package---compiler, libraries, build
+scripts, etc.  This direct correspondence allows users to make sure a
+given package installation matches the current state of their
+distribution.  It also helps maximize @dfn{build reproducibility}:
+thanks to the isolated build environments that are used, a given build
+is likely to yield bit-identical files when performed on different
+machines (@pxref{Invoking guix-daemon, container}).
+
+@cindex substitutes
+This foundation allows Guix to support @dfn{transparent binary/source
+deployment}.  When a pre-built binary for a @file{/gnu/store} item is
+available from an external source---a @dfn{substitute}, Guix just
+downloads it and unpacks it;
+otherwise, it builds the package from source, locally
+(@pxref{Substitutes}).
+
+@node Invoking guix package
+@section Invoking @command{guix package}
+
+The @command{guix package} command is the tool that allows users to
+install, upgrade, and remove packages, as well as rolling back to
+previous configurations.  It operates only on the user's own profile,
+and works with normal user privileges (@pxref{Features}).  Its syntax
+is:
+
+@example
+guix package @var{options}
+@end example
+
+Primarily, @var{options} specifies the operations to be performed during
+the transaction.  Upon completion, a new profile is created, but
+previous generations of the profile remain available, should the user
+want to roll back.
+
+For example, to remove @code{lua} and install @code{guile} and
+@code{guile-cairo} in a single transaction:
+
+@example
+guix package -r lua -i guile guile-cairo
+@end example
+
+For each user, a symlink to the user's default profile is automatically
+created in @file{$HOME/.guix-profile}.  This symlink always points to the
+current generation of the user's default profile.  Thus, users can add
+@file{$HOME/.guix-profile/bin} to their @code{PATH} environment
+variable, and so on.
+
+In a multi-user setup, user profiles must be stored in a place
+registered as a @dfn{garbage-collector root}, which
+@file{$HOME/.guix-profile} points to (@pxref{Invoking guix gc}).  That
+directory is normally
+@code{@var{localstatedir}/profiles/per-user/@var{user}}, where
+@var{localstatedir} is the value passed to @code{configure} as
+@code{--localstatedir}, and @var{user} is the user name.  It must be
+created by @code{root}, with @var{user} as the owner.  When it does not
+exist, or is not owned by @var{user}, @command{guix package} emits an
+error about it.
+
+The @var{options} can be among the following:
+
+@table @code
+
+@item --install=@var{package} @dots{}
+@itemx -i @var{package} @dots{}
+Install the specified @var{package}s.
+
+Each @var{package} may specify either a simple package name, such as
+@code{guile}, or a package name followed by a hyphen and version number,
+such as @code{guile-1.8.8}.  If no version number is specified, the
+newest available version will be selected.  In addition, @var{package}
+may contain a colon, followed by the name of one of the outputs of the
+package, as in @code{gcc:doc} or @code{binutils-2.22:lib}
+(@pxref{Packages with Multiple Outputs}).  Packages with a corresponding
+name (and optionally version) are searched for among the GNU
+distribution modules (@pxref{Package Modules}).
+
+@cindex propagated inputs
+Sometimes packages have @dfn{propagated inputs}: these are dependencies
+that automatically get installed along with the required package.
+
+An example is the GNU MPC library: its C header files refer to those of
+the GNU MPFR library, which in turn refer to those of the GMP library.
+Thus, when installing MPC, the MPFR and GMP libraries also get installed
+in the profile; removing MPC also removes MPFR and GMP---unless they had
+also been explicitly installed independently.
+
+Besides, packages sometimes rely on the definition of environment
+variables for their search paths (see explanation of
+@code{--search-paths} below).  Any missing or possibly incorrect
+environment variable definitions are reported here.
+
+@c XXX: keep me up-to-date
+Finally, when installing a GNU package, the tool reports the
+availability of a newer upstream version.  In the future, it may provide
+the option of installing directly from the upstream version, even if
+that version is not yet in the distribution.
+
+@item --install-from-expression=@var{exp}
+@itemx -e @var{exp}
+Install the package @var{exp} evaluates to.
+
+@var{exp} must be a Scheme expression that evaluates to a
+@code{<package>} object.  This option is notably useful to disambiguate
+between same-named variants of a package, with expressions such as
+@code{(@@ (gnu packages base) guile-final)}.
+
+Note that this option installs the first output of the specified
+package, which may be insufficient when needing a specific output of a
+multiple-output package.
+
+@item --remove=@var{package} @dots{}
+@itemx -r @var{package} @dots{}
+Remove the specified @var{package}s.
+
+As for @code{--install}, each @var{package} may specify a version number
+and/or output name in addition to the package name.  For instance,
+@code{-r glibc:debug} would remove the @code{debug} output of
+@code{glibc}.
+
+@item --upgrade[=@var{regexp} @dots{}]
+@itemx -u [@var{regexp} @dots{}]
+Upgrade all the installed packages.  If one or more @var{regexp}s are
+specified, upgrade only installed packages whose name matches a
+@var{regexp}.
+
+Note that this upgrades package to the latest version of packages found
+in the distribution currently installed.  To update your distribution,
+you should regularly run @command{guix pull} (@pxref{Invoking guix
+pull}).
+
+@item --roll-back
+Roll back to the previous @dfn{generation} of the profile---i.e., undo
+the last transaction.
+
+When combined with options such as @code{--install}, roll back occurs
+before any other actions.
+
+When rolling back from the first generation that actually contains
+installed packages, the profile is made to point to the @dfn{zeroth
+generation}, which contains no files apart from its own meta-data.
+
+Installing, removing, or upgrading packages from a generation that has
+been rolled back to overwrites previous future generations.  Thus, the
+history of a profile's generations is always linear.
+
+@item --search-paths
+@cindex search paths
+Report environment variable definitions, in Bash syntax, that may be
+needed in order to use the set of installed packages.  These environment
+variables are used to specify @dfn{search paths} for files used by some
+of the installed packages.
+
+For example, GCC needs the @code{CPATH} and @code{LIBRARY_PATH}
+environment variables to be defined so it can look for headers and
+libraries in the user's profile (@pxref{Environment Variables,,, gcc,
+Using the GNU Compiler Collection (GCC)}).  If GCC and, say, the C
+library are installed in the profile, then @code{--search-paths} will
+suggest setting these variables to @code{@var{profile}/include} and
+@code{@var{profile}/lib}, respectively.
+
+@item --profile=@var{profile}
+@itemx -p @var{profile}
+Use @var{profile} instead of the user's default profile.
+
+@item --verbose
+Produce verbose output.  In particular, emit the environment's build log
+on the standard error port.
+
+@item --bootstrap
+Use the bootstrap Guile to build the profile.  This option is only
+useful to distribution developers.
+
+@end table
+
+In addition to these actions @command{guix package} supports the
+following options to query the current state of a profile, or the
+availability of packages:
+
+@table @option
+
+@item --search=@var{regexp}
+@itemx -s @var{regexp}
+List the available packages whose synopsis or description matches
+@var{regexp}.  Print all the meta-data of matching packages in
+@code{recutils} format (@pxref{Top, GNU recutils databases,, recutils,
+GNU recutils manual}).
+
+This allows specific fields to be extracted using the @command{recsel}
+command, for instance:
+
+@example
+$ guix package -s malloc | recsel -p name,version
+name: glibc
+version: 2.17
+
+name: libgc
+version: 7.2alpha6
+@end example
+
+@item --list-installed[=@var{regexp}]
+@itemx -I [@var{regexp}]
+List the currently installed packages in the specified profile, with the
+most recently installed packages shown last.  When @var{regexp} is
+specified, list only installed packages whose name matches @var{regexp}.
+
+For each installed package, print the following items, separated by
+tabs: the package name, its version string, the part of the package that
+is installed (for instance, @code{out} for the default output,
+@code{include} for its headers, etc.), and the path of this package in
+the store.
+
+@item --list-available[=@var{regexp}]
+@itemx -A [@var{regexp}]
+List packages currently available in the software distribution
+(@pxref{GNU Distribution}).  When @var{regexp} is specified, list only
+installed packages whose name matches @var{regexp}.
+
+For each package, print the following items separated by tabs: its name,
+its version string, the parts of the package (@pxref{Packages with
+Multiple Outputs}), and the source location of its definition.
+
+@item --list-generations[=@var{pattern}]
+@itemx -l [@var{pattern}]
+Return a list of generations along with their creation dates; for each
+generation, show the installed packages, with the most recently
+installed packages shown last.  Note that the zeroth generation is never
+shown.
+
+For each installed package, print the following items, separated by
+tabs: the name of a package, its version string, the part of the package
+that is installed (@pxref{Packages with Multiple Outputs}), and the
+location of this package in the store.
+
+When @var{pattern} is used, the command returns only matching
+generations.  Valid patterns include:
+
+@itemize
+@item @emph{Integers and comma-separated integers}.  Both patterns denote
+generation numbers.  For instance, @code{--list-generations=1} returns
+the first one.
+
+And @code{--list-generations=1,8,2} outputs three generations in the
+specified order.  Neither spaces nor trailing commas are allowed.
+
+@item @emph{Ranges}.  @code{--list-generations=2..9} prints the
+specified generations and everything in between.  Note that the start of
+a range must be lesser than its end.
+
+It is also possible to omit the endpoint.  For example,
+@code{--list-generations=2..}, returns all generations starting from the
+second one.
+
+@item @emph{Durations}.  You can also get the last @emph{N}@tie{}days, weeks,
+or months by passing an integer along with the first letter of the
+duration.  For example, @code{--list-generations=20d} lists generations
+that are up to 20 days old.
+@end itemize
+
+@item --delete-generations[=@var{pattern}]
+@itemx -d [@var{pattern}]
+When @var{pattern} is omitted, delete all generations except the current
+one.
+
+This command accepts the same patterns as @option{--list-generations}.
+When @var{pattern} is specified, delete the matching generations.  When
+@var{pattern} specifies a duration, generations @emph{older} than the
+specified duration match.  For instance, @code{--delete-generations=1m}
+deletes generations that are more than one month old.
+
+If the current generation matches, it is deleted atomically---i.e., by
+switching to the previous available generation.  Note that the zeroth
+generation is never deleted.
+
+Note that deleting generations prevents roll-back to them.
+Consequently, this command must be used with care.
+
+@end table
+
+Finally, since @command{guix package} may actually start build
+processes, it supports all the common build options that @command{guix
+build} supports (@pxref{Invoking guix build, common build options}).
+
+@node Substitutes
+@section Substitutes
+
+@cindex substitutes
+@cindex pre-built binaries
+Guix supports transparent source/binary deployment, which means that it
+can either build things locally, or download pre-built items from a
+server.  We call these pre-built items @dfn{substitutes}---they are
+substitutes for local build results.  In many cases, downloading a
+substitute is much faster than building things locally.
+
+Substitutes can be anything resulting from a derivation build
+(@pxref{Derivations}).  Of course, in the common case, they are
+pre-built package binaries, but source tarballs, for instance, which
+also result from derivation builds, can be available as substitutes.
+
+The @code{hydra.gnu.org} server is a front-end to a build farm that
+builds packages from the GNU distribution continuously for some
+architectures, and makes them available as substitutes.
+
+@cindex security
+@cindex digital signatures
+To allow Guix to download substitutes from @code{hydra.gnu.org}, you
+must add its public key to the access control list (ACL) of archive
+imports, using the @command{guix archive} command (@pxref{Invoking guix
+archive}).  Doing so implies that you trust @code{hydra.gnu.org} to not
+be compromised and to serve genuine substitutes.
+
+This public key is installed along with Guix, in
+@code{@var{prefix}/share/guix/hydra.gnu.org.pub}, where @var{prefix} is
+the installation prefix of Guix.  If you installed Guix from source,
+make sure you checked the GPG signature of
+@file{guix-@value{VERSION}.tar.gz}, which contains this public key file.
+Then, you can run something like this:
+
+@example
+# guix archive --authorize < hydra.gnu.org.pub
+@end example
+
+Once this is in place, the output of a command like @code{guix build}
+should change from something like:
+
+@example
+$ guix build emacs --dry-run
+The following derivations would be built:
+   /gnu/store/yr7bnx8xwcayd6j95r2clmkdl1qh688w-emacs-24.3.drv
+   /gnu/store/x8qsh1hlhgjx6cwsjyvybnfv2i37z23w-dbus-1.6.4.tar.gz.drv
+   /gnu/store/1ixwp12fl950d15h2cj11c73733jay0z-alsa-lib-1.0.27.1.tar.bz2.drv
+   /gnu/store/nlma1pw0p603fpfiqy7kn4zm105r5dmw-util-linux-2.21.drv
+@dots{}
+@end example
+
+@noindent
+to something like:
+
+@example
+$ guix build emacs --dry-run
+The following files would be downloaded:
+   /gnu/store/pk3n22lbq6ydamyymqkkz7i69wiwjiwi-emacs-24.3
+   /gnu/store/2ygn4ncnhrpr61rssa6z0d9x22si0va3-libjpeg-8d
+   /gnu/store/71yz6lgx4dazma9dwn2mcjxaah9w77jq-cairo-1.12.16
+   /gnu/store/7zdhgp0n1518lvfn8mb96sxqfmvqrl7v-libxrender-0.9.7
+@dots{}
+@end example
+
+@noindent
+This indicates that substitutes from @code{hydra.gnu.org} are usable and
+will be downloaded, when possible, for future builds.
+
+Guix ignores substitutes that are not signed, or that are not signed by
+one of the keys listed in the ACL.  It also detects and raises an error
+when attempting to use a substitute that has been tampered with.
+
+The substitute mechanism can be disabled globally by running
+@code{guix-daemon} with @code{--no-substitutes} (@pxref{Invoking
+guix-daemon}).  It can also be disabled temporarily by passing the
+@code{--no-substitutes} option to @command{guix package}, @command{guix
+build}, and other command-line tools.
+
+
+Today, each individual's control over their own computing is at the
+mercy of institutions, corporations, and groups with enough power and
+determination to subvert the computing infrastructure and exploit its
+weaknesses.  While using @code{hydra.gnu.org} substitutes can be
+convenient, we encourage users to also build on their own, or even run
+their own build farm, such that @code{hydra.gnu.org} is less of an
+interesting target.
+
+Guix has the foundations to maximize build reproducibility
+(@pxref{Features}).  In most cases, independent builds of a given
+package or derivation should yield bit-identical results.  Thus, through
+a diverse set of independent package builds, we can strengthen the
+integrity of our systems.
+
+In the future, we want Guix to have support to publish and retrieve
+binaries to/from other users, in a peer-to-peer fashion.  If you would
+like to discuss this project, join us on @email{guix-devel@@gnu.org}.
+
+
+@node Packages with Multiple Outputs
+@section Packages with Multiple Outputs
+
+@cindex multiple-output packages
+@cindex package outputs
+
+Often, packages defined in Guix have a single @dfn{output}---i.e., the
+source package leads exactly one directory in the store.  When running
+@command{guix package -i glibc}, one installs the default output of the
+GNU libc package; the default output is called @code{out}, but its name
+can be omitted as shown in this command.  In this particular case, the
+default output of @code{glibc} contains all the C header files, shared
+libraries, static libraries, Info documentation, and other supporting
+files.
+
+Sometimes it is more appropriate to separate the various types of files
+produced from a single source package into separate outputs.  For
+instance, the GLib C library (used by GTK+ and related packages)
+installs more than 20 MiB of reference documentation as HTML pages.
+To save space for users who do not need it, the documentation goes to a
+separate output, called @code{doc}.  To install the main GLib output,
+which contains everything but the documentation, one would run:
+
+@example
+guix package -i glib
+@end example
+
+The command to install its documentation is:
+
+@example
+guix package -i glib:doc
+@end example
+
+Some packages install programs with different ``dependency footprints''.
+For instance, the WordNet package install both command-line tools and
+graphical user interfaces (GUIs).  The former depend solely on the C
+library, whereas the latter depend on Tcl/Tk and the underlying X
+libraries.  In this case, we leave the command-line tools in the default
+output, whereas the GUIs are in a separate output.  This allows users
+who do not need the GUIs to save space.
+
+There are several such multiple-output packages in the GNU distribution.
+Other conventional output names include @code{lib} for libraries and
+possibly header files, @code{bin} for stand-alone programs, and
+@code{debug} for debugging information (@pxref{Installing Debugging
+Files}).  The outputs of a packages are listed in the third column of
+the output of @command{guix package --list-available} (@pxref{Invoking
+guix package}).
+
+
+@node Invoking guix gc
+@section Invoking @command{guix gc}
+
+@cindex garbage collector
+Packages that are installed but not used may be @dfn{garbage-collected}.
+The @command{guix gc} command allows users to explicitly run the garbage
+collector to reclaim space from the @file{/gnu/store} directory.
+
+The garbage collector has a set of known @dfn{roots}: any file under
+@file{/gnu/store} reachable from a root is considered @dfn{live} and
+cannot be deleted; any other file is considered @dfn{dead} and may be
+deleted.  The set of garbage collector roots includes default user
+profiles, and may be augmented with @command{guix build --root}, for
+example (@pxref{Invoking guix build}).
+
+Prior to running @code{guix gc --collect-garbage} to make space, it is
+often useful to remove old generations from user profiles; that way, old
+package builds referenced by those generations can be reclaimed.  This
+is achieved by running @code{guix package --delete-generations}
+(@pxref{Invoking guix package}).
+
+The @command{guix gc} command has three modes of operation: it can be
+used to garbage-collect any dead files (the default), to delete specific
+files (the @code{--delete} option), or to print garbage-collector
+information.  The available options are listed below:
+
+@table @code
+@item --collect-garbage[=@var{min}]
+@itemx -C [@var{min}]
+Collect garbage---i.e., unreachable @file{/gnu/store} files and
+sub-directories.  This is the default operation when no option is
+specified.
+
+When @var{min} is given, stop once @var{min} bytes have been collected.
+@var{min} may be a number of bytes, or it may include a unit as a
+suffix, such as @code{MiB} for mebibytes and @code{GB} for gigabytes.
+
+When @var{min} is omitted, collect all the garbage.
+
+@item --delete
+@itemx -d
+Attempt to delete all the store files and directories specified as
+arguments.  This fails if some of the files are not in the store, or if
+they are still live.
+
+@item --list-dead
+Show the list of dead files and directories still present in the
+store---i.e., files and directories no longer reachable from any root.
+
+@item --list-live
+Show the list of live store files and directories.
+
+@end table
+
+In addition, the references among existing store files can be queried:
+
+@table @code
+
+@item --references
+@itemx --referrers
+List the references (respectively, the referrers) of store files given
+as arguments.
+
+@item --requisites
+@itemx -R
+List the requisites of the store files passed as arguments.  Requisites
+include the store files themselves, their references, and the references
+of these, recursively.  In other words, the returned list is the
+@dfn{transitive closure} of the store files.
+
+@end table
+
+
+@node Invoking guix pull
+@section Invoking @command{guix pull}
+
+Packages are installed or upgraded to the latest version available in
+the distribution currently available on your local machine.  To update
+that distribution, along with the Guix tools, you must run @command{guix
+pull}: the command downloads the latest Guix source code and package
+descriptions, and deploys it.
+
+On completion, @command{guix package} will use packages and package
+versions from this just-retrieved copy of Guix.  Not only that, but all
+the Guix commands and Scheme modules will also be taken from that latest
+version.  New @command{guix} sub-commands added by the update also
+become available.
+
+The @command{guix pull} command is usually invoked with no arguments,
+but it supports the following options:
+
+@table @code
+@item --verbose
+Produce verbose output, writing build logs to the standard error output.
+
+@item --url=@var{url}
+Download the source tarball of Guix from @var{url}.
+
+By default, the tarball is taken from its canonical address at
+@code{gnu.org}, for the stable branch of Guix.
+
+@item --bootstrap
+Use the bootstrap Guile to build the latest Guix.  This option is only
+useful to Guix developers.
+@end table
+
+
+@node Invoking guix archive
+@section Invoking @command{guix archive}
+
+The @command{guix archive} command allows users to @dfn{export} files
+from the store into a single archive, and to later @dfn{import} them.
+In particular, it allows store files to be transferred from one machine
+to another machine's store.  For example, to transfer the @code{emacs}
+package to a machine connected over SSH, one would run:
+
+@example
+guix archive --export emacs | ssh the-machine guix archive --import
+@end example
+
+@noindent
+However, note that, in this example, all of @code{emacs} and its
+dependencies are transferred, regardless of what is already available in
+the target machine's store.  The @code{--missing} option can help figure
+out which items are missing from the target's store.
+
+Archives are stored in the ``Nix archive'' or ``Nar'' format, which is
+comparable in spirit to `tar', but with a few noteworthy differences
+that make it more appropriate for our purposes.  First, rather than
+recording all Unix meta-data for each file, the Nar format only mentions
+the file type (regular, directory, or symbolic link); Unix permissions
+and owner/group are dismissed.  Second, the order in which directory
+entries are stored always follows the order of file names according to
+the C locale collation order.  This makes archive production fully
+deterministic.
+
+When exporting, the daemon digitally signs the contents of the archive,
+and that digital signature is appended.  When importing, the daemon
+verifies the signature and rejects the import in case of an invalid
+signature or if the signing key is not authorized.
+@c FIXME: Add xref to daemon doc about signatures.
+
+The main options are:
+
+@table @code
+@item --export
+Export the specified store files or packages (see below.)  Write the
+resulting archive to the standard output.
+
+@item --import
+Read an archive from the standard input, and import the files listed
+therein into the store.  Abort if the archive has an invalid digital
+signature, or if it is signed by a public key not among the authorized
+keys (see @code{--authorize} below.)
+
+@item --missing
+Read a list of store file names from the standard input, one per line,
+and write on the standard output the subset of these files missing from
+the store.
+
+@item --generate-key[=@var{parameters}]
+@cindex signing, archives
+Generate a new key pair for the daemons.  This is a prerequisite before
+archives can be exported with @code{--export}.  Note that this operation
+usually takes time, because it needs to gather enough entropy to
+generate the key pair.
+
+The generated key pair is typically stored under @file{/etc/guix}, in
+@file{signing-key.pub} (public key) and @file{signing-key.sec} (private
+key, which must be kept secret.)  When @var{parameters} is omitted, it
+is a 4096-bit RSA key.  Alternately, @var{parameters} can specify
+@code{genkey} parameters suitable for Libgcrypt (@pxref{General
+public-key related Functions, @code{gcry_pk_genkey},, gcrypt, The
+Libgcrypt Reference Manual}).
+
+@item --authorize
+@cindex authorizing, archives
+Authorize imports signed by the public key passed on standard input.
+The public key must be in ``s-expression advanced format''---i.e., the
+same format as the @file{signing-key.pub} file.
+
+The list of authorized keys is kept in the human-editable file
+@file{/etc/guix/acl}.  The file contains
+@url{http://people.csail.mit.edu/rivest/Sexp.txt, ``advanced-format
+s-expressions''} and is structured as an access-control list in the
+@url{http://theworld.com/~cme/spki.txt, Simple Public-Key Infrastructure
+(SPKI)}.
+@end table
+
+To export store files as an archive to the standard output, run:
+
+@example
+guix archive --export @var{options} @var{specifications}...
+@end example
+
+@var{specifications} may be either store file names or package
+specifications, as for @command{guix package} (@pxref{Invoking guix
+package}).  For instance, the following command creates an archive
+containing the @code{gui} output of the @code{git} package and the main
+output of @code{emacs}:
+
+@example
+guix archive --export git:gui /gnu/store/...-emacs-24.3 > great.nar
+@end example
+
+If the specified packages are not built yet, @command{guix archive}
+automatically builds them.  The build process may be controlled with the
+same options that can be passed to the @command{guix build} command
+(@pxref{Invoking guix build, common build options}).
+
+
+@c *********************************************************************
+@node Programming Interface
+@chapter Programming Interface
+
+GNU Guix provides several Scheme programming interfaces (APIs) to
+define, build, and query packages.  The first interface allows users to
+write high-level package definitions.  These definitions refer to
+familiar packaging concepts, such as the name and version of a package,
+its build system, and its dependencies.  These definitions can then be
+turned into concrete build actions.
+
+Build actions are performed by the Guix daemon, on behalf of users.  In a
+standard setup, the daemon has write access to the store---the
+@file{/gnu/store} directory---whereas users do not.  The recommended
+setup also has the daemon perform builds in chroots, under a specific
+build users, to minimize interference with the rest of the system.
+
+@cindex derivation
+Lower-level APIs are available to interact with the daemon and the
+store.  To instruct the daemon to perform a build action, users actually
+provide it with a @dfn{derivation}.  A derivation is a low-level
+representation of the build actions to be taken, and the environment in
+which they should occur---derivations are to package definitions what
+assembly is to C programs.
+
+This chapter describes all these APIs in turn, starting from high-level
+package definitions.
+
+@menu
+* Defining Packages::           Defining new packages.
+* Build Systems::               Specifying how packages are built.
+* The Store::                   Manipulating the package store.
+* Derivations::                 Low-level interface to package derivations.
+* The Store Monad::             Purely functional interface to the store.
+@end menu
+
+@node Defining Packages
+@section Defining Packages
+
+The high-level interface to package definitions is implemented in the
+@code{(guix packages)} and @code{(guix build-system)} modules.  As an
+example, the package definition, or @dfn{recipe}, for the GNU Hello
+package looks like this:
+
+@example
+(define-module (gnu packages hello)
+  #:use-module (guix packages)
+  #:use-module (guix download)
+  #:use-module (guix build-system gnu)
+  #:use-module (guix licenses))
+
+(define hello
+  (package
+    (name "hello")
+    (version "2.8")
+    (source (origin
+             (method url-fetch)
+             (uri (string-append "mirror://gnu/hello/hello-" version
+                                 ".tar.gz"))
+             (sha256
+              (base32 "0wqd8sjmxfskrflaxywc7gqw7sfawrfvdxd9skxawzfgyy0pzdz6"))))
+    (build-system gnu-build-system)
+    (arguments `(#:configure-flags '("--enable-silent-rules")))
+    (inputs `(("gawk" ,gawk)))
+    (synopsis "Hello, GNU world: An example GNU package")
+    (description "Guess what GNU Hello prints!")
+    (home-page "http://www.gnu.org/software/hello/")
+    (license gpl3+)))
+@end example
+
+@noindent
+Without being a Scheme expert, the reader may have guessed the meaning
+of the various fields here.  This expression binds variable @code{hello}
+to a @code{<package>} object, which is essentially a record
+(@pxref{SRFI-9, Scheme records,, guile, GNU Guile Reference Manual}).
+This package object can be inspected using procedures found in the
+@code{(guix packages)} module; for instance, @code{(package-name hello)}
+returns---surprise!---@code{"hello"}.
+
+In the example above, @var{hello} is defined into a module of its own,
+@code{(gnu packages hello)}.  Technically, this is not strictly
+necessary, but it is convenient to do so: all the packages defined in
+modules under @code{(gnu packages @dots{})} are automatically known to
+the command-line tools (@pxref{Package Modules}).
+
+There are a few points worth noting in the above package definition:
+
+@itemize
+@item
+The @code{source} field of the package is an @code{<origin>} object.
+Here, the @code{url-fetch} method from @code{(guix download)} is used,
+meaning that the source is a file to be downloaded over FTP or HTTP.
+
+The @code{mirror://gnu} prefix instructs @code{url-fetch} to use one of
+the GNU mirrors defined in @code{(guix download)}.
+
+The @code{sha256} field specifies the expected SHA256 hash of the file
+being downloaded.  It is mandatory, and allows Guix to check the
+integrity of the file.  The @code{(base32 @dots{})} form introduces the
+base32 representation of the hash.  You can obtain this information with
+@code{guix download} (@pxref{Invoking guix download}) and @code{guix
+hash} (@pxref{Invoking guix hash}).
+
+@cindex patches
+When needed, the @code{origin} form can also have a @code{patches} field
+listing patches to be applied, and a @code{snippet} field giving a
+Scheme expression to modify the source code.
+
+@item
+@cindex GNU Build System
+The @code{build-system} field specifies the procedure to build the
+package (@pxref{Build Systems}).  Here, @var{gnu-build-system}
+represents the familiar GNU Build System, where packages may be
+configured, built, and installed with the usual @code{./configure &&
+make && make check && make install} command sequence.
+
+@item
+The @code{arguments} field specifies options for the build system
+(@pxref{Build Systems}).  Here it is interpreted by
+@var{gnu-build-system} as a request run @file{configure} with the
+@code{--enable-silent-rules} flag.
+
+@item
+The @code{inputs} field specifies inputs to the build process---i.e.,
+build-time or run-time dependencies of the package.  Here, we define an
+input called @code{"gawk"} whose value is that of the @var{gawk}
+variable; @var{gawk} is itself bound to a @code{<package>} object.
+
+Note that GCC, Coreutils, Bash, and other essential tools do not need to
+be specified as inputs here.  Instead, @var{gnu-build-system} takes care
+of ensuring that they are present (@pxref{Build Systems}).
+
+However, any other dependencies need to be specified in the
+@code{inputs} field.  Any dependency not specified here will simply be
+unavailable to the build process, possibly leading to a build failure.
+@end itemize
+
+Once a package definition is in place@footnote{Simple package
+definitions like the one above may be automatically converted from the
+Nixpkgs distribution using the @command{guix import} command.}, the
+package may actually be built using the @code{guix build} command-line
+tool (@pxref{Invoking guix build}).  @xref{Packaging Guidelines}, for
+more information on how to test package definitions.
+
+Eventually, updating the package definition to a new upstream version
+can be partly automated by the @command{guix refresh} command
+(@pxref{Invoking guix refresh}).
+
+Behind the scenes, a derivation corresponding to the @code{<package>}
+object is first computed by the @code{package-derivation} procedure.
+That derivation is stored in a @code{.drv} file under @file{/gnu/store}.
+The build actions it prescribes may then be realized by using the
+@code{build-derivations} procedure (@pxref{The Store}).
+
+@deffn {Scheme Procedure} package-derivation @var{store} @var{package} [@var{system}]
+Return the @code{<derivation>} object of @var{package} for @var{system}
+(@pxref{Derivations}).
+
+@var{package} must be a valid @code{<package>} object, and @var{system}
+must be a string denoting the target system type---e.g.,
+@code{"x86_64-linux"} for an x86_64 Linux-based GNU system.  @var{store}
+must be a connection to the daemon, which operates on the store
+(@pxref{The Store}).
+@end deffn
+
+@noindent
+@cindex cross-compilation
+Similarly, it is possible to compute a derivation that cross-builds a
+package for some other system:
+
+@deffn {Scheme Procedure} package-cross-derivation @var{store} @
+            @var{package} @var{target} [@var{system}]
+Return the @code{<derivation>} object of @var{package} cross-built from
+@var{system} to @var{target}.
+
+@var{target} must be a valid GNU triplet denoting the target hardware
+and operating system, such as @code{"mips64el-linux-gnu"}
+(@pxref{Configuration Names, GNU configuration triplets,, configure, GNU
+Configure and Build System}).
+@end deffn
+
+
+@node Build Systems
+@section Build Systems
+
+@cindex build system
+Each package definition specifies a @dfn{build system} and arguments for
+that build system (@pxref{Defining Packages}).  This @code{build-system}
+field represents the build procedure of the package, as well implicit
+dependencies of that build procedure.
+
+Build systems are @code{<build-system>} objects.  The interface to
+create and manipulate them is provided by the @code{(guix build-system)}
+module, and actual build systems are exported by specific modules.
+
+Build systems accept an optional list of @dfn{arguments}.  In package
+definitions, these are passed @i{via} the @code{arguments} field
+(@pxref{Defining Packages}).  They are typically keyword arguments
+(@pxref{Optional Arguments, keyword arguments in Guile,, guile, GNU
+Guile Reference Manual}).  The value of these arguments is usually
+evaluated in the @dfn{build stratum}---i.e., by a Guile process launched
+by the daemon (@pxref{Derivations}).
+
+The main build system is @var{gnu-build-system}, which implements the
+standard build procedure for GNU packages and many other packages.  It
+is provided by the @code{(guix build-system gnu)} module.
+
+@defvr {Scheme Variable} gnu-build-system
+@var{gnu-build-system} represents the GNU Build System, and variants
+thereof (@pxref{Configuration, configuration and makefile conventions,,
+standards, GNU Coding Standards}).
+
+@cindex build phases
+In a nutshell, packages using it configured, built, and installed with
+the usual @code{./configure && make && make check && make install}
+command sequence.  In practice, a few additional steps are often needed.
+All these steps are split up in separate @dfn{phases},
+notably@footnote{Please see the @code{(guix build gnu-build-system)}
+modules for more details about the build phases.}:
+
+@table @code
+@item unpack
+Unpack the source tarball, and change the current directory to the
+extracted source tree.  If the source is actually a directory, copy it
+to the build tree, and enter that directory.
+
+@item patch-source-shebangs
+Patch shebangs encountered in source files so they refer to the right
+store file names.  For instance, this changes @code{#!/bin/sh} to
+@code{#!/gnu/store/@dots{}-bash-4.3/bin/sh}.
+
+@item configure
+Run the @file{configure} script with a number of default options, such
+as @code{--prefix=/gnu/store/@dots{}}, as well as the options specified
+by the @code{#:configure-flags} argument.
+
+@item build
+Run @code{make} with the list of flags specified with
+@code{#:make-flags}.  If the @code{#:parallel-builds?} argument is true
+(the default), build with @code{make -j}.
+
+@item check
+Run @code{make check}, or some other target specified with
+@code{#:test-target}, unless @code{#:tests? #f} is passed.  If the
+@code{#:parallel-tests?} argument is true (the default), run @code{make
+check -j}.
+
+@item install
+Run @code{make install} with the flags listed in @code{#:make-flags}.
+
+@item patch-shebangs
+Patch shebangs on the installed executable files.
+
+@item strip
+Strip debugging symbols from ELF files (unless @code{#:strip-binaries?}
+is false), copying them to the @code{debug} output when available
+(@pxref{Installing Debugging Files}).
+@end table
+
+@vindex %standard-phases
+The build-side module @code{(guix build gnu-build-system)} defines
+@var{%standard-phases} as the default list of build phases.
+@var{%standard-phases} is a list of symbol/procedure pairs, where the
+procedure implements the actual phase.
+
+The list of phases used for a particular package can be changed with the
+@code{#:phases} parameter.  For instance, passing:
+
+@example
+#:phases (alist-delete 'configure %standard-phases)
+@end example
+
+means that all the phases described above will be used, except the
+@code{configure} phase.
+
+In addition, this build system ensures that the ``standard'' environment
+for GNU packages is available.  This includes tools such as GCC, libc,
+Coreutils, Bash, Make, Diffutils, grep, and sed (see the @code{(guix
+build-system gnu)} module for a complete list.)  We call these the
+@dfn{implicit inputs} of a package, because package definitions don't
+have to mention them.
+@end defvr
+
+Other @code{<build-system>} objects are defined to support other
+conventions and tools used by free software packages.  They inherit most
+of @var{gnu-build-system}, and differ mainly in the set of inputs
+implicitly added to the build process, and in the list of phases
+executed.  Some of these build systems are listed below.
+
+@defvr {Scheme Variable} cmake-build-system
+This variable is exported by @code{(guix build-system cmake)}.  It
+implements the build procedure for packages using the
+@url{http://www.cmake.org, CMake build tool}.
+
+It automatically adds the @code{cmake} package to the set of inputs.
+Which package is used can be specified with the @code{#:cmake}
+parameter.
+@end defvr
+
+@defvr {Scheme Variable} python-build-system
+This variable is exported by @code{(guix build-system python)}.  It
+implements the more or less standard build procedure used by Python
+packages, which consists in running @code{python setup.py build} and
+then @code{python setup.py install --prefix=/gnu/store/@dots{}}.
+
+For packages that install stand-alone Python programs under @code{bin/},
+it takes care of wrapping these programs so their @code{PYTHONPATH}
+environment variable points to all the Python libraries they depend on.
+
+Which Python package is used can be specified with the @code{#:python}
+parameter.
+@end defvr
+
+@defvr {Scheme Variable} perl-build-system
+This variable is exported by @code{(guix build-system perl)}.  It
+implements the standard build procedure for Perl packages, which
+consists in running @code{perl Makefile.PL PREFIX=/gnu/store/@dots{}},
+followed by @code{make} and @code{make install}.
+
+The initial @code{perl Makefile.PL} invocation passes flags specified by
+the @code{#:make-maker-flags} parameter.
+
+Which Perl package is used can be specified with @code{#:perl}.
+@end defvr
+
+
+Lastly, for packages that do not need anything as sophisticated, a
+``trivial'' build system is provided.  It is trivial in the sense that
+it provides basically no support: it does not pull any implicit inputs,
+and does not have a notion of build phases.
+
+@defvr {Scheme Variable} trivial-build-system
+This variable is exported by @code{(guix build-system trivial)}.
+
+This build system requires a @code{#:builder} argument.  This argument
+must be a Scheme expression that builds the package's output(s)---as
+with @code{build-expression->derivation} (@pxref{Derivations,
+@code{build-expression->derivation}}).
+@end defvr
+
+@node The Store
+@section The Store
+
+@cindex store
+@cindex store paths
+
+Conceptually, the @dfn{store} is where derivations that have been
+successfully built are stored---by default, under @file{/gnu/store}.
+Sub-directories in the store are referred to as @dfn{store paths}.  The
+store has an associated database that contains information such has the
+store paths referred to by each store path, and the list of @emph{valid}
+store paths---paths that result from a successful build.
+
+The store is always accessed by the daemon on behalf of its clients
+(@pxref{Invoking guix-daemon}).  To manipulate the store, clients
+connect to the daemon over a Unix-domain socket, send it requests, and
+read the result---these are remote procedure calls, or RPCs.
+
+The @code{(guix store)} module provides procedures to connect to the
+daemon, and to perform RPCs.  These are described below.
+
+@deffn {Scheme Procedure} open-connection [@var{file}] [#:reserve-space? #t]
+Connect to the daemon over the Unix-domain socket at @var{file}.  When
+@var{reserve-space?} is true, instruct it to reserve a little bit of
+extra space on the file system so that the garbage collector can still
+operate, should the disk become full.  Return a server object.
+
+@var{file} defaults to @var{%default-socket-path}, which is the normal
+location given the options that were passed to @command{configure}.
+@end deffn
+
+@deffn {Scheme Procedure} close-connection @var{server}
+Close the connection to @var{server}.
+@end deffn
+
+@defvr {Scheme Variable} current-build-output-port
+This variable is bound to a SRFI-39 parameter, which refers to the port
+where build and error logs sent by the daemon should be written.
+@end defvr
+
+Procedures that make RPCs all take a server object as their first
+argument.
+
+@deffn {Scheme Procedure} valid-path? @var{server} @var{path}
+Return @code{#t} when @var{path} is a valid store path.
+@end deffn
+
+@deffn {Scheme Procedure} add-text-to-store @var{server} @var{name} @var{text} [@var{references}]
+Add @var{text} under file @var{name} in the store, and return its store
+path.  @var{references} is the list of store paths referred to by the
+resulting store path.
+@end deffn
+
+@deffn {Scheme Procedure} build-derivations @var{server} @var{derivations}
+Build @var{derivations} (a list of @code{<derivation>} objects or
+derivation paths), and return when the worker is done building them.
+Return @code{#t} on success.
+@end deffn
+
+Note that the @code{(guix monads)} module provides a monad as well as
+monadic versions of the above procedures, with the goal of making it
+more convenient to work with code that accesses the store (@pxref{The
+Store Monad}).
+
+@c FIXME
+@i{This section is currently incomplete.}
+
+@node Derivations
+@section Derivations
+
+@cindex derivations
+Low-level build actions and the environment in which they are performed
+are represented by @dfn{derivations}.  A derivation contain the
+following pieces of information:
+
+@itemize
+@item
+The outputs of the derivation---derivations produce at least one file or
+directory in the store, but may produce more.
+
+@item
+The inputs of the derivations, which may be other derivations or plain
+files in the store (patches, build scripts, etc.)
+
+@item
+The system type targeted by the derivation---e.g., @code{x86_64-linux}.
+
+@item
+The file name of a build script in the store, along with the arguments
+to be passed.
+
+@item
+A list of environment variables to be defined.
+
+@end itemize
+
+@cindex derivation path
+Derivations allow clients of the daemon to communicate build actions to
+the store.  They exist in two forms: as an in-memory representation,
+both on the client- and daemon-side, and as files in the store whose
+name end in @code{.drv}---these files are referred to as @dfn{derivation
+paths}.  Derivations paths can be passed to the @code{build-derivations}
+procedure to perform the build actions they prescribe (@pxref{The
+Store}).
+
+The @code{(guix derivations)} module provides a representation of
+derivations as Scheme objects, along with procedures to create and
+otherwise manipulate derivations.  The lowest-level primitive to create
+a derivation is the @code{derivation} procedure:
+
+@deffn {Scheme Procedure} derivation @var{store} @var{name} @var{builder} @
+  @var{args} [#:outputs '("out")] [#:hash #f] [#:hash-algo #f] @
+  [#:recursive? #f] [#:inputs '()] [#:env-vars '()] @
+  [#:system (%current-system)] [#:references-graphs #f] @
+  [#:local-build? #f]
+Build a derivation with the given arguments, and return the resulting
+@code{<derivation>} object.
+
+When @var{hash} and @var{hash-algo} are given, a
+@dfn{fixed-output derivation} is created---i.e., one whose result is
+known in advance, such as a file download.  If, in addition,
+@var{recursive?} is true, then that fixed output may be an executable
+file or a directory and @var{hash} must be the hash of an archive
+containing this output.
+
+When @var{references-graphs} is true, it must be a list of file
+name/store path pairs.  In that case, the reference graph of each store
+path is exported in the build environment in the corresponding file, in
+a simple text format.
+
+When @var{local-build?} is true, declare that the derivation is not a
+good candidate for offloading and should rather be built locally
+(@pxref{Daemon Offload Setup}).  This is the case for small derivations
+where the costs of data transfers would outweigh the benefits.
+@end deffn
+
+@noindent
+Here's an example with a shell script as its builder, assuming
+@var{store} is an open connection to the daemon, and @var{bash} points
+to a Bash executable in the store:
+
+@lisp
+(use-modules (guix utils)
+             (guix store)
+             (guix derivations))
+
+(let ((builder   ; add the Bash script to the store
+        (add-text-to-store store "my-builder.sh"
+                           "echo hello world > $out\n" '())))
+  (derivation store "foo"
+              bash `("-e" ,builder)
+              #:env-vars '(("HOME" . "/homeless"))))
+@result{} #<derivation /gnu/store/@dots{}-foo.drv => /gnu/store/@dots{}-foo>
+@end lisp
+
+As can be guessed, this primitive is cumbersome to use directly.  An
+improved variant is @code{build-expression->derivation}, which allows
+the caller to directly pass a Guile expression as the build script:
+
+@deffn {Scheme Procedure} build-expression->derivation @var{store} @
+       @var{name} @var{exp} @
+       [#:system (%current-system)] [#:inputs '()] @
+       [#:outputs '("out")] [#:hash #f] [#:hash-algo #f] @
+       [#:recursive? #f] [#:env-vars '()] [#:modules '()] @
+       [#:references-graphs #f] [#:local-build? #f] [#:guile-for-build #f]
+Return a derivation that executes Scheme expression @var{exp} as a
+builder for derivation @var{name}.  @var{inputs} must be a list of
+@code{(name drv-path sub-drv)} tuples; when @var{sub-drv} is omitted,
+@code{"out"} is assumed.  @var{modules} is a list of names of Guile
+modules from the current search path to be copied in the store,
+compiled, and made available in the load path during the execution of
+@var{exp}---e.g., @code{((guix build utils) (guix build
+gnu-build-system))}.
+
+@var{exp} is evaluated in an environment where @code{%outputs} is bound
+to a list of output/path pairs, and where @code{%build-inputs} is bound
+to a list of string/output-path pairs made from @var{inputs}.
+Optionally, @var{env-vars} is a list of string pairs specifying the name
+and value of environment variables visible to the builder.  The builder
+terminates by passing the result of @var{exp} to @code{exit}; thus, when
+@var{exp} returns @code{#f}, the build is considered to have failed.
+
+@var{exp} is built using @var{guile-for-build} (a derivation).  When
+@var{guile-for-build} is omitted or is @code{#f}, the value of the
+@code{%guile-for-build} fluid is used instead.
+
+See the @code{derivation} procedure for the meaning of @var{references-graphs}
+and @var{local-build?}.
+@end deffn
+
+@noindent
+Here's an example of a single-output derivation that creates a directory
+containing one file:
+
+@lisp
+(let ((builder '(let ((out (assoc-ref %outputs "out")))
+                  (mkdir out)    ; create /gnu/store/@dots{}-goo
+                  (call-with-output-file (string-append out "/test")
+                    (lambda (p)
+                      (display '(hello guix) p))))))
+  (build-expression->derivation store "goo" builder))
+
+@result{} #<derivation /gnu/store/@dots{}-goo.drv => @dots{}>
+@end lisp
+
+@cindex strata of code
+Remember that the build expression passed to
+@code{build-expression->derivation} is run by a separate Guile process
+than the one that calls @code{build-expression->derivation}: it is run
+by a Guile process launched by the daemon, typically in a chroot.  So,
+while there is a single language for both the @dfn{host} and the build
+side, there are really two @dfn{strata} of code: the host-side, and the
+build-side code@footnote{The term @dfn{stratum} in this context was
+coined by Manuel Serrano et al. in the context of their work on Hop.}.
+This distinction is important to keep in mind, notably when using
+higher-level constructs such as @var{gnu-build-system} (@pxref{Defining
+Packages}).  For this reason, Guix modules that are meant to be used in
+the build stratum are kept in the @code{(guix build @dots{})} name
+space.
+
+@node The Store Monad
+@section The Store Monad
+
+@cindex monad
+
+The procedures that operate on the store described in the previous
+sections all take an open connection to the build daemon as their first
+argument.  Although the underlying model is functional, they either have
+side effects or depend on the current state of the store.
+
+The former is inconvenient: the connection to the build daemon has to be
+carried around in all those functions, making it impossible to compose
+functions that do not take that parameter with functions that do.  The
+latter can be problematic: since store operations have side effects
+and/or depend on external state, they have to be properly sequenced.
+
+@cindex monadic values
+@cindex monadic functions
+This is where the @code{(guix monads)} module comes in.  This module
+provides a framework for working with @dfn{monads}, and a particularly
+useful monad for our uses, the @dfn{store monad}.  Monads are a
+construct that allows two things: associating ``context'' with values
+(in our case, the context is the store), and building sequences of
+computations (here computations includes accesses to the store.)  Values
+in a monad---values that carry this additional context---are called
+@dfn{monadic values}; procedures that return such values are called
+@dfn{monadic procedures}.
+
+Consider this ``normal'' procedure:
+
+@example
+(define (sh-symlink store)
+  ;; Return a derivation that symlinks the 'bash' executable.
+  (let* ((drv (package-derivation store bash))
+         (out (derivation->output-path drv))
+         (sh  (string-append out "/bin/bash")))
+    (build-expression->derivation store "sh"
+                                  `(symlink ,sh %output))))
+@end example
+
+Using @code{(guix monads)}, it may be rewritten as a monadic function:
+
+@example
+(define (sh-symlink)
+  ;; Same, but return a monadic value.
+  (mlet %store-monad ((sh (package-file bash "bin")))
+    (derivation-expression "sh" `(symlink ,sh %output))))
+@end example
+
+There are two things to note in the second version: the @code{store}
+parameter is now implicit, and the monadic value returned by
+@code{package-file}---a wrapper around @code{package-derivation} and
+@code{derivation->output-path}---is @dfn{bound} using @code{mlet}
+instead of plain @code{let}.
+
+Calling the monadic @code{profile.sh} has no effect.  To get the desired
+effect, one must use @code{run-with-store}:
+
+@example
+(run-with-store (open-connection) (profile.sh))
+@result{} /gnu/store/...-profile.sh
+@end example
+
+The main syntactic forms to deal with monads in general are described
+below.
+
+@deffn {Scheme Syntax} with-monad @var{monad} @var{body} ...
+Evaluate any @code{>>=} or @code{return} forms in @var{body} as being
+in @var{monad}.
+@end deffn
+
+@deffn {Scheme Syntax} return @var{val}
+Return a monadic value that encapsulates @var{val}.
+@end deffn
+
+@deffn {Scheme Syntax} >>= @var{mval} @var{mproc}
+@dfn{Bind} monadic value @var{mval}, passing its ``contents'' to monadic
+procedure @var{mproc}@footnote{This operation is commonly referred to as
+``bind'', but that name denotes an unrelated procedure in Guile.  Thus
+we use this somewhat cryptic symbol inherited from the Haskell
+language.}.
+@end deffn
+
+@deffn {Scheme Syntax} mlet @var{monad} ((@var{var} @var{mval}) ...) @
+       @var{body} ...
+@deffnx {Scheme Syntax} mlet* @var{monad} ((@var{var} @var{mval}) ...) @
+       @var{body} ...
+Bind the variables @var{var} to the monadic values @var{mval} in
+@var{body}.  The form (@var{var} -> @var{val}) binds @var{var} to the
+``normal'' value @var{val}, as per @code{let}.
+
+@code{mlet*} is to @code{mlet} what @code{let*} is to @code{let}
+(@pxref{Local Bindings,,, guile, GNU Guile Reference Manual}).
+@end deffn
+
+The interface to the store monad provided by @code{(guix monads)} is as
+follows.
+
+@defvr {Scheme Variable} %store-monad
+The store monad.  Values in the store monad encapsulate accesses to the
+store.  When its effect is needed, a value of the store monad must be
+``evaluated'' by passing it to the @code{run-with-store} procedure (see
+below.)
+@end defvr
+
+@deffn {Scheme Procedure} run-with-store @var{store} @var{mval} [#:guile-for-build] [#:system (%current-system)]
+Run @var{mval}, a monadic value in the store monad, in @var{store}, an
+open store connection.
+@end deffn
+
+@deffn {Monadic Procedure} text-file @var{name} @var{text}
+Return as a monadic value the absolute file name in the store of the file
+containing @var{text}, a string.
+@end deffn
+
+@deffn {Monadic Procedure} text-file* @var{name} @var{text} @dots{}
+Return as a monadic value a derivation that builds a text file
+containing all of @var{text}.  @var{text} may list, in addition to
+strings, packages, derivations, and store file names; the resulting
+store file holds references to all these.
+
+This variant should be preferred over @code{text-file} anytime the file
+to create will reference items from the store.  This is typically the
+case when building a configuration file that embeds store file names,
+like this:
+
+@example
+(define (profile.sh)
+  ;; Return the name of a shell script in the store that
+  ;; initializes the 'PATH' environment variable.
+  (text-file* "profile.sh"
+              "export PATH=" coreutils "/bin:"
+              grep "/bin:" sed "/bin\n"))
+@end example
+
+In this example, the resulting @file{/gnu/store/@dots{}-profile.sh} file
+will references @var{coreutils}, @var{grep}, and @var{sed}, thereby
+preventing them from being garbage-collected during its lifetime.
+@end deffn
+
+@deffn {Monadic Procedure} package-file @var{package} [@var{file}] @
+       [#:system (%current-system)] [#:output "out"] Return as a monadic
+value in the absolute file name of @var{file} within the @var{output}
+directory of @var{package}.  When @var{file} is omitted, return the name
+of the @var{output} directory of @var{package}.
+@end deffn
+
+@deffn {Monadic Procedure} derivation-expression @var{name} @var{exp} @
+       [#:system (%current-system)] [#:inputs '()] @
+       [#:outputs '("out")] [#:hash #f] @
+       [#:hash-algo #f] [#:env-vars '()] [#:modules '()] @
+       [#:references-graphs #f] [#:guile-for-build #f]
+Monadic version of @code{build-expression->derivation}
+(@pxref{Derivations}).
+@end deffn
+
+@deffn {Monadic Procedure} package->derivation @var{package} [@var{system}]
+Monadic version of @code{package-derivation} (@pxref{Defining
+Packages}).
+@end deffn
+
+
+@c *********************************************************************
+@node Utilities
+@chapter Utilities
+
+This section describes tools primarily targeted at developers and users
+who write new package definitions.  They complement the Scheme
+programming interface of Guix in a convenient way.
+
+@menu
+* Invoking guix build::         Building packages from the command line.
+* Invoking guix download::      Downloading a file and printing its hash.
+* Invoking guix hash::          Computing the cryptographic hash of a file.
+* Invoking guix refresh::       Updating package definitions.
+@end menu
+
+@node Invoking guix build
+@section Invoking @command{guix build}
+
+The @command{guix build} command builds packages or derivations and
+their dependencies, and prints the resulting store paths.  Note that it
+does not modify the user's profile---this is the job of the
+@command{guix package} command (@pxref{Invoking guix package}).  Thus,
+it is mainly useful for distribution developers.
+
+The general syntax is:
+
+@example
+guix build @var{options} @var{package-or-derivation}@dots{}
+@end example
+
+@var{package-or-derivation} may be either the name of a package found in
+the software distribution such as @code{coreutils} or
+@code{coreutils-8.20}, or a derivation such as
+@file{/gnu/store/@dots{}-coreutils-8.19.drv}.  In the former case, a
+package with the corresponding name (and optionally version) is searched
+for among the GNU distribution modules (@pxref{Package Modules}).
+
+Alternatively, the @code{--expression} option may be used to specify a
+Scheme expression that evaluates to a package; this is useful when
+disambiguation among several same-named packages or package variants is
+needed.
+
+The @var{options} may be zero or more of the following:
+
+@table @code
+
+@item --expression=@var{expr}
+@itemx -e @var{expr}
+Build the package or derivation @var{expr} evaluates to.
+
+For example, @var{expr} may be @code{(@@ (gnu packages guile)
+guile-1.8)}, which unambiguously designates this specific variant of
+version 1.8 of Guile.
+
+Alternately, @var{expr} may refer to a zero-argument monadic procedure
+(@pxref{The Store Monad}).  The procedure must return a derivation as a
+monadic value, which is then passed through @code{run-with-store}.
+
+@item --source
+@itemx -S
+Build the packages' source derivations, rather than the packages
+themselves.
+
+For instance, @code{guix build -S gcc} returns something like
+@file{/gnu/store/@dots{}-gcc-4.7.2.tar.bz2}, which is GCC's source tarball.
+
+The returned source tarball is the result of applying any patches and
+code snippets specified in the package's @code{origin} (@pxref{Defining
+Packages}).
+
+@item --system=@var{system}
+@itemx -s @var{system}
+Attempt to build for @var{system}---e.g., @code{i686-linux}---instead of
+the host's system type.
+
+An example use of this is on Linux-based systems, which can emulate
+different personalities.  For instance, passing
+@code{--system=i686-linux} on an @code{x86_64-linux} system allows users
+to build packages in a complete 32-bit environment.
+
+@item --target=@var{triplet}
+@cindex cross-compilation
+Cross-build for @var{triplet}, which must be a valid GNU triplet, such
+as @code{"mips64el-linux-gnu"} (@pxref{Configuration Names, GNU
+configuration triplets,, configure, GNU Configure and Build System}).
+
+@item --with-source=@var{source}
+Use @var{source} as the source of the corresponding package.
+@var{source} must be a file name or a URL, as for @command{guix
+download} (@pxref{Invoking guix download}).
+
+The ``corresponding package'' is taken to be one specified on the
+command line whose name matches the base of @var{source}---e.g., if
+@var{source} is @code{/src/guile-2.0.10.tar.gz}, the corresponding
+package is @code{guile}.  Likewise, the version string is inferred from
+@var{source}; in the previous example, it's @code{2.0.10}.
+
+This option allows users to try out versions of packages other than the
+one provided by the distribution.  The example below downloads
+@file{ed-1.7.tar.gz} from a GNU mirror and uses that as the source for
+the @code{ed} package:
+
+@example
+guix build ed --with-source=mirror://gnu/ed/ed-1.7.tar.gz
+@end example
+
+As a developer, @code{--with-source} makes it easy to test release
+candidates:
+
+@example
+guix build guile --with-source=../guile-2.0.9.219-e1bb7.tar.xz
+@end example
+
+
+@item --derivations
+@itemx -d
+Return the derivation paths, not the output paths, of the given
+packages.
+
+@item --root=@var{file}
+@itemx -r @var{file}
+Make @var{file} a symlink to the result, and register it as a garbage
+collector root.
+
+@item --log-file
+Return the build log file names for the given
+@var{package-or-derivation}s, or raise an error if build logs are
+missing.
+
+This works regardless of how packages or derivations are specified.  For
+instance, the following invocations are equivalent:
+
+@example
+guix build --log-file `guix build -d guile`
+guix build --log-file `guix build guile`
+guix build --log-file guile
+guix build --log-file -e '(@@ (gnu packages guile) guile-2.0)'
+@end example
+
+
+@end table
+
+@cindex common build options
+In addition, a number of options that control the build process are
+common to @command{guix build} and other commands that can spawn builds,
+such as @command{guix package} or @command{guix archive}.  These are the
+following:
+
+@table @code
+
+@item --keep-failed
+@itemx -K
+Keep the build tree of failed builds.  Thus, if a build fail, its build
+tree is kept under @file{/tmp}, in a directory whose name is shown at
+the end of the build log.  This is useful when debugging build issues.
+
+@item --dry-run
+@itemx -n
+Do not build the derivations.
+
+@item --fallback
+When substituting a pre-built binary fails, fall back to building
+packages locally.
+
+@item --no-substitutes
+Do not use substitutes for build products.  That is, always build things
+locally instead of allowing downloads of pre-built binaries
+(@pxref{Substitutes}).
+
+@item --no-build-hook
+Do not attempt to offload builds @i{via} the daemon's ``build hook''
+(@pxref{Daemon Offload Setup}).  That is, always build things locally
+instead of offloading builds to remote machines.
+
+@item --max-silent-time=@var{seconds}
+When the build or substitution process remains silent for more than
+@var{seconds}, terminate it and report a build failure.
+
+@item --timeout=@var{seconds}
+Likewise, when the build or substitution process lasts for more than
+@var{seconds}, terminate it and report a build failure.
+
+By default there is no timeout.  This behavior can be restored with
+@code{--timeout=0}.
+
+@item --verbosity=@var{level}
+Use the given verbosity level.  @var{level} must be an integer between 0
+and 5; higher means more verbose output.  Setting a level of 4 or more
+may be helpful when debugging setup issues with the build daemon.
+
+@item --cores=@var{n}
+@itemx -c @var{n}
+Allow the use of up to @var{n} CPU cores for the build.  The special
+value @code{0} means to use as many CPU cores as available.
+
+@end table
+
+Behind the scenes, @command{guix build} is essentially an interface to
+the @code{package-derivation} procedure of the @code{(guix packages)}
+module, and to the @code{build-derivations} procedure of the @code{(guix
+store)} module.
+
+@node Invoking guix download
+@section Invoking @command{guix download}
+
+When writing a package definition, developers typically need to download
+the package's source tarball, compute its SHA256 hash, and write that
+hash in the package definition (@pxref{Defining Packages}).  The
+@command{guix download} tool helps with this task: it downloads a file
+from the given URI, adds it to the store, and prints both its file name
+in the store and its SHA256 hash.
+
+The fact that the downloaded file is added to the store saves bandwidth:
+when the developer eventually tries to build the newly defined package
+with @command{guix build}, the source tarball will not have to be
+downloaded again because it is already in the store.  It is also a
+convenient way to temporarily stash files, which may be deleted
+eventually (@pxref{Invoking guix gc}).
+
+The @command{guix download} command supports the same URIs as used in
+package definitions.  In particular, it supports @code{mirror://} URIs.
+@code{https} URIs (HTTP over TLS) are supported @emph{provided} the
+Guile bindings for GnuTLS are available in the user's environment; when
+they are not available, an error is raised.
+
+The following option is available:
+
+@table @code
+@item --format=@var{fmt}
+@itemx -f @var{fmt}
+Write the hash in the format specified by @var{fmt}.  For more
+information on the valid values for @var{fmt}, @ref{Invoking guix hash}.
+@end table
+
+@node Invoking guix hash
+@section Invoking @command{guix hash}
+
+The @command{guix hash} command computes the SHA256 hash of a file.
+It is primarily a convenience tool for anyone contributing to the
+distribution: it computes the cryptographic hash of a file, which can be
+used in the definition of a package (@pxref{Defining Packages}).
+
+The general syntax is:
+
+@example
+guix hash @var{option} @var{file}
+@end example
+
+@command{guix hash} has the following option:
+
+@table @code
+
+@item --format=@var{fmt}
+@itemx -f @var{fmt}
+Write the hash in the format specified by @var{fmt}.
+
+Supported formats: @code{nix-base32}, @code{base32}, @code{base16}
+(@code{hex} and @code{hexadecimal} can be used as well).
+
+If the @option{--format} option is not specified, @command{guix hash}
+will output the hash in @code{nix-base32}.  This representation is used
+in the definitions of packages.
+
+@item --recursive
+@itemx -r
+Compute the hash on @var{file} recursively.
+
+In this case, the hash is computed on an archive containing @var{file},
+including its children if it is a directory.  Some of @var{file}'s
+meta-data is part of the archive; for instance, when @var{file} is a
+regular file, the hash is different depending on whether @var{file} is
+executable or not.  Meta-data such as time stamps has no impact on the
+hash (@pxref{Invoking guix archive}).
+@c FIXME: Replace xref above with xref to an ``Archive'' section when
+@c it exists.
+
+@end table
+
+@node Invoking guix refresh
+@section Invoking @command{guix refresh}
+
+The primary audience of the @command{guix refresh} command is developers
+of the GNU software distribution.  By default, it reports any packages
+provided by the distribution that are outdated compared to the latest
+upstream version, like this:
+
+@example
+$ guix refresh
+gnu/packages/gettext.scm:29:13: gettext would be upgraded from 0.18.1.1 to 0.18.2.1
+gnu/packages/glib.scm:77:12: glib would be upgraded from 2.34.3 to 2.37.0
+@end example
+
+It does so by browsing each package's FTP directory and determining the
+highest version number of the source tarballs
+therein@footnote{Currently, this only works for GNU packages.}.
+
+When passed @code{--update}, it modifies distribution source files to
+update the version numbers and source tarball hashes of those packages'
+recipes (@pxref{Defining Packages}).  This is achieved by downloading
+each package's latest source tarball and its associated OpenPGP
+signature, authenticating the downloaded tarball against its signature
+using @command{gpg}, and finally computing its hash.  When the public
+key used to sign the tarball is missing from the user's keyring, an
+attempt is made to automatically retrieve it from a public key server;
+when it's successful, the key is added to the user's keyring; otherwise,
+@command{guix refresh} reports an error.
+
+The following options are supported:
+
+@table @code
+
+@item --update
+@itemx -u
+Update distribution source files (package recipes) in place.
+@ref{Defining Packages}, for more information on package definitions.
+
+@item --select=[@var{subset}]
+@itemx -s @var{subset}
+Select all the packages in @var{subset}, one of @code{core} or
+@code{non-core}.
+
+The @code{core} subset refers to all the packages at the core of the
+distribution---i.e., packages that are used to build ``everything
+else''.  This includes GCC, libc, Binutils, Bash, etc.  Usually,
+changing one of these packages in the distribution entails a rebuild of
+all the others.  Thus, such updates are an inconvenience to users in
+terms of build time or bandwidth used to achieve the upgrade.
+
+The @code{non-core} subset refers to the remaining packages.  It is
+typically useful in cases where an update of the core packages would be
+inconvenient.
+
+@end table
+
+In addition, @command{guix refresh} can be passed one or more package
+names, as in this example:
+
+@example
+guix refresh -u emacs idutils
+@end example
+
+@noindent
+The command above specifically updates the @code{emacs} and
+@code{idutils} packages.  The @code{--select} option would have no
+effect in this case.
+
+The following options can be used to customize GnuPG operation:
+
+@table @code
+
+@item --key-server=@var{host}
+Use @var{host} as the OpenPGP key server when importing a public key.
+
+@item --gpg=@var{command}
+Use @var{command} as the GnuPG 2.x command.  @var{command} is searched
+for in @code{$PATH}.
+
+@end table
+
+
+@c *********************************************************************
+@node GNU Distribution
+@chapter GNU Distribution
+
+Guix comes with a distribution of free software@footnote{The term
+``free'' here refers to the
+@url{http://www.gnu.org/philosophy/free-sw.html,freedom provided to
+users of that software}.} that forms the basis of the GNU system.  This
+includes core GNU packages such as GNU libc, GCC, and Binutils, as well
+as many GNU and non-GNU applications.  The complete list of available
+packages can be browsed
+@url{http://www.gnu.org/software/guix/package-list.html,on-line} or by
+running @command{guix package} (@pxref{Invoking guix package}):
+
+@example
+guix package --list-available
+@end example
+
+Our goal is to build a practical 100% free software distribution of
+Linux-based and other variants of GNU, with a focus on the promotion and
+tight integration of GNU components, and an emphasis on programs and
+tools that help users exert that freedom.
+
+The GNU distribution is currently available on the following platforms:
+
+@table @code
+
+@item x86_64-linux
+Intel/AMD @code{x86_64} architecture, Linux-Libre kernel;
+
+@item i686-linux
+Intel 32-bit architecture (IA32), Linux-Libre kernel;
+
+@item mips64el-linux
+little-endian 64-bit MIPS processors, specifically the Loongson series,
+n32 application binary interface (ABI), and Linux-Libre kernel.
+
+@end table
+
+@noindent
+For information on porting to other architectures or kernels,
+@xref{Porting}.
+
+@menu
+* Installing Debugging Files::  Feeding the debugger.
+* Package Modules::             Packages from the programmer's viewpoint.
+* Packaging Guidelines::        Growing the distribution.
+* Bootstrapping::               GNU/Linux built from scratch.
+* Porting::                     Targeting another platform or kernel.
+* System Configuration::        Configuring a GNU system.
+@end menu
+
+Building this distribution is a cooperative effort, and you are invited
+to join!  @ref{Contributing}, for information about how you can help.
+
+
+@node Installing Debugging Files
+@section Installing Debugging Files
+
+Program binaries, as produced by the GCC compilers for instance, are
+typically written in the ELF format, with a section containing
+@dfn{debugging information}.  Debugging information is what allows the
+debugger, GDB, to map binary code to source code; it is required to
+debug a compiled program in good conditions.
+
+The problem with debugging information is that is takes up a fair amount
+of disk space.  For example, debugging information for the GNU C Library
+weighs in at more than 60 MiB.  Thus, as a user, keeping all the
+debugging info of all the installed programs is usually not an option.
+Yet, space savings should not come at the cost of an impediment to
+debugging---especially in the GNU system, which should make it easier
+for users to exert their computing freedom (@pxref{GNU Distribution}).
+
+Thankfully, the GNU Binary Utilities (Binutils) and GDB provide a
+mechanism that allows users to get the best of both worlds: debugging
+information can be stripped from the binaries and stored in separate
+files.  GDB is then able to load debugging information from those files,
+when they are available (@pxref{Separate Debug Files,,, gdb, Debugging
+with GDB}).
+
+The GNU distribution takes advantage of this by storing debugging
+information in the @code{lib/debug} sub-directory of a separate package
+output unimaginatively called @code{debug} (@pxref{Packages with
+Multiple Outputs}).  Users can choose to install the @code{debug} output
+of a package when they need it.  For instance, the following command
+installs the debugging information for the GNU C Library and for GNU
+Guile:
+
+@example
+guix package -i glibc:debug -i guile:debug
+@end example
+
+GDB must then be told to look for debug files in the user's profile, by
+setting the @code{debug-file-directory} variable (consider setting it
+from the @file{~/.gdbinit} file, @pxref{Startup,,, gdb, Debugging with
+GDB}):
+
+@example
+(gdb) set debug-file-directory ~/.guix-profile/lib/debug
+@end example
+
+From there on, GDB will pick up debugging information from the
+@code{.debug} files under @file{~/.guix-profile/lib/debug}.
+
+@c XXX: keep me up-to-date
+The @code{debug} output mechanism in Guix is implemented by the
+@code{gnu-build-system} (@pxref{Defining Packages}).  Currently, it is
+opt-in---debugging information is available only for those packages
+whose definition explicitly declares a @code{debug} output.  This may be
+changed to opt-out in the future, if our build farm servers can handle
+the load.  To check whether a package has a @code{debug} output, use
+@command{guix package --list-available} (@pxref{Invoking guix package}).
+
+
+@node Package Modules
+@section Package Modules
+
+From a programming viewpoint, the package definitions of the
+GNU distribution are provided by Guile modules in the @code{(gnu packages
+@dots{})} name space@footnote{Note that packages under the @code{(gnu
+packages @dots{})} module name space are not necessarily ``GNU
+packages''.  This module naming scheme follows the usual Guile module
+naming convention: @code{gnu} means that these modules are distributed
+as part of the GNU system, and @code{packages} identifies modules that
+define packages.}  (@pxref{Modules, Guile modules,, guile, GNU Guile
+Reference Manual}).  For instance, the @code{(gnu packages emacs)}
+module exports a variable named @code{emacs}, which is bound to a
+@code{<package>} object (@pxref{Defining Packages}).
+
+The @code{(gnu packages @dots{})} module name space is special: it is
+automatically scanned for packages by the command-line tools.  For
+instance, when running @code{guix package -i emacs}, all the @code{(gnu
+packages @dots{})} modules are scanned until one that exports a package
+object whose name is @code{emacs} is found.  This package search
+facility is implemented in the @code{(gnu packages)} module.
+
+Users can store package definitions in modules with different
+names---e.g., @code{(my-packages emacs)}.  In that case, commands such
+as @command{guix package} and @command{guix build} have to be used with
+the @code{-e} option so that they know where to find the package.
+
+The distribution is fully @dfn{bootstrapped} and @dfn{self-contained}:
+each package is built based solely on other packages in the
+distribution.  The root of this dependency graph is a small set of
+@dfn{bootstrap binaries}, provided by the @code{(gnu packages
+bootstrap)} module.  For more information on bootstrapping,
+@ref{Bootstrapping}.
+
+@node Packaging Guidelines
+@section Packaging Guidelines
+
+The GNU distribution is nascent and may well lack some of your favorite
+packages.  This section describes how you can help make the distribution
+grow.  @xref{Contributing}, for additional information on how you can
+help.
+
+Free software packages are usually distributed in the form of
+@dfn{source code tarballs}---typically @file{tar.gz} files that contain
+all the source files.  Adding a package to the distribution means
+essentially two things: adding a @dfn{recipe} that describes how to
+build the package, including a list of other packages required to build
+it, and adding @dfn{package meta-data} along with that recipe, such as a
+description and licensing information.
+
+In Guix all this information is embodied in @dfn{package definitions}.
+Package definitions provide a high-level view of the package.  They are
+written using the syntax of the Scheme programming language; in fact,
+for each package we define a variable bound to the package definition,
+and export that variable from a module (@pxref{Package Modules}).
+However, in-depth Scheme knowledge is @emph{not} a prerequisite for
+creating packages.  For more information on package definitions,
+@ref{Defining Packages}.
+
+Once a package definition is in place, stored in a file in the Guix
+source tree, it can be tested using the @command{guix build} command
+(@pxref{Invoking guix build}).  For example, assuming the new package is
+called @code{gnew}, you may run this command from the Guix build tree:
+
+@example
+./pre-inst-env guix build gnew --keep-failed
+@end example
+
+Using @code{--keep-failed} makes it easier to debug build failures since
+it provides access to the failed build tree.  Another useful
+command-line option when debugging is @code{--log-file}, to access the
+build log.
+
+If the package is unknown to the @command{guix} command, it may be that
+the source file contains a syntax error, or lacks a @code{define-public}
+clause to export the package variable.  To figure it out, you may load
+the module from Guile to get more information about the actual error:
+
+@example
+./pre-inst-env guile -c '(use-modules (gnu packages gnew))'
+@end example
+
+Once your package builds correctly, please send us a patch
+(@pxref{Contributing}).  Well, if you need help, we will be happy to
+help you too.  Once the patch is committed in the Guix repository, the
+new package automatically gets built on the supported platforms by
+@url{http://hydra.gnu.org/gnu/master, our continuous integration
+system}.
+
+@cindex substituter
+Users can obtain the new package definition simply by running
+@command{guix pull} (@pxref{Invoking guix pull}).  When
+@code{hydra.gnu.org} is done building the package, installing the
+package automatically downloads binaries from there
+(@pxref{Substitutes}).  The only place where human intervention is
+needed is to review and apply the patch.
+
+
+@menu
+* Software Freedom::     What may go into the distribution.
+* Package Naming::       What's in a name?
+* Version Numbers::      When the name is not enough.
+* Python Modules::       Taming the snake.
+@end menu
+
+@node Software Freedom
+@subsection Software Freedom
+
+@c Adapted from http://www.gnu.org/philosophy/philosophy.html.
+
+The GNU operating system has been developed so that users can have
+freedom in their computing.  GNU is @dfn{free software}, meaning that
+users have the @url{http://www.gnu.org/philosophy/free-sw.html,four
+essential freedoms}: to run the program, to study and change the program
+in source code form, to redistribute exact copies, and to distribute
+modified versions.  Packages found in the GNU distribution provide only
+software that conveys these four freedoms.
+
+In addition, the GNU distribution follow the
+@url{http://www.gnu.org/distros/free-system-distribution-guidelines.html,free
+software distribution guidelines}.  Among other things, these guidelines
+reject non-free firmware, recommendations of non-free software, and
+discuss ways to deal with trademarks and patents.
+
+Some packages contain a small and optional subset that violates the
+above guidelines, for instance because this subset is itself non-free
+code.  When that happens, the offending items are removed with
+appropriate patches or code snippets in the package definition's
+@code{origin} form (@pxref{Defining Packages}).  That way, @code{guix
+build --source} returns the ``freed'' source rather than the unmodified
+upstream source.
+
+
+@node Package Naming
+@subsection Package Naming
+
+A package has actually two names associated with it:
+First, there is the name of the @emph{Scheme variable}, the one following
+@code{define-public}.  By this name, the package can be made known in the
+Scheme code, for instance as input to another package.  Second, there is
+the string in the @code{name} field of a package definition.  This name
+is used by package management commands such as
+@command{guix package} and @command{guix build}.
+
+Both are usually the same and correspond to the lowercase conversion of the
+project name chosen upstream.  For instance, the GNUnet project is packaged
+as @code{gnunet}.  We do not add @code{lib} prefixes for library packages,
+unless these are already part of the official project name.  But see
+@ref{Python Modules} for special rules concerning modules for
+the Python language.
+
+
+@node Version Numbers
+@subsection Version Numbers
+
+We usually package only the latest version of a given free software
+project.  But sometimes, for instance for incompatible library versions,
+two (or more) versions of the same package are needed.  These require
+different Scheme variable names.  We use the name as defined
+in @ref{Package Naming}
+for the most recent version; previous versions use the same name, suffixed
+by @code{-} and the smallest prefix of the version number that may
+distinguish the two versions.
+
+The name inside the package definition is the same for all versions of a
+package and does not contain any version number.
+
+For instance, the versions 2.24.20 and 3.9.12 of GTK+ may be packaged as follows:
+
+@example
+(define-public gtk+
+  (package
+   (name "gtk+")
+   (version "3.9.12")
+   ...))
+(define-public gtk+-2
+  (package
+   (name "gtk+")
+   (version "2.24.20")
+   ...))
+@end example
+If we also wanted GTK+ 3.8.2, this would be packaged as
+@example
+(define-public gtk+-3.8
+  (package
+   (name "gtk+")
+   (version "3.8.2")
+   ...))
+@end example
+
+
+@node Python Modules
+@subsection Python Modules
+
+We currently package Python 2 and Python 3, under the Scheme variable names
+@code{python-2} and @code{python} as explained in @ref{Version Numbers}.
+To avoid confusion and naming clashes with other programming languages, it
+seems desirable that the name of a package for a Python module contains
+the word @code{python}.
+
+Some modules are compatible with only one version of Python, others with both.
+If the package Foo compiles only with Python 3, we name it
+@code{python-foo}; if it compiles only with Python 2, we name it
+@code{python2-foo}. If it is compatible with both versions, we create two
+packages with the corresponding names.
+
+If a project already contains the word @code{python}, we drop this;
+for instance, the module python-dateutil is packaged under the names
+@code{python-dateutil} and @code{python2-dateutil}.
+
+
+
+
+
+@node Bootstrapping
+@section Bootstrapping
+
+@c Adapted from the ELS 2013 paper.
+
+@cindex bootstrapping
+
+Bootstrapping in our context refers to how the distribution gets built
+``from nothing''.  Remember that the build environment of a derivation
+contains nothing but its declared inputs (@pxref{Introduction}).  So
+there's an obvious chicken-and-egg problem: how does the first package
+get built?  How does the first compiler get compiled?  Note that this is
+a question of interest only to the curious hacker, not to the regular
+user, so you can shamelessly skip this section if you consider yourself
+a ``regular user''.
+
+@cindex bootstrap binaries
+The GNU system is primarily made of C code, with libc at its core.  The
+GNU build system itself assumes the availability of a Bourne shell and
+command-line tools provided by GNU Coreutils, Awk, Findutils, `sed', and
+`grep'.  Furthermore, build programs---programs that run
+@code{./configure}, @code{make}, etc.---are written in Guile Scheme
+(@pxref{Derivations}).  Consequently, to be able to build anything at
+all, from scratch, Guix relies on pre-built binaries of Guile, GCC,
+Binutils, libc, and the other packages mentioned above---the
+@dfn{bootstrap binaries}.
+
+These bootstrap binaries are ``taken for granted'', though we can also
+re-create them if needed (more on that later).
+
+@unnumberedsubsec Preparing to Use the Bootstrap Binaries
+
+The figure above shows the very beginning of the dependency graph of the
+distribution, corresponding to the package definitions of the @code{(gnu
+packages bootstrap)} module.  At this level of detail, things are
+slightly complex.  First, Guile itself consists of an ELF executable,
+along with many source and compiled Scheme files that are dynamically
+loaded when it runs.  This gets stored in the @file{guile-2.0.7.tar.xz}
+tarball shown in this graph.  This tarball is part of Guix's ``source''
+distribution, and gets inserted into the store with @code{add-to-store}
+(@pxref{The Store}).
+
+But how do we write a derivation that unpacks this tarball and adds it
+to the store?  To solve this problem, the @code{guile-bootstrap-2.0.drv}
+derivation---the first one that gets built---uses @code{bash} as its
+builder, which runs @code{build-bootstrap-guile.sh}, which in turn calls
+@code{tar} to unpack the tarball.  Thus, @file{bash}, @file{tar},
+@file{xz}, and @file{mkdir} are statically-linked binaries, also part of
+the Guix source distribution, whose sole purpose is to allow the Guile
+tarball to be unpacked.
+
+Once @code{guile-bootstrap-2.0.drv} is built, we have a functioning
+Guile that can be used to run subsequent build programs.  Its first task
+is to download tarballs containing the other pre-built binaries---this
+is what the @code{.tar.xz.drv} derivations do.  Guix modules such as
+@code{ftp-client.scm} are used for this purpose.  The
+@code{module-import.drv} derivations import those modules in a directory
+in the store, using the original layout.  The
+@code{module-import-compiled.drv} derivations compile those modules, and
+write them in an output directory with the right layout.  This
+corresponds to the @code{#:modules} argument of
+@code{build-expression->derivation} (@pxref{Derivations}).
+
+Finally, the various tarballs are unpacked by the
+derivations @code{gcc-bootstrap-0.drv}, @code{glibc-bootstrap-0.drv},
+etc., at which point we have a working C tool chain.
+
+
+@unnumberedsubsec Building the Build Tools
+
+@c TODO: Add a package-level dependency graph generated from (gnu
+@c packages base).
+
+Bootstrapping is complete when we have a full tool chain that does not
+depend on the pre-built bootstrap tools discussed above.  This
+no-dependency requirement is verified by checking whether the files of
+the final tool chain contain references to the @file{/gnu/store}
+directories of the bootstrap inputs.  The process that leads to this
+``final'' tool chain is described by the package definitions found in
+the @code{(gnu packages base)} module.
+
+@c See <http://lists.gnu.org/archive/html/gnu-system-discuss/2012-10/msg00000.html>.
+The first tool that gets built with the bootstrap binaries is
+GNU Make, which is a prerequisite for all the following packages.
+From there Findutils and Diffutils get built.
+
+Then come the first-stage Binutils and GCC, built as pseudo cross
+tools---i.e., with @code{--target} equal to @code{--host}.  They are
+used to build libc.  Thanks to this cross-build trick, this libc is
+guaranteed not to hold any reference to the initial tool chain.
+
+From there the final Binutils and GCC are built.  GCC uses @code{ld}
+from the final Binutils, and links programs against the just-built libc.
+This tool chain is used to build the other packages used by Guix and by
+the GNU Build System: Guile, Bash, Coreutils, etc.
+
+And voilà!  At this point we have the complete set of build tools that
+the GNU Build System expects.  These are in the @code{%final-inputs}
+variables of the @code{(gnu packages base)} module, and are implicitly
+used by any package that uses @code{gnu-build-system} (@pxref{Defining
+Packages}).
+
+
+@unnumberedsubsec Building the Bootstrap Binaries
+
+Because the final tool chain does not depend on the bootstrap binaries,
+those rarely need to be updated.  Nevertheless, it is useful to have an
+automated way to produce them, should an update occur, and this is what
+the @code{(gnu packages make-bootstrap)} module provides.
+
+The following command builds the tarballs containing the bootstrap
+binaries (Guile, Binutils, GCC, libc, and a tarball containing a mixture
+of Coreutils and other basic command-line tools):
+
+@example
+guix build bootstrap-tarballs
+@end example
+
+The generated tarballs are those that should be referred to in the
+@code{(gnu packages bootstrap)} module mentioned at the beginning of
+this section.
+
+Still here?  Then perhaps by now you've started to wonder: when do we
+reach a fixed point?  That is an interesting question!  The answer is
+unknown, but if you would like to investigate further (and have
+significant computational and storage resources to do so), then let us
+know.
+
+@node Porting
+@section Porting to a New Platform
+
+As discussed above, the GNU distribution is self-contained, and
+self-containment is achieved by relying on pre-built ``bootstrap
+binaries'' (@pxref{Bootstrapping}).  These binaries are specific to an
+operating system kernel, CPU architecture, and application binary
+interface (ABI).  Thus, to port the distribution to a platform that is
+not yet supported, one must build those bootstrap binaries, and update
+the @code{(gnu packages bootstrap)} module to use them on that platform.
+
+Fortunately, Guix can @emph{cross compile} those bootstrap binaries.
+When everything goes well, and assuming the GNU tool chain supports the
+target platform, this can be as simple as running a command like this
+one:
+
+@example
+guix build --target=armv5tel-linux-gnueabi bootstrap-tarballs
+@end example
+
+Once these are built, the @code{(gnu packages bootstrap)} module needs
+to be updated to refer to these binaries on the target platform.  In
+addition, the @code{glibc-dynamic-linker} procedure in that module must
+be augmented to return the right file name for libc's dynamic linker on
+that platform; likewise, @code{system->linux-architecture} in @code{(gnu
+packages linux)} must be taught about the new platform.
+
+In practice, there may be some complications.  First, it may be that the
+extended GNU triplet that specifies an ABI (like the @code{eabi} suffix
+above) is not recognized by all the GNU tools.  Typically, glibc
+recognizes some of these, whereas GCC uses an extra @code{--with-abi}
+configure flag (see @code{gcc.scm} for examples of how to handle this).
+Second, some of the required packages could fail to build for that
+platform.  Lastly, the generated binaries could be broken for some
+reason.
+
+
+@node System Configuration
+@section System Configuration
+
+@emph{This section documents work-in-progress.  As such it may be
+incomplete, outdated, or open to discussions.  Please discuss it on
+@email{guix-devel@@gnu.org}.}
+
+@cindex system configuration
+The GNU system supports a consistent whole-system configuration
+mechanism.  By that we mean that all aspects of the global system
+configuration---such as the available system services, timezone and
+locale settings, user accounts---are declared in a single place.  Such
+a @dfn{system configuration} can be @dfn{instantiated}---i.e., effected.
+
+One of the advantages of putting all the system configuration under the
+control of Guix is that it supports transactional system upgrades, and
+makes it possible to roll-back to a previous system instantiation,
+should something go wrong with the new one (@pxref{Features}).  Another
+one is that it makes it easy to replicate the exact same configuration
+across different machines, or at different points in time, without
+having to resort to additional administration tools layered on top of
+the system's own tools.
+@c Yes, we're talking of Puppet, Chef, & co. here.  ↑
+
+This section describes this mechanism.  First we focus on the system
+administrator's viewpoint---explaining how the system is configured and
+instantiated.  Then we show how this mechanism can be extended, for
+instance to support new system services.
+
+@menu
+* Using the Configuration System::  Customizing your GNU system.
+* Invoking guix system::        Instantiating a system configuration.
+* Defining Services::           Adding new service definitions.
+@end menu
+
+@node Using the Configuration System
+@subsection Using the Configuration System
+
+The operating system is configured by filling in an
+@code{operating-system} structure, as defined by the @code{(gnu system)}
+module.  A simple setup, with the default system services, the default
+Linux-Libre kernel, initial RAM disk, and boot loader looks like this:
+
+@findex operating-system
+@lisp
+(use-modules (gnu services base)   ; for '%base-services'
+             (gnu services ssh)    ; for 'lsh-service'
+             (gnu system shadow)   ; for 'user-account'
+             (gnu packages base)   ; Coreutils, grep, etc.
+             (gnu packages bash)   ; Bash
+             (gnu packages admin)  ; dmd, Inetutils
+             (gnu packages zile)   ; Zile
+             (gnu packages less)   ; less
+             (gnu packages guile)  ; Guile
+             (gnu packages linux)) ; procps, psmisc
+
+(define komputilo
+  (operating-system
+   (host-name "komputilo")
+   (timezone "Europe/Paris")
+   (locale "fr_FR.UTF-8")
+   (users (list (user-account
+                 (name "alice")
+                 (password "")
+                 (uid 1000) (gid 100)
+                 (comment "Bob's sister")
+                 (home-directory "/home/alice"))))
+   (packages (list coreutils bash guile-2.0
+                   guix dmd
+                   inetutils
+                   findutils grep sed
+                   procps psmisc
+                   zile less))
+   (services (cons (lsh-service #:port 2222 #:allow-root-login? #t)
+                   %base-services))))
+@end lisp
+
+This example should be self-describing.  The @code{packages} field lists
+packages provided by the various @code{(gnu packages ...)} modules above
+(@pxref{Package Modules}).  These are the packages that will be globally
+visible on the system, for all user accounts---i.e., in every user's
+@code{PATH} environment variable---in addition to the per-user profiles
+(@pxref{Invoking guix package}).
+
+@vindex %base-services
+The @code{services} field lists @dfn{system services} to be made
+available when the system starts.  The @var{%base-services} list,
+from the @code{(gnu services base)} module, provides the basic services one
+would expect from a GNU system: a login service (mingetty) on each tty,
+syslogd, libc's name service cache daemon (nscd), etc.
+
+The @code{operating-system} declaration above specifies that, in
+addition to those services, we want the @command{lshd} secure shell
+daemon listening on port 2222, and allowing remote @code{root} logins
+(@pxref{Invoking lshd,,, lsh, GNU lsh Manual}).  Under the hood,
+@code{lsh-service} arranges so that @code{lshd} is started with the
+right command-line options, possibly with supporting configuration files
+generated as needed (@pxref{Defining Services}).
+
+Assuming the above snippet is stored in the @file{my-system-config.scm}
+file, the @command{guix system boot my-system-config.scm} command
+instantiates that configuration, and makes it the default GRUB boot
+entry (@pxref{Invoking guix system}).  The normal way to change the
+system's configuration is by updating this file and re-running the
+@command{guix system} command.
+
+At the Scheme level, the bulk of an @code{operating-system} declaration
+is instantiated with the following monadic procedure (@pxref{The Store
+Monad}):
+
+@deffn {Monadic Procedure} operating-system-derivation os
+Return a derivation that builds @var{os}, an @code{operating-system}
+object (@pxref{Derivations}).
+
+The output of the derivation is a single directory that refers to all
+the packages, configuration files, and other supporting files needed to
+instantiate @var{os}.
+@end deffn
+
+@node Invoking guix system
+@subsection Invoking @code{guix system}
+
+Once you have written an operating system declaration, as seen in the
+previous section, it can be @dfn{instantiated} using the @command{guix
+system} command.  The synopsis is:
+
+@example
+guix system @var{options}@dots{} @var{action} @var{file}
+@end example
+
+@var{file} must be the name of a file containing an
+@code{operating-system} declaration.  @var{action} specifies how the
+operating system is instantiate.  Currently the following values are
+supported:
+
+@table @code
+@item vm
+@cindex virtual machine
+Build a virtual machine that contain the operating system declared in
+@var{file}, and return a script to run that virtual machine (VM).
+
+The VM shares its store with the host system.
+
+@item vm-image
+Return a virtual machine image of the operating system declared in
+@var{file} that stands alone.  Use the @option{--image-size} option to
+specify the size of the image.
+@end table
+
+@var{options} can contain any of the common build options provided by
+@command{guix build} (@pxref{Invoking guix build}).
+
+
+@node Defining Services
+@subsection Defining Services
+
+The @code{(gnu services @dots{})} modules define several procedures that allow
+users to declare the operating system's services (@pxref{Using the
+Configuration System}).  These procedures are @emph{monadic
+procedures}---i.e., procedures that return a monadic value in the store
+monad (@pxref{The Store Monad}).  Examples of such procedures include:
+
+@table @code
+@item mingetty-service
+return the definition of a service that runs @command{mingetty} to
+offer a login service on the given console tty;
+
+@item nscd-service
+return a definition for libc's name service cache daemon (nscd);
+
+@item guix-service
+return a definition for a service that runs @command{guix-daemon}
+(@pxref{Invoking guix-daemon}).
+@end table
+
+@cindex service definition
+The monadic value returned by those procedures is a @dfn{service
+definition}---a structure as returned by the @code{service} form.
+Service definitions specifies the inputs the service depends on, and an
+expression to start and stop the service.  Behind the scenes, service
+definitions are ``translated'' into the form suitable for the
+configuration file of dmd, the init system (@pxref{Services,,, dmd, GNU
+dmd Manual}).
+
+As an example, here is what the @code{nscd-service} procedure looks
+like:
+
+@lisp
+(define (nscd-service)
+  (mlet %store-monad ((nscd (package-file glibc "sbin/nscd")))
+    (return (service
+             (documentation "Run libc's name service cache daemon.")
+             (provision '(nscd))
+             (start `(make-forkexec-constructor ,nscd "-f" "/dev/null"
+                                                "--foreground"))
+             (stop  `(make-kill-destructor))
+
+             (respawn? #f)
+             (inputs `(("glibc" ,glibc)))))))
+@end lisp
+
+@noindent
+The @code{inputs} field specifies that this service depends on the
+@var{glibc} package---the package that contains the @command{nscd}
+program.  The @code{start} and @code{stop} fields are expressions that
+make use of dmd's facilities to start and stop processes (@pxref{Service
+De- and Constructors,,, dmd, GNU dmd Manual}).  The @code{provision}
+field specifies the name under which this service is known to dmd, and
+@code{documentation} specifies on-line documentation.  Thus, the
+commands @command{deco start ncsd}, @command{deco stop nscd}, and
+@command{deco doc nscd} will do what you would expect (@pxref{Invoking
+deco,,, dmd, GNU dmd Manual}).
+
+
+@c *********************************************************************
+@node Contributing
+@chapter Contributing
+
+This project is a cooperative effort, and we need your help to make it
+grow!  Please get in touch with us on @email{guix-devel@@gnu.org} and
+@code{#guix} on the Freenode IRC network.  We welcome ideas, bug
+reports, patches, and anything that may be helpful to the project.  We
+particularly welcome help on packaging (@pxref{Packaging Guidelines}).
+
+Please see the
+@url{http://git.savannah.gnu.org/cgit/guix.git/tree/HACKING,
+@file{HACKING} file} that comes with the Guix source code for practical
+details about contributions.
+
+
+@c *********************************************************************
+@node Acknowledgments
+@chapter Acknowledgments
+
+Guix is based on the Nix package manager, which was designed and
+implemented by Eelco Dolstra.  Nix pioneered functional package
+management, and promoted unprecedented features, such as transactional
+package upgrades and rollbacks, per-user profiles, and referentially
+transparent build processes.  Without this work, Guix would not exist.
+
+The Nix-based software distributions, Nixpkgs and NixOS, have also been
+an inspiration for Guix.
+
+@c *********************************************************************
+@node GNU Free Documentation License
+@appendix GNU Free Documentation License
+
+@include fdl-1.3.texi
+
+@c *********************************************************************
+@node Concept Index
+@unnumbered Concept Index
+@printindex cp
+
+@node Function Index
+@unnumbered Function Index
+@printindex fn
+
+@bye
+
+@c Local Variables:
+@c ispell-local-dictionary: "american";
+@c End:

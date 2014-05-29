@@ -1,0 +1,536 @@
+                                                              -*- org -*-
+#+TITLE: Guix NEWS – history of user-visible changes
+#+STARTUP: content hidestars
+
+Copyright © 2013, 2014 Ludovic Courtès <ludo@gnu.org>
+
+  Copying and distribution of this file, with or without modification,
+  are permitted in any medium without royalty provided the copyright
+  notice and this notice are preserved.
+
+Please send Guix bug reports to bug-guix@gnu.org.
+
+* Changes in 0.6 (since 0.5)
+** Package management
+*** Default store directory changed to /gnu/store
+
+Although it is still possible to configure Guix to use the old store
+directory, we recommend that you start with a fresh install to /gnu/store.
+
+*** Substitutes from hydra.gnu.org must now be signed and authorized
+*** Support for offloading builds to other Guix machines over SSH
+*** New ‘guix archive’ command
+*** New ‘guix system’ command; it can currently build VM images
+*** ‘guix package’ accepts several arguments after -i, -r, and -u
+*** Updating a profile with ‘guix package’ is now noticeably faster
+*** ‘guix build’ can override a package’s source with the new ‘--with-source’
+*** ‘guix build’ has a new ‘--no-build-hook’ option
+*** ‘guix’ commands that build packages have a common set of options
+*** ‘guix hash’ has a new ‘--recursive’ option
+*** Daemon no longer bind-mounts the host’s /dev (improves reproducibility)
+** Programming interfaces
+*** New (guix pk-crypto) and (guix pki) modules for public key cryptography
+*** New #:local-build? parameter for derivations that shouldn’t be offloaded
+*** (gnu system vm) has procedures to build VMs that share the host’s store
+*** New ‘text-file*’ procedure in (guix monads)
+*** System service definitions are now provided by the (guix services) modules
+*** New X and SLiM services in (gnu services xorg)
+*** New (guix git-download) and (guix svn-download) for git/svn checkouts
+** GNU distribution
+*** 91 new packages
+
+a2ps, asciidoc, aspell-dict-en, aspell-dict-eo, aspell-dict-es,
+aspell-dict-fr, aumix, bitlbee, bogofilter, boost, calcurse, clusterssh,
+corkscrew, cursynth, docbook-xml, docbook-xsl, elfutils, enscript, fftwf,
+fltk, fuse, gcc-toolchain, giflib, glade, gmime, gnome-desktop, gnubg, gnubik,
+gnumach-headers, gnunet, gnuplot, gnurl, gphoto2, gtkglext, guile-json,
+guile-reader-for-guile_2.0.11, gxmessage, hdf5, hurd-headers, inkscape, iotop,
+isc-dhcp, iso-codes, jnettop, libatomic-ops, libexif, libgphoto2, libmpcdec,
+libmpdclient, libotr, libpcap, libpeas, libpipeline, libtirpc, libwebsockets,
+ltrace, luajit, lynx, man-db, mc, mig, miniupnpc, moe, mpc123, mpd, ncdc,
+ncdu, ncmpc, neon, neon, octave, opus, paperkey, patchutils, perl-tk,
+perl-x11-protocol, pinentry, python2-element-tree, python2-pybugz, quilt,
+source-highlight, stalonetray, trueprint, ttf-dejavu, unionfs-fuse,
+unionfs-fuse-static, uucp, vera, windowmaker, xapian, xterm
+
+*** 90 package updates
+
+apl-1.3, autoconf-2.68, automake-1.14.1, bash-4.3, bash-light-4.3,
+bigloo-4.1a, binutils-2.24, binutils-static-stripped-tarball-2.24,
+coreutils-8.22, curl-7.35.0, ed-1.10, ffmpeg-2.1.4, file-5.18, freeipmi-1.4.1,
+gcc-4.8.2, gcc-4.8.2, gdb-7.7, gdbm-1.11, gettext-0.18.3.2, glib-2.39.1,
+glibc-2.19, glibc-stripped-tarball-2.19, global-6.2.12, glpk-4.54,
+gnu-pw-mgr-1.2, gnupg-1.4.16, gnutls-3.2.12, gp2c-0.0.8pl1, grep-2.18,
+gst-plugins-base-0.10.36, gstreamer-1.0.10, gtk+-3.10.1, gtkmm-2.24.2,
+guile-2.0.11, guile-ssh-0.6.0, guile-static-stripped-tarball-2.0.11,
+guile-wm-1.0, guile-xcb-1.3, guix-0.5, help2man-1.45.1, icu4c-52.1,
+imagemagick-6.8.8-10, inetutils-1.9.2, lapack-3.5.0, libcdio-0.92,
+libdrm-2.4.46, libextractor-1.3, libgc-7.2e, libgc-7.4.0, libgcrypt-1.6.1,
+libjpeg-9, libmicrohttpd-0.9.34, libssh-0.6.3, libtasn1-3.4, lightning-2.0.3,
+linux-libre-3.13.7, mpc-1.0.2, mutt-1.5.23, net-base-5.2, ocrad-0.23,
+openssh-6.6p1, openssl-1.0.1g, parallel-20140322, pari-gp-2.7.0, pspp-0.8.2,
+pulseaudio-5.0, python-2.7.6, python-3.3.5, python-wrapper-3.3.5,
+python2-pysqlite-2.6.3a, qemu-1.7.1, qemu-headless-1.7.1,
+qemu-with-multiple-smb-shares-1.7.1, qt-4.8.5, qt-5.2.0, readline-6.3,
+recutils-1.7, slim-1.3.6, sqlite-3.8.4.3, subversion-1.7.14, texinfo-4.13a,
+tor-0.2.4.21, tzdata-2014a, units-2.11, valgrind-3.9.0, vim-7.4, wget-1.15,
+xnee-3.18, xorriso-1.3.6.pl01, zile-2.4.11
+
+*** New ‘gcc-toolchain’ meta-package, makes it easy to install a GCC tool chain
+*** libc’s Info manual is now installed
+*** Binutils is built with --enable-deterministic-archives
+*** Packages that populated man/man* now populate share/man/man*
+*** Many other packaging improvements
+** Bugs fixed
+*** ‘guix pull’ consumes less memory, compiles in parallel
+*** ‘guix package --list-*’ gracefully handles EPIPE when used in a pipeline
+*** ‘guix package’ handles collisions between a symlink and a directory
+    (http://bugs.gnu.org/17083)
+*** HTTP downloads provide a ‘User-Agent’ field (http://bugs.gnu.org/16703)
+*** ‘guix package’ no longer shows misleading installed package number
+    (http://bugs.gnu.org/16484)
+*** Manual suggests ‘useradd --system’ (http://bugs.gnu.org/16289)
+*** Python is built with ctypes support (http://bugs.gnu.org/16569)
+*** HTTP/TLS connection not terminated properly (http://bugs.gnu.org/14884)
+*** Gracefully handle poorly behaved HTTP servers (http://bugs.gnu.org/15733)
+
+* Changes in 0.5 (since 0.4)
+** Package management
+*** GNU package descriptions synchronized with the ‘gnumaint’ repository
+
+In addition to synopses, descriptions of GNU packages are now kept in sync
+with the ‘gnumaint’ repository, which is the canonical place for GNU package
+meta-data.
+
+** Programming interfaces
+*** Patches are now listed as part of ‘origin’
+
+The ‘origin’ form supports two new fields: ‘patches’ (list of patches), and
+‘snippet’ (code snippet to modify the source.)  These are applied when running
+‘guix build --source’.  See “Defining Packages” in the manual.
+
+*** New (guix monads) monadic interface to operate on the store
+
+See “The Store Monad” in the manual.  The (gnu system …) modules have been
+rewritten to use this monadic interface.
+
+*** New (guix profiles) module
+
+It provides an API for dealing with profiles, as with the ‘guix package’
+command.
+
+*** New (gnu system) module
+
+This module provides a generic way to describe the system’s configuration,
+and to instantiate it, regardless of the final medium (QEMU image, etc.)
+See “System Configuration” in the manual.
+
+This is work in progress.  Send feedback to guix-devel@gnu.org!
+
+*** ‘build-expression->derivation’ uses more parameters
+
+Some positional parameters have been changed to keyword parameters.
+See “Derivations” in the manual.
+
+** GNU distribution
+*** New port to the Loongson MIPS64 processors, n32 ABI (‘mips64el-linux’)
+
+Bootstrap binaries have been built for that architecture, and several
+Loongson-specific patches not yet available upstream have been applied to core
+packages.  See “GNU Distribution” and “Porting” in the manual.
+
+Pre-built binaries are not yet available via hydra.gnu.org, so Guix will
+build from source on this platform.
+
+*** 110 new packages
+
+acct, alive, alsa-utils, apl, at-spi2-atk, at-spi2-core, atkmm, autogen,
+automoc4, brasero, bridge-utils, cairomm, catkin, complexity, evince, ffmpeg,
+fftw, ftgl, gcc-objc, gcc-objc++, gccgo, gcl, gfortran, glibmm, glpk,
+gnome-icon-theme, gnu-pw-mgr, gp2c, gpgme, gsettings-desktop-schemas, gtkmm,
+gtksourceview, guile-ssh, guile-wm, gvpe, hicolor-icon-theme, httpd, icecat,
+icon-naming-utils, json-c, lapack, libcanberra, libcap, libgnome-keyring,
+libmikmod, libnl, libnotify, libsamplerate, libsigc++, libsndfile, libssh,
+libtheora, libxkbcommon, mercurial, mtools, netcat, pangomm, parallel,
+pavucontrol, pciutils, pem, perl-encode-locale, perl-file-list,
+perl-file-listing, perl-html-parser, perl-html-tagset, perl-http-cookies,
+perl-http-daemon, perl-http-date, perl-http-message, perl-http-negotiate,
+perl-io-html, perl-libwww, perl-libxml, perl-lwp-mediatypes, perl-net-http,
+perl-uri, perl-www-robotrules, perl-xml-dom, perl-xml-regexp, perl-xml-simple,
+phonon, powertop, pulseaudio, python2-dogtail, python2-empy, qemu-headless,
+qt, qt, raptor2, scons, sdl, sdl-gfx, sdl-image, sdl-mixer, sdl-net, sdl-ttf,
+sdl2, serveez, shared-mime-info, sharutils, skribilo, slim, soprano, swig,
+xcb-util, xcb-util-image, xcb-util-keysyms, xcb-util-renderutil, xcb-util-wm
+
+*** 47 package updates
+
+atk 2.10.0, bison 3.0.2, cmake 2.8.12, dmd 0.1, freeipmi 1.3.3, gcc 4.8.2,
+gcc 4.8.2, gcc-cross-mips64el-linux-gnuabi64 4.8.2, gcc-stripped-tarball 4.8.2,
+gdb 7.6.2, gettext 0.18.3.1, glib 2.38.0, global 6.2.9, gmp 5.1.3,
+gnupg 2.0.22, gobject-introspection 1.38.0, grep 2.15, gsl 1.16,
+gtk+ 2.24.21, gtk+ 3.10.1, guile 2.0.9, guile 2.0.9, guile-xcb 1.2,
+harfbuzz 0.9.22, hello 2.9, iproute2 3.12.0, libdrm 2.4.46,
+libextractor 1.2, libjpeg 9, libmicrohttpd 0.9.32, lightning 2.0.2,
+linux-libre 3.12, lzip 1.15, make 4.0, mit-krb5 1.11.3, pari-gp 2.5.5,
+pixman 0.32.4, python 3.3.2, qemu 1.6.1,
+qemu-with-multiple-smb-shares 1.6.1, rcs 5.9.2, recutils 1.6, rsync 3.1.0,
+tar 1.27.1, texinfo 5.2, units 2.02, xorriso 1.3.2
+
+*** Packages are now built with GCC 4.8.2 by default (was 4.7.3)
+
+** Native language support
+*** New ‘sr’ (Serbian) translation
+*** New ‘vi’ (Vietnamese) translation
+*** Updated ‘pt_BR’ (Brazilian Portuguese) translation
+** Bugs fixed
+*** ‘guix pull’ compiles Guix deterministically and correctly
+
+Previously, the build environment was not cleared in between ‘compile-file’
+calls, leading to build errors due to Guile bug http://bugs.gnu.org/15602 .
+
+*** ‘guix package’ allows removal of a specific package output
+    (http://bugs.gnu.org/15756)
+*** ‘guix-daemon’ always sets umask to 022
+    (http://lists.gnu.org/archive/html/bug-guix/2013-07/msg00033.html)
+*** Files referenced by environment variables are protected from GC
+*** Yet unbuilt packages get correctly installed (http://bugs.gnu.org/15283)
+*** ‘bootstrap-graph.{png,eps,pdf}’ built in srcdir (http://bugs.gnu.org/15640)
+
+* Changes in 0.4 (since 0.3)
+
+** Package management
+
+*** New ‘--list-generations’ and ‘--delete-generations’ options
+
+The ‘guix package’ command has these two new options, which make it easier to
+deal with a profile’s generation.  See “Invoking guix package” in the manual.
+
+*** New ‘guix-register’ program
+
+This program allows the meta-data of a new store to be initialized, by
+copying info from an existing store.  It is mostly an internal tool.
+
+** Programming interfaces
+
+*** New API to bootstrap Autotools-based packages
+
+The (guix build-system gnu) has a new ‘dist-package’ procedure that takes a
+package object and source directory, and returns a new package object that
+runs ‘./bootstrap && make dist’ or anything similar.
+
+*** ‘derivation’ and related procedures have a #:references-graphs parameter
+
+This parameter instructs the build daemon to populate the derivation’s build
+tree with files containing the list of references of the given store files.
+This is useful to write code that copies a packages and all its dependencies
+to another storage device, such as a QEMU disk image.
+
+*** Extended API to build a GNU system virtual machine image
+
+The (gnu system vm) module has been augmented in many ways: the ‘qemu-image’
+procedure can now populate and initialize the image’s store; the new
+‘system-qemu-image’ procedure returns a QEMU image that runs dmd as its init
+system, has ‘login’ running on several consoles, has a set of installed
+packages, and where Guix can be used.
+
+New (gnu system …) modules have been added to handle the configuration of the
+various parts of a GNU/Linux system.  For instance, (gnu system dmd) provides
+support for instantiating dmd services; (gnu system linux) helps with Linux
+PAM configuration; and so on.
+
+*** <derivation> objects supersede .drv file names in the API
+
+‘derivation’ and similar procedures no longer return two values (a
+<derivation> and a .drv file name); they now return a single value, which is
+a <derivation> object.  The <derivation> object embeds the corresponding .drv
+file name.  See “Derivations” in the manual for details.
+
+** GNU distribution
+
+*** 60 new packages
+
+apr, apr-util, cdparanoia, dbus-glib, dfc, dmd, dvdisaster, exiv2, fetchmail,
+freefont-ttf, freeglut, geeqie, git, gkrellm, glu, gnome-doc-utils,
+gst-plugins-base, gstreamer, guile-cairo, guile-lib, guile-xcb, guix, htop,
+itstool, lame, libextractor, libmicrohttpd, lightning, lzip, mingetty, mutt,
+net-base, net-tools, ocrad, pspp, python-babel, python-dateutil, python-pytz,
+python-setuptools, python-simplejson, python-wrapper, python2-babel,
+python2-dateutil, python2-mechanize, python2-pyicu, python2-pysqlite,
+python2-pytz, python2-setuptools, python2-simplejson, qemu-system-initrd,
+qemu-with-multiple-smb-shares, ripperx, shadow, ttf-bitstream-vera, units,
+valgrind, xmlto, xnee, yasm
+
+*** 27 package updates
+
+bigloo 4.0b, cairo 1.12.16, ddrescue 1.17, fontconfig 2.10.93, fplll 4.0.4,
+gcc 4.7.3, gcc 4.7.3, glibc 2.18, glibc 2.18, glibc-stripped-tarball 2.18,
+gnupg 2.0.21, gnutls 3.2.4, guile 2.0.9, guile 2.0.9, harfbuzz 0.9.21,
+imagemagick 6.8.6-9, libdrm 2.4.46, libgcrypt 1.5.3, libjpeg 9, libksba 1.3.0,
+linux-libre 3.11, m4 1.4.17, mpfrcx 0.4.2, pari-gp 2.5.4, python 2.7.5, python
+3.3.2, texlive 2013
+
+*** Fontconfig font search path made more convenient
+
+Fontconfig, the library used by many graphical applications, such as those
+based on GTK+, now knows where to find the default set of fonts.  Additional
+fonts installed in the user profile are automatically picked up.
+
+*** More GUI applications
+
+The ‘emacs’ and ‘racket’ packages are now linked against GTK+.  New GTK+
+applications have been added (see above.)
+
+*** Packaging guidelines
+
+The documentation of packaging guidelines has been augmented.  See the manual
+under “GNU Distribution”.
+
+*** Support for Python 3 along with Python 2
+
+Python 3 has been added to the distribution, and Python packages that support
+it are now built for both Python 2 and Python 3.  See the “Python Modules”
+section of the manual for details.
+
+** Internationalization
+
+Updated translations: eo.
+
+** Bugs fixed
+
+*** Workarounds for Guile 2.0.5 now work on Debian derivatives
+*** The dependency graph image has correct size in PDF output
+*** 'ldd' now works correctly on x86_64
+*** Xorg server test suite no longer fails (http://bugs.gnu.org/15392)
+*** module-init-tools now builds (http://bugs.gnu.org/15182, http://bugs.gnu.org/15187)
+*** Hop 2.4 builds with newer Bigloo (http://bugs.gnu.org/15194)
+
+* Changes in 0.3 (since 0.2)
+
+** Package management
+
+*** Cross-compilation support
+
+Guix can now cross-build packages.  On the command-line, this is achieved with
+the new ‘--target’ command-line option of ‘guix build’.  At the Scheme level,
+the guts of this is the ‘package-cross-derivation’ procedure.  Core packages
+of the distribution can already be cross-compiled.  See the manual for
+details.
+
+*** New ‘--max-silent-time’ option for “guix build” and “guix package”
+
+See the manual for details.
+
+*** New ‘--fallback’ option for “guix build” and “guix package”
+
+This option instructs to fall back to local builds when the substituter fails
+to download a substitute.
+
+*** New ‘--requisites’ option for “guix gc”
+
+See the manual for details.
+
+*** New ‘--key-download’ option for “guix refresh”
+
+See the manual for details.
+
+** Programming interfaces
+
+*** New ‘package-cross-derivation’ procedure in (guix derivations)
+
+See the manual for details.
+
+*** New ‘%current-target-system’ SRFI-39 parameter
+
+This parameter is like ‘%current-system’, but for cross-compilation.  It
+allows code in package definitions (such as in the ‘arguments’ field) to know
+whether it is being cross-compiled, and what the target system is.
+
+*** New (guix hash) module; new ‘open-sha256-port’ and ‘sha256-port’ procedures
+
+This improves performance of SHA256 computations.
+
+
+** GNU distribution
+
+*** 33 new packages
+
+alsa-lib, babel, cairo, cvs, gcal, gcc-cross-mips64el-linux-gnuabi64, gd,
+gdk-pixbuf, graphviz, grue-hunter, gtk+, gts, harfbuzz, imagemagick, iproute2,
+iptables, libspectre, mpg321, noweb, pango, plotutils, privoxy, pytz, racket,
+rubber, rush, strace, tk, torsocks, unrtf, vc-dwim, wordnet, xlockmore
+
+*** 25 package updates
+
+automake 1.14, ed 1.9, freeipmi 1.2.8, gawk 4.1.0, gcc 4.8.1, gettext 0.18.3,
+glib 2.37.1, gmp 5.1.2, gnutls 3.2.1, gzip 1.6, help2man 1.43.3, libapr 1.4.8,
+libaprutil 1.5.2, libassuan 2.1.1, libffi 3.0.13, libgc 7.2d, libgpg-error
+1.12, libidn 1.28, libpng 1.5.17, lout 3.40, lsh 2.1, nettle 2.7.1, qemu
+1.5.1, tzdata 2013d, xorriso 1.3.0
+
+*** Binary packages now available for i686-linux
+
+The build farm at http://hydra.gnu.org now provides 32-bit GNU/Linux binaries
+(i686-linux), in addition to the x86_64-linux binaries.  Both can be
+transparently used as substitutes for local builds on these platforms.
+
+*** Debug info packages
+
+Some packages now have a “debug” output containing debugging information.  The
+“debug” output can be used by GDB, and can be installed separately from the
+other outputs of the package.  See “Installing Debugging Files” in the manual.
+
+*** Bootstrap binaries can be cross-compiled
+
+The distribution can now be ported to new architectures (currently
+GNU/Linux-only) by cross-compiling the “bootstrap binaries”.  See “Porting”
+in the manual.
+
+*** Bootstrapping documented
+
+See “Bootstrapping” in the manual, for information on how the GNU
+distribution builds “from scratch”.
+
+** Internationalization
+
+New translations: eo, pt_BR.
+
+** Bugs fixed
+*** “guix --help” now works when using Guile 2.0.5
+*** Binary substituter multi-threading and pipe issues fixed
+
+These could lead to random substituter crashes while substituting a binary.
+See commits 0332386 and 101d9f3 for details.
+
+*** Binary substituter gracefully handles lack of network connectivity
+
+*** Daemon properly handles rebuilds of multiple-output derivations
+
+Previously it would fail when rebuilding a multiple-output derivation when
+some (but not all) of its outputs were already present.  See
+http://lists.gnu.org/archive/html/bug-guix/2013-06/msg00038.html and
+https://github.com/NixOS/nix/issues/122 .
+
+*** ‘guix package -i foo:out’ no longer removes other outputs of ‘foo’
+
+Previously only the ‘out’ output of package ‘foo’ would be kept in the
+profile.
+
+*** Replacement (srfi srfi-37) provided if the user’s one is broken
+
+When the user’s (srfi srfi-37) is affected by http://bugs.gnu.org/13176 (Guile
+< 2.0.9), a replacement with the bug fix is provided.  This bug would affect
+command-line argument processing in some cases.
+
+* Changes in 0.2 (since 0.1)
+
+** Package management
+
+*** Guix commands are now sub-commands of the “guix” program
+
+Instead of typing “guix-package”, one now has to type “guix package”, and so
+on.  This has allowed us to homogenize the user interface and initial program
+setup, and to allow commands to be upgradable through “guix pull”.
+
+*** New “guix package --upgrade” option
+
+As the name implies, this option atomically upgrades all the packages
+installed in a profile or the set of packages matching a given regexp.
+See “Invoking guix package” in the manual.
+
+*** New “guix package --search” option
+
+Performs a full text search in package synopses and descriptions, and returns
+the matching packages in recutils format.  See “Invoking guix package” in the
+manual, for details.
+
+*** New “guix pull” command
+
+The command pulls the latest version of Guix–both the package management
+modules and the distribution.  See the manual for details.
+
+*** New binary substituter
+
+The “substituter” mechanism allows pre-built binaries to be transparently
+downloaded instead of performing a build locally.  Currently binaries are
+available for x86_64 Linux-based GNU systems from http://hydra.gnu.org.  The
+distribution is continuously built and binaries are made available from there.
+
+See http://hydra.gnu.org/jobset/gnu/master under “Job status” for the list of
+available binary packages.
+
+*** New “guix refresh” command
+
+The command is used by Guix maintainers.  It automatically updates the
+distribution to the latest upstream releases of GNU software.
+
+*** New “guix hash” command
+
+Convenience command to compute the hash of a file.  See the manual for
+details.
+
+*** Nix daemon code updated
+
+The daemon code from Nix, used by the ‘guix-daemon’ command, has been updated
+to current Nix ‘master’.
+
+** Programming interfaces
+
+*** (guix download) now supports HTTPS, using GnuTLS
+
+It allows package source tarballs to be retrieved over HTTPS.
+
+*** New ‘native-search-path’ and ‘search-path’ package fields
+
+Packages can define in their ‘native-search-path’ field environment variables
+that define search paths and need to be set for proper functioning of the
+package.  For instance, GCC has ‘CPATH’ and ‘LIBRARY_PATH’ in its
+‘native-search-path’, Perl has ‘PERL5LIB’, Python has ‘PYTHONPATH’, etc.
+These environment variables are automatically set when building a package that
+uses one of these.
+
+*** Package inputs can be a function of the target system type
+
+The ‘inputs’ field of a package can now be conditional on the value of
+(%current-system).  This is useful for packages that take system-dependent
+tarballs as inputs, such as GNU/MIT Scheme.
+
+*** New build systems
+
+The ‘perl-build-system’, ‘python-build-system’, and ‘cmake-build-system’ have
+been added.  They implement the standard build systems for Perl, Python, and
+CMake packages.
+
+*** Tools to build Linux initrds, QEMU images, and more
+
+The (gnu packages linux-initrd) module provides a procedure to build a Linux
+initrd (“initial RAM disk”).  The initrd embeds Guile, which is used to
+evaluate the given expression.  The example below returns an initrd that
+mounts the /proc file system and starts a REPL:
+
+  (expression->initrd
+    '(begin
+       (mkdir "/proc")
+       (mount "none" "/proc" "proc")
+       ((@ (system repl repl) start-repl))))
+
+More examples in the linux-initrd.scm file.
+
+Experimental interfaces to produce and use QEMU images are provided by the
+(gnu system vm) module.  For instance, the
+‘expression->derivation-in-linux-vm’ evaluates the given Scheme expression in
+a QEMU virtual machine running the Linux kernel and Guile.
+
+** GNU distribution
+
+Many updates and additions have been made to the distribution.  Here are the
+highlights.
+
+*** Major updates
+
+GCC 4.7.3 (the default) and GCC 4.8.0, Binutils 2.23.2, Guile 2.0.9,
+Coreutils 8.20, GDB 7.6, Texinfo 5.1.
+
+*** Noteworthy new packages
+
+TeXLive, Xorg, GNU GRUB, GNU Parted, QEMU and QEMU-KVM, Avahi, Bigloo,
+CHICKEN, Scheme48, Hugs, Python, Lua, Samba.
