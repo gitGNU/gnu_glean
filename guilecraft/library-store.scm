@@ -556,7 +556,16 @@ options fields of every problem in set-contents."
   (define (problem-composite problem)
     (string-format "~a~a~a"
                    (object->string (q-text (problem-q problem)))
-                   (object->string (s-text (problem-s problem)))
+                   ;; FIXME: fix re: no solution: info
+                   (let ((solution (problem-s problem)))
+                     (cond ((and solution (list? solution))
+                            (string-join (map s-text solution)))
+                           ((and solution (s? solution))
+                            (object->string (s-text solution)))
+                           ((not solution)
+                            "false")
+                           (else
+                            (error "rootset-hash -- solution."))))
                    (string-join (map (lambda (option)
                                        (object->string
                                         (o-text option)))

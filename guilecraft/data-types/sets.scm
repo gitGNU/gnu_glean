@@ -300,9 +300,11 @@ and the rnrs records definition."
        (let ((op-pair (parse-args args)))
 	 (validator new
 		    (list (vtype? q? 'err-problem-q)
-			  (vtype? s? 'err-problem-s)
+ 			  ((const #t) 'err-problem-s)
 			  (vlist? voptions? 'err-problem-os)
 			  (vtype? p? 'err-problem-p))
+                    ;; Temporary fix to allow multiple solutions
+                    #:method 'lazy
 		    q s (car op-pair) (cdr op-pair)))))))
 (define problem (record-constructor prob-rcd))
 (define make-problem (record-constructor
@@ -410,7 +412,8 @@ detected."
 	       (apply constructor args)
 	       (error-parser result))))
 	((eqv? method 'lazy)
-	 (apply constructor args))
+         ;; First remove #:method 'lazy from args, then use args.
+	 (apply constructor (cddr args)))
 	(else
 	 (error
 	  (string-append "validator: METHOD not recognised: "

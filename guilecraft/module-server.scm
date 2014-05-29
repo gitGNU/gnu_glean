@@ -158,7 +158,20 @@ handling to request handler."
   (define (new-challenge problem)
     "Return the challenge located in the set identified by BLOBHASH and
 COUNTER, or raise 'invalid-set."
-    (problem-q problem))
+    ;; FIXME: this procedure is logic, not parsing, so it should be in
+    ;; library-store, not in module-server.
+    (let ((s  (problem-s problem))
+          (q  (problem-q problem))
+          (os (problem-o problem)))
+      (list (cons (q-text q) (q-media q))
+            (if (null? os)
+                '()
+                (map (lambda (o) (cons (o-text o) (o-media o))) os))
+            ;; FIXME: solution for allowing different question types.
+            (cond ((not s)          'info)
+                  ((and (list? s) (> (length s) 1)) 'multi)
+                  ((null? os)       'open)
+                  (else             'single)))))
 
   (let ((bh (challq-hash rq))
         (c (challq-counter rq)))
@@ -178,14 +191,23 @@ COUNTER, or raise 'invalid-set."
 
 (define (eval-provider rq)
   (define (eval-answer problem answer)
-    "Return the evaluation of ANSWER with respect to BLOBHASH and
-COUNTER, or raise 'invalid-set."
-    (evaluate problem answer))
-  (define (evaluate problem answer)
     "Return the evaluation result of ANSWER with respect to PROBLEM."
-    (equal? (s-text (problem-s problem)) answer))
+    ;; FIXME: quick hack to allow for multiple solutions, or none.
+    (let ((solution (problem-s problem)))
+      (cond ((not solution) #t)
+            ((list? solution)
+             (let ((sol (map s-text solution)))
+               (fold (lambda (solution answer result)
+                       (if result
+                           (equal? solution result)
+                           #f))
+                     #t sol answer)))
+            (else
+             (equal? (s-text solution) answer)))))
   (define (fetch-solution problem)
-    (problem-s problem))
+    (if (not (problem-s problem))
+        "irrelevant"
+        (problem-s problem)))
 
   (let ((bh (evalq-hash rq))
         (c (evalq-counter rq))
@@ -194,7 +216,7 @@ COUNTER, or raise 'invalid-set."
            (raise 'invalid-blobhash))
           ((not (number? c))
            (raise 'invalid-counter))
-          ((not (string? answer))
+          ((not (or (string? answer) (list? answer)))
            (raise 'invalid-answer))
           (else
            (let ((problem (fetch-problem bh c)))

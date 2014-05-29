@@ -27,6 +27,7 @@
   #:use-module (rnrs)
   #:use-module (ice-9 match)
   #:export (
+            seq
             flatten
             mkdir-p
             clog
@@ -35,6 +36,13 @@
             rprinter
             relevant?
             ))
+
+(define (seq a b)
+  "Return a list, counting upwards, from A to B (inclusive)."
+  (define (helper curr result)
+    (if (> curr b) (reverse result) (helper (1+ curr)
+                                            (cons curr result))))
+  (if (> a b) '() (helper 1 '())))
 
 (define (flatten obj)
   (cond ((null? obj) '())
