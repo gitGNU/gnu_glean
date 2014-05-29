@@ -49,6 +49,12 @@
             %default-lounge%
             %default-client%
             %client.conf%
+            ;;; Web Client
+            %base-url%
+            %title%
+            %navigation%
+            %intro%
+            %footer%
             ;; Library configuration
             %ignore-keywords%
             %library-config%
@@ -144,6 +150,16 @@
 (define %default-client%  'repl)
 (define %client-log%      (string-append %log-dir%  "/client.log"))
 
+;;;;; Web Client configuration
+;; base URL from which we can fetch static files hosted by us.
+(define %base-url%        "http://localhost")
+(define %title%           "Guilecraft")
+(define %navigation%      "")
+(define %intro%           `((p  "Glean knowledge freely.")))
+(define %footer%          `(div (@ (class "container"))
+                                (p (@ (style "text-align:center;padding-top:1em"))
+                                   "Copyright © 2014 Alex Sassmannshausen")))
+
 ;;;;; Deprecated
 ;; Socket for the modules server
 (define %module-socket-file%
@@ -223,7 +239,17 @@
                  ,(make-setting "%default-lounge%" %default-lounge%
                                 "Default Lounge server to use.")
                  ,(make-setting "%default-library%" %default-library%
-                                "Default Library server to use."))))
+                                "Default Library server to use.")
+                 ,(make-setting "%base-url%" %base-url%
+                                "Web Client: Base URL for static files.")
+                 ,(make-setting "%title%" %title%
+                                "Web Client: Base title for all pages.")
+                 ,(make-setting "%navigation%" %navigation%
+                                "Web Client: Primary navigation links.")
+                 ,(make-setting "%intro%" %intro%
+                                "Web Client: Intro block content.")
+                 ,(make-setting "%footer%" %footer%
+                                "Web Client: Footer block content."))))
 
 ;;;;; Lounge Configuration
 (define %lounge-config%

@@ -147,31 +147,32 @@
   (run))
 
 (define (index rc)
-  (frame #:state (query-string->state rc)
-         #:rc    rc
-         #:page `((div (@ (class "row"))
-                       (div (@ (class "col-md-8"))
-                            (div (@ (class "jumbotron"))
-                                 (h1 "Guilecraft")
-                                 (p  "Test intro.")))
-                       (div (@ (class "col-md-4"))
-                            ,(login-block)))
-                  (div (@ (class "row"))
-                       (div (@ (class "col-md-8"))
-                            ,(list-available))))))
+  (let* ((state (query-string->state rc))
+         (width (if state "col-md-12" "col-md-8")))
+    (frame #:state state
+           #:rc    rc
+           #:page `((div (@ (class "row"))
+                         (div (@ (class ,width))
+                              ,(panel %title% %intro%))
+                         ,(if state
+                              ""
+                              `(div (@ (class "col-md-4"))
+                                    ,(login-block))))
+                    (div (@ (class "row"))
+                         (div (@ (class ,width))
+                              ,(list-available)))))))
 
 (define (login rc)
   (frame #:state (query-string->state rc)
-         #:title ("Guilecraft — Sign In")
-         #:page  `(div (@ (class "starter-template"))
-                       (h1 "Sign In")
-                       (p "Sign in to your account.")
-                       ,(login-block))))
+         #:title (sa %title% " — Sign In")
+         #:page  `((h1 "Sign In")
+                   (p "Sign in to your account.")
+                   ,(login-block))))
 (define (register rc)
   (frame #:state (query-string->state rc)
-         #:title "Guilecraft — Register"
+         #:title (sa %title% " — Register")
          #:page  `((h1 "Account Registration")
-                   (p "Sign up to Guilecraft by completing this form.")
+                   (p "Sign up by completing this form.")
                    ,(form "/reg-action"
                           `((div (@ (class "form-group"))
                                  (label (@ (for "username")) "Username:")
@@ -213,7 +214,7 @@
              (frame
               #:state st8
               #:rc    rc
-              #:title "Guilecraft — My Account"
+              #:title (sa %title% " — My Account")
               #:page  `((h1 "Check Your Account Details")
                         ,(activity-form active-modules st8)
                         ,(identity-form username st8)
@@ -226,7 +227,7 @@
                  (frame
                   #:state st8
                   #:rc    rc
-                  #:title "Guilecraft — Fallback Account Management"
+                  #:title (sa %title% " — Fallback Account Management")
                   #:page  `((h1 "Check your Account Details")
                             ,(alert "The library server seems to be \
 down. Perhaps your selected server is invalid?" 'danger)
@@ -375,7 +376,7 @@ and clicking on ‘Activate’.")
     (frame
      #:state (if (stateful? rsp) (state rsp) #f)
      #:rc    rc
-     #:title "Guilecraft — Set Details"
+     #:title (sa %title% " — Set Details")
      #:page  `(,content))))
 
 (define (session rc)
@@ -443,7 +444,7 @@ and clicking on ‘Activate’.")
     (frame
      #:state (if (stateful? rsp) (state rsp) #f)
      #:rc    rc
-     #:title "Guilecraft — Next Challenge…"
+     #:title (sa %title% " — Next Challenge…")
      #:page  (cond ((and (stateful? rsp)
                          (eqv? (car (result rsp))
                                'no-active-modules))
@@ -580,7 +581,7 @@ Please visit your account page where you will be able to enable some."
              (frame
               #:rc    rc
               #:state (state rsp)
-              #:title "Guilecraft — Incorrect Answer"
+              #:title (sa %title% " — Incorrect Answer")
               #:page  (panel "Solution"
                              `((p ,(sa "Incorrect. You answered: "
                                        (if (list? answer)
@@ -681,8 +682,9 @@ Please visit your account page where you will be able to enable some."
            (render-modules rsp "Available Modules"
                            st8 active)))))
 
-(define* (frame #:key (state #f) (page `(p "This is a test page"))
-                (title "Guilecraft — Fast Learning Tool")
+(define* (frame #:key (state #f)
+                (page `(p "This is a test page"))
+                (title (sa %title% " — Fast Learning Tool"))
                 (rc #f))
   (define (parse-msg)
     (let ((msg (if rc (params rc "result") #f)))
@@ -719,19 +721,16 @@ de-activated." 'success))
           ;; Minified bootstrap css
           (link (@ (rel  "stylesheet")
                    (type "text/css")
-                   (href "/css/bootstrap.css")))
-          (link (@ (rel  "stylesheet")
-                   (type "text/css")
-                   (href "/css/sticky-footer-navbar.css")))
+                   (href ,(sa %base-url% "/css/bootstrap.min.css"))))
           ;; Optional Theme
           ;; (link (@ (href "starter-template.css")
           ;;          (rel  "stylesheet")))>
           (link (@ (rel  "stylesheet")
                    (type "text/css")
-                   (href "/css/bootstrap-theme.css")))
+                   (href ,(sa %base-url% "/css/bootstrap-theme.min.css"))))
           (link (@ (rel  "stylesheet")
                    (type "text/css")
-                   (href "/css/guilecraft.css")))
+                   (href ,(sa %base-url% "/css/guilecraft.css"))))
           ;; <!-- HTML5 shim and Respond.js IE8 support of HTML5 elements and media queries -->
           ;; <!--[if lt IE 9]>
           ;;   <script src="https://oss.maxcdn.com/libs/html5shiv/3.7.0/html5shiv.js"></script>
@@ -746,16 +745,16 @@ de-activated." 'success))
                     ,page)
                ,(footer-region)
                ;; jQuery (necessary for Bootstrap's JavaScript plugins)
-               (script (@ (src "/js/jquery.min.js"))
-                       (type "text/javascript")
-                       "test")
+               (script (@ (src ,(sa %base-url% "/js/jquery.min.js"))
+                          (type "text/javascript"))
+                       " ")
                ;; Include all compiled plugins (below), or include individual
                ;; files as needed
 
                ;; Latest compiled and minified JavaScript
-               (script (@ (src "/js/bootstrap.min.js"))
-                       (type "text/javascript")
-                       "test"))))
+               (script (@ (src ,(sa %base-url% "/js/bootstrap.min.js"))
+                          (type "text/javascript"))
+                       " "))))
 
 (define* (header-region #:optional st8)
   `(div (@ (class "navbar navbar-inverse navbar-fixed-top")
@@ -772,28 +771,28 @@ de-activated." 'success))
                           (span (@ (class "icon-bar")) " ")
                           (span (@ (class "icon-bar")) " "))
                   (a (@ (class "navbar-brand")
-                        (href  ,(wrap st8 "/")))
-                     "Guilecraft"))
+                        (href  ,(wrap st8 "/"))) ,%title%))
              (div (@ (class "collapse navbar-collapse"))
                   (ul (@ (class "nav navbar-nav navbar-right"))
-                      ,(if st8
-                           `((li (a (@ (href  ,(wrap st8 "/session"))
-                                       (title "Continue playing"))
-                                    "Play"))
-                             (li (a (@ (href  ,(wrap st8 "/account"))
-                                       (title "Manage your account"))
-                                    "My Account"))
-                             (li (a (@ (href "/")
-                                       (title "Log out"))
-                                    "Sign out")))
-                           `(li (a (@ (href  "/register")
-                                      (title "Create a new account"))
-                                   "Register"))))))))
+                      (,%navigation%
+                       ,(if st8
+                            `((li (a (@ (href  ,(wrap st8 "/session"))
+                                        (title "Continue playing"))
+                                     "Play"))
+                              (li (a (@ (href  ,(wrap st8 "/account"))
+                                        (title "Manage your account"))
+                                     "My Account"))
+                              (li (a (@ (href "/")
+                                        (title "Log out"))
+                                     "Sign out")))
+                            `((li (a (@ (href  "/login")
+                                        (title "Sign in to your account"))
+                                     "Sign in"))
+                              (li (a (@ (href  "/register")
+                                        (title "Create a new account"))
+                                     "Register"))))))))))
 (define* (footer-region)
-  `(div (@ (id "footer"))
-        (div (@ (class "container"))
-             (p (@ (style "text-align:center;padding-top:1em"))
-                "Copyright © 2014 Alex Sassmannshausen"))))
+  `(div (@ (id "footer")) ,%footer%))
 
 (define (nothing-handler nothing)
   (match (list (nothing-id nothing)
