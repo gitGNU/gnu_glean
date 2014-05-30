@@ -1,6 +1,24 @@
 /* This will contain custom CSS for the Guilecraft Theme
 --------------------------------------------------------- */
 
+/* Sticky Navbar styles
+-------------------------------------------------- */
+body > div.navbar-inverse {
+    border-top: 2px solid #fff;
+}
+body > div.navbar-inverse > div.help{
+    background-color: #fff;
+    margin: auto;
+}
+.nav > li:nth-child(4) {
+    background-color: #fff;
+}
+.nav > li:nth-child(4) a:hover,
+.nav > li:nth-child(4) a:focus,
+.nav > li:nth-child(4) a:active {
+    color: #000;
+}
+
 /* Sticky footer styles
 -------------------------------------------------- */
 html {
@@ -23,11 +41,6 @@ body {
 
 /* Custom page CSS
 -------------------------------------------------- */
-/* Not required for template or sticky footer method. */
-
-body > .container {
-  padding: 60px 15px 0;
-}
 .container .text-muted {
   margin: 20px 0;
 }
