@@ -290,7 +290,8 @@ in their name."
         (set-name set)
         (set-version set)
         (set-keywords set)
-        (set-synopsis set)))
+        (set-synopsis set)
+        (set-logo     set)))
 
 (define (set-details hash library-pair)
   "Return a list containing detailed information on SET, or #f if it
@@ -310,7 +311,8 @@ cannot be found in LIBRARY-PAIR."
               (set-module set)
               (if (rootset? set)
                   '()
-                  (map set-summary (set-contents set))))
+                  (map set-summary (set-contents set)))
+              (set-logo set))
         #f)))
 
 (define (known-crownset-hashes library-pair)

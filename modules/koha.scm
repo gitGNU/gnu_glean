@@ -53,4 +53,5 @@ managing your loans and amending your details."
                      "http://koha-community.org/documentation/other-docs/"
                      "http://koha-community.org/documentation/koha-bibliography/"
                      "http://wiki.koha-community.org/wiki/Main_Page")))
+    #:logo     "http://git.koha-community.org/gitweb/Koha-logo.jpg"
     #:contents `(,basic-search)))

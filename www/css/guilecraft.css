@@ -19,6 +19,12 @@ body > div.navbar-inverse > div.help{
     color: #000;
 }
 
+/* Set Details
+-------------------------------------------------- */
+img.set-logo-large {
+    float: right;
+}
+
 /* Sticky footer styles
 -------------------------------------------------- */
 html {

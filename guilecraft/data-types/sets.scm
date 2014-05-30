@@ -82,6 +82,7 @@
 	    set-attribution
 	    set-resources
 	    set-module
+            set-logo
 
 	    problem
 	    make-problem
@@ -128,19 +129,20 @@
 ;;;; used by humans to generate sets and/or modules.
 (define* (module id #:key (contents '()) (name "") (version "")
 	   (synopsis "") (description "") (keywords '())
-           (creator "") (attribution '()) (resources '()))
+           (creator "") (attribution '()) (resources '()) (logo ""))
   "High level convenenience interface to make-set, for the
 creation of modules."
   (make-set id contents name version synopsis description keywords
-            creator attribution resources #t))
+            creator attribution resources #t logo))
 
 (define* (set id #:key (contents '()) (name "") (version "")
               (synopsis "") (description "") (keywords '())
-              (creator "") (attribution '()) (resources '()))
+              (creator "") (attribution '()) (resources '())
+              (logo ""))
   "High level convenenience interface to make-set, for the
 creation of sets."
   (make-set id contents name version synopsis description keywords
-            creator attribution resources #f))
+            creator attribution resources #f logo))
 
 ;;;;; Set Structure
 ;;;; The (rnrs records syntactic) record definitions for all things
@@ -330,7 +332,8 @@ and the rnrs records definition."
 				  (immutable creator)
 				  (immutable attribution)
 				  (immutable resources)
-				  (immutable module))))
+				  (immutable module)
+                                  (immutable logo))))
 ;; mecha-set is to be used for non-human set construction (e.g. when
 ;; pushing through (exchange).
 (define mecha-set-rcd
@@ -348,7 +351,7 @@ and the rnrs records definition."
    ;; commands.
    (lambda (new)
      (lambda (id contents name version synopsis description keywords
-		 creator attribution resources module)
+		 creator attribution resources module logo)
        (validator new
 		  (list (vid? 'err-set-id)
 			(vlist? vsets-or-vproblems? 'err-set-contents)
@@ -360,9 +363,10 @@ and the rnrs records definition."
 			(vstring? 'err-set-creator)
 			(vlist? vmedia? 'err-set-attribution)
 			(vlist? vmedia? 'err-set-resources)
-			(vboolean? 'err-set-module))
+			(vboolean? 'err-set-module)
+                        (vstring? 'err-set-logo))
 		  id contents name version synopsis description
-                  keywords creator attribution resources module)))))
+                  keywords creator attribution resources module logo)))))
 (define make-set (record-constructor set-rcd))
 (define set? (record-predicate set-rtd))
 (define set-id (record-accessor set-rtd 0))
@@ -376,6 +380,7 @@ and the rnrs records definition."
 (define set-attribution (record-accessor set-rtd 8))
 (define set-resources (record-accessor set-rtd 9))
 (define set-module (record-accessor set-rtd 10))
+(define set-logo (record-accessor set-rtd 11))
 
 (define (rootset? set)
   "Return #t if set-contents contains problems (which means it's a
@@ -690,13 +695,19 @@ set or module record's '#:attribution' keyword. The list should
 contain only media records.
 
 Please check your sets' and modules' attribution field(s).")
-	  ((eqv? current 'err-set-resources)
+          ((eqv? current 'err-set-resources)
 	   "Set and Module records can contain attribution
 references. These should take the form of a single list following the
 set or module record's '#:resources' keyword. The list should contain
 only media records.
 
 Please check your sets' and modules' resources field(s).")
+	  ((eqv? current 'err-set-module)
+	   "The contents of the '#:module' field should be a boolean #t or #f,
+to indicate whether it should be advertised as a module or not.")
+	  ((eqv? current 'err-set-logo)
+	   "The contents of the '#:logo' field should be a plain string URI
+pointing to where the logo image can be retrieved.")
 	  ((eqv? current 'vlist-err-set-contents)
 	   "The set and/or problem contents of a Set or Module record
 should be encapsulated in a list, after the '#:contents' keyword. This
@@ -711,7 +722,7 @@ does not seem to be the case with at least one of sets in this record
 set.
 
 Please check your sets' and modules' attribution field(s).")
-	  ((eqv? current 'vlist-err-set-resources)
+          ((eqv? current 'vlist-err-set-resources)
 	   "The resources contents of a Set or Module record should be
 encapsulated in a list, after the '#:resources' keyword. This does not
 seem to be the case with at least one of sets in this record set.

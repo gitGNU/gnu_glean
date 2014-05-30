@@ -345,29 +345,35 @@ and clicking on ‘Activate’.")
           "" `(dt ,title (dd ,(if renderer (renderer obj) obj)))))
     (match detail
       ((hash id name version keywords synopsis description creator
-             attribution resources module contents)
+             attribution resources module contents logo)
        (panel name
-              `(dl
-                (dt "Name"
-                    (dd ,(if (string-null? name)
-                             (symbol->string id)
-                             (string-append name " (" version ")"))))
-                ,(render-if null? keywords "Keywords"
-                            (lambda (k) (string-join k ", ")))
-                ,(render-if string-null? synopsis "Synopsis")
-                ,(render-if string-null? description "Description")
-                ,(render-if string-null? creator "Author(s)")
-                ;; Tricky format? No plain string?
-                ;; (dt "Attribution"
-                ;;     (dd attribution))
-                ;; (dt "Further Resources"
-                ;;     (dd resources))
-                ,(render-if (const #t) module "Selectable Set?"
-                            (lambda (k) (if k "Yes" "No")))
-                ,(render-if null? contents "Contents"
-                            (lambda (k) (render-modules k
-                                                        "Contents"
-                                                        st8))))))))
+              `(,(if (string-null? logo)
+                     ""
+                     `((img (@ (src ,logo)
+                               (alt ,(sa "Logo of " name))
+                               (class "set-logo-large")
+                               (width "150")))))
+                (dl
+                 (dt "Name"
+                     (dd ,(if (string-null? name)
+                              (symbol->string id)
+                              (string-append name " (" version ")"))))
+                 ,(render-if null? keywords "Keywords"
+                             (lambda (k) (string-join k ", ")))
+                 ,(render-if string-null? synopsis "Synopsis")
+                 ,(render-if string-null? description "Description")
+                 ,(render-if string-null? creator "Author(s)")
+                 ;; Tricky format? No plain string?
+                 ;; (dt "Attribution"
+                 ;;     (dd attribution))
+                 ;; (dt "Further Resources"
+                 ;;     (dd resources))
+                 ,(render-if (const #t) module "Selectable Set?"
+                             (lambda (k) (if k "Yes" "No")))
+                 ,(render-if null? contents "Contents"
+                             (lambda (k) (render-modules k
+                                                         "Contents"
+                                                         st8)))))))))
   (let* ((st8 (query-string->state rc))
          (rsp (view-set (string->symbol (params rc "hash")) st8))
          (content (if (stateful? rsp)
@@ -636,12 +642,18 @@ Please visit your account page where you will be able to enable some."
   ;; format is ignored for now: defaults to table.
   (define (render-module module)
     (match module
-      ((hash id name version keywords synopsis)
+      ((hash id name version keywords synopsis logo)
        `(tr
          ,(if active
               `((td (input (@ (type "checkbox")
                               (name ,hash)) " ")))
               " ")
+         (td
+          ,(if (string-null? logo)
+               " "
+               `((img (@ (src ,logo)
+                         (alt ,(sa "Logo of " name))
+                         (width "100"))))))
          (td (p (a (@ (href ,(wrap st8 "/detail"
                                    (string-append
                                     "hash="
@@ -665,6 +677,7 @@ Please visit your account page where you will be able to enable some."
                     (@ (class "table table-stripped"))
                     (thead
                      (tr ,(if active `(th ,active) "")
+                         (th "logo")
                          (th "name (version)")
                          (th "synopsis")))
                     (tbody
