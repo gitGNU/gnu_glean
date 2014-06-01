@@ -43,6 +43,7 @@
             %guilecraft-dir%  ; guilecraft libs location
 	    %debug%           ; obsolete (%log-level)
             ;; Client configuration
+            %client-dir%
             %client-config%
             %client-log%
             %default-library%
@@ -50,11 +51,18 @@
             %default-client%
             %client.conf%
             ;;; Web Client
+            %web-dirs%
+            %web.conf%
+            %web-configs%
             %base-url%
             %title%
             %navigation%
             %intro%
             %footer%
+            ;;; REPL Client
+            %repl-dir%
+            %repl-config%
+            %repl.conf%
             ;; Library configuration
             %ignore-keywords%
             %library-config%
@@ -114,12 +122,13 @@
 
 ;;;; Library Configuration
 (define %ignore-keywords% '("test"))
-(define %library.conf%    (string-append %user-dir%   "/library.conf"))
-(define %library-dir%     (string-append %user-dir%   "/library"))
-(define %bak-library-dir% (string-append %user-dir%   "/bak-library"))
-(define %wip-library-dir% (string-append %user-dir%   "/wip-library"))
-(define %library-port%    (string-append %socket-dir% "/library.sock"))
-(define %library-log%     (string-append %log-dir%    "/library.log"))
+(define %library-root-dir% (string-append %user-dir%   "/library"))
+(define %library-dir%      (string-append %library-root-dir% "/store"))
+(define %bak-library-dir%  (string-append %library-root-dir% "/store-bak"))
+(define %wip-library-dir%  (string-append %library-root-dir% "/store-wip"))
+(define %library.conf%     (string-append %library-root-dir% "/library.conf"))
+(define %library-port%     (string-append %socket-dir% "/library.sock"))
+(define %library-log%      (string-append %log-dir%    "/library.log"))
 
 ;;;;; Deprecated
 (define %module-directory%
@@ -131,10 +140,11 @@
 
 
 ;;;; Lounge Configuration
-(define %lounge.conf%    (string-append %user-dir%   "/lounge.conf"))
-(define %lounge-dir%     (string-append %user-dir%   "/lounge"))
-(define %lounge-port%    (string-append %socket-dir% "/lounge.sock"))
-(define %lounge-log%     (string-append %log-dir%    "/lounge.log"))
+(define %lounge-root-dir% (string-append %user-dir%   "/lounge"))
+(define %lounge-dir%      (string-append %lounge-root-dir% "/lounge"))
+(define %lounge.conf%     (string-append %lounge-root-dir% "/lounge.conf"))
+(define %lounge-port%     (string-append %socket-dir% "/lounge.sock"))
+(define %lounge-log%      (string-append %log-dir%    "/lounge.log"))
 (define %lounge-persist% #f)
 
 ;;;;; Deprecated
@@ -144,13 +154,26 @@
 
 
 ;;;; Client configuration
-(define %client.conf%     (string-append %user-dir% "/client.conf"))
+(define %client-dir%      (string-append %user-dir% "/clients"))
+(define %client.conf%     (string-append %client-dir% "/client.conf"))
 (define %default-library% %library-port%)
 (define %default-lounge%  %lounge-port%)
 (define %default-client%  'repl)
 (define %client-log%      (string-append %log-dir%  "/client.log"))
 
 ;;;;; Web Client configuration
+(define %web-dir%      (string-append %client-dir% "/web-client"))
+(define %web-data-dir% (string-append %web-dir% "/www"))
+(define %css-dir%      (string-append %web-data-dir% "/css"))
+(define %js-dir%       (string-append %web-data-dir% "/js"))
+(define %img-dir%      (string-append %web-data-dir% "/images"))
+(define %custom-css%   (string-append %css-dir% "/custom.css"))
+(define %custom-js%    (string-append %js-dir% "/custom.js"))
+
+(define %web.conf%     (string-append %web-dir% "/web.conf"))
+(define %web-dirs%     (list %web-dir% %css-dir% %js-dir% %img-dir%))
+;;(define %web-aux%      (list %web-config% %custom-css% %custom-js%))
+
 ;; base URL from which we can fetch static files hosted by us.
 (define %base-url%        "http://localhost")
 (define %title%           "Guilecraft")
@@ -159,6 +182,10 @@
 (define %footer%          `(div (@ (class "container"))
                                 (p (@ (style "text-align:center;padding-top:1em"))
                                    "Copyright © 2014 Alex Sassmannshausen")))
+
+;;;;; REPL Client configuration
+(define %repl-dir%      (string-append %client-dir% "/repl-client"))
+(define %repl.conf%     (string-append %repl-dir% "/repl.conf"))
 
 ;;;;; Deprecated
 ;; Socket for the modules server
@@ -213,8 +240,10 @@
   (if (string? (config-target config))
       (with-output-to-file (config-target config)
         (lambda ()
-          (format #t ";; ~a Configuration File\n\n"
-                  (config-name config))
+          (if (config-name config)
+              (format #t ";; ~a Configuration File\n\n"
+                      (config-name config))
+              (format #t "/* Custom code for the web client */"))
           (for-each setting-write (config-contents config))))
       (begin
         (format #t ";; ~a Configuration File\n\n"
@@ -228,7 +257,7 @@
                  " 'warning, 'inform or 'debug")))
 
 ;;;; Specific Configurations
-;;;;; Client Configuration
+;;;;; Client Configurations
 (define %client-config%
   (make-config "Client" %client.conf%
                `(,log-setting
@@ -239,8 +268,12 @@
                  ,(make-setting "%default-lounge%" %default-lounge%
                                 "Default Lounge server to use.")
                  ,(make-setting "%default-library%" %default-library%
-                                "Default Library server to use.")
-                 ,(make-setting "%base-url%" %base-url%
+                                "Default Library server to use."))))
+
+;; Web Config
+(define %web-config%
+  (make-config "Web" %web.conf%
+               `(,(make-setting "%base-url%" %base-url%
                                 "Web Client: Base URL for static files.")
                  ,(make-setting "%title%" %title%
                                 "Web Client: Base title for all pages.")
@@ -250,6 +283,18 @@
                                 "Web Client: Intro block content.")
                  ,(make-setting "%footer%" %footer%
                                 "Web Client: Footer block content."))))
+;; Custom CSS / JS are simply empty by default.
+;; #f name values indicate non-scheme files.
+(define %custom-css%
+  (make-config #f %custom-css% '()))
+(define %custom-js%
+  (make-config #f %custom-js% '()))
+(define %web-configs%      (list %web-config% %custom-css% %custom-js%))
+
+;; REPL Config
+;; Just uses the basic client config for now.
+(define %repl-config%
+  (make-config "REPL" %repl.conf% `()))
 
 ;;;;; Lounge Configuration
 (define %lounge-config%

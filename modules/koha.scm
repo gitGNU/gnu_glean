@@ -1,6 +1,6 @@
 ;;; guilecraft --- learning the world using Guile.         -*- coding: utf-8 -*-
 
-(define-module (library koha)
+(define-module (store koha)
   #:use-module (guilecraft data-types sets)
   #:export (koha-module))
 

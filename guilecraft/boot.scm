@@ -22,12 +22,17 @@
 ;;; Commentary:
 ;;
 ;; Module to parse options, etc before dropping into the main loop.
+;; I intend to move towards a series of sub-scripts for everyday use,
+;; e.g. 'guilecraft client', or 'guilecraft library --install'. To do this I
+;; will create individual boot processes for each script. This boot.scm will
+;; instead become a library providing functionality used by each boot script.
 ;;
 ;;; Code:
 
 (define-module (guilecraft boot)    
   #:use-module (ice-9 format)      ; Print output
   #:use-module (ice-9 getopt-long) ; Manipulate command-line options
+  #:use-module (ice-9 match)       ; Because it's awesome.
   #:use-module (srfi srfi-19)      ; To store and manipulate time
                                    ; effectively
   #:use-module (tests test-suite)  ; In case of -t option: run
@@ -42,8 +47,18 @@
   #:use-module (guilecraft utils)
   #:export (boot))
 
-(define clients `((repl . ,repl-client)
-                  (web  . ,web-client)))
+;; Each entry in the clients assoc list should be an id paired with a list
+;; consisting of:
+;; - the procedure to launch the client,
+;; - a string or, a list of strings identifying configuration dirs that must
+;;   be ensured to exist during boot.
+;; - a <configuration> record, or a list of <configuration> records that we
+;;   identify configuration files we should ensure exist.
+;; - a string or a list of strings identifying configuration files that should
+;;   be loaded prior to starting the client.
+(define clients
+  `((repl . (,repl-client ,%repl-dir% ,%repl-config% ,%repl.conf%))
+    (web  . (,web-client  ,%web-dirs% ,%web-configs% ,%web.conf%))))
 (define (client? value)
   (if (boolean? value)
       value
@@ -114,15 +129,16 @@ Options will be surrounded by square brackets if optional."
         (start-clock (current-time)))
     (let ((config (option-ref options 'config #f)))
       (if config (load-config config))
-      (ensure-user-dirs %log-dir% %socket-dir% %library-dir%
-                        %lounge-dir% %wip-library-dir%
-                        %bak-library-dir%)
+      (ensure-user-dirs %log-dir% %socket-dir%)
 
       (cond ((option-ref options 'module-server #f)
+             (ensure-user-dirs %library-dir% %bak-library-dir%
+                               %wip-library-dir%)
              (ensure-config %library-config%)
              (load-config %library.conf%)
              (module-server %library-port%))
             ((option-ref options 'profile-server #f)
+             (ensure-user-dirs %lounge-dir%)
              (ensure-config %lounge-config%)
              (load-config %lounge.conf%)
              (profile-server %lounge-port%))
@@ -132,8 +148,9 @@ Options will be surrounded by square brackets if optional."
              (remove-module (option-ref options 'remove #f)))
             ((option-ref options 'export #f)
              (export-module (option-ref options 'export #f)))
-            (else (ensure-config %client-config%)
-                  (load-config %client.conf%)
+            (else (ensure-user-dirs %client-dir%)
+                  (ensure-config    %client-config%)
+                  (load-config      %client.conf%)
                   (client (option-ref options 'client #f)
                           %default-client%))))))
 
@@ -142,7 +159,18 @@ Options will be surrounded by square brackets if optional."
                       default
                       (string->symbol client))))
     (format #t "Client: ~a\nDefault: ~a\n" selected default)
-    ((assq-ref clients selected))))
+    (match (assq-ref clients selected)
+      ((proc dirs files configs)
+       (if (list? dirs)                 ; Build client dirs
+           (for-each ensure-user-dirs dirs)
+           (ensure-user-dirs dirs))
+       (if (list? files)                ; Build client files
+           (for-each ensure-config files)
+           (ensure-config files))
+       (if (list? configs)              ; Load client configs
+           (for-each load-config configs)
+           (load-config configs))
+       (proc)))))
 
 ;;; Just a place-holder
 (define (main-loop)

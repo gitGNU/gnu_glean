@@ -1,6 +1,6 @@
 ;;; guilecraft --- learning the world using Guile.         -*- coding: utf-8 -*-
 
-(define-module (library git)
+(define-module (store git)
   #:use-module (guilecraft data-types sets)
   #:export (git-gmodule))
 
