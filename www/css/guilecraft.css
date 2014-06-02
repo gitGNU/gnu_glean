@@ -33,6 +33,20 @@ img.set-logo-large {
     float: right;
 }
 
+/* Challenge styles
+-------------------------------------------------- */
+iframe.website {
+    border: none;
+    width: 100%;
+    min-height: 768px;
+}
+iframe.video {
+    float: right;
+}
+img.image {
+    fload: right;
+}
+
 /* Sticky footer styles
 -------------------------------------------------- */
 html {
