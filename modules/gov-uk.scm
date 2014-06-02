@@ -4,9 +4,9 @@
   #:use-module (guilecraft data-types sets)
   #:export (gov-uk-module))
 
-(define basic-search
+(define tutorial
   (set 'tutorial
-       #:name "www.gov.uk Tutorial"
+       #:name "GOV.UK Tutorial"
        #:version "0.1"
        #:synopsis "Learn your way around the www.gov.uk portal: \
 find out about its most important features and how to use them."
@@ -20,6 +20,7 @@ find out about its most important features and how to use them."
   (module
     'gov-uk
     #:name "An Introduction To The GOV.UK Portal"
+    #:keywords '("digital-literacy" "internet" "e-government")
     #:version "0.1"
     #:synopsis "Learn all you need to know to use the GOV.UK\
 UK government e-services portal."
@@ -34,6 +35,5 @@ GOV.UK. After this we will practice using it through targeted exercises."
     #:resources
     (list
      (media #:urls '("https://www.gov.uk/help")))
-    #:logo
-    "https://assets.digital.cabinet-office.gov.uk/static/gov.uk_logotype_crown-c09acb07e4d1d5d558f5a0bc53e9e36d.png"
-    #:contents `(,basic-search)))
+    #:logo "http://dvlaregistrations.direct.gov.uk/images/assets/gov-uk-logo-footer.jpg"
+    #:contents `(,tutorial)))

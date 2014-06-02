@@ -2,7 +2,7 @@
 
 (define-module (store git)
   #:use-module (guilecraft data-types sets)
-  #:export (git-gmodule))
+  #:export (git-module))
 
 (define git-init
   (set 'git-init
@@ -116,7 +116,7 @@ called 'experimental'?")
 and switch to it?")
 		  (s "git checkout -b feature")))))
 
-(define git-gmodule
+(define git-module
   (module
     'git
     #:name "Git: fast version control"
@@ -129,4 +129,5 @@ and switch to it?")
     #:attribution (list (media #:text "Git man pages & website"))
     #:contents `(,git-init ,git-status ,git-add ,git-commit ,git-diff
 			   ,git-log ,git-branch ,git-checkout)
+    #:logo "http://www.git-scm.com/images/logo@2x.png"
     #:resources (list (media #:urls '("http://www.git-scm.com")))))
