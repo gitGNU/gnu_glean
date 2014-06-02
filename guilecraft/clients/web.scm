@@ -92,6 +92,11 @@
          (emit-response-with-file
           (string-append %guilecraft-dir%
                          "/www/js/bootstrap.min.js"))))
+  (get "/js/guilecraft.js"
+       (lambda (rc)
+         (emit-response-with-file
+          (string-append %guilecraft-dir%
+                         "/www/js/guilcraft.js"))))
   (get "/login"
        (lambda (rc)
          (let ((st8 (query-string->state rc)))
@@ -783,6 +788,9 @@ de-activated." 'success))
 
                ;; Latest compiled and minified JavaScript
                (script (@ (src ,(sa %base-url% "/js/bootstrap.min.js"))
+                          (type "text/javascript"))
+                       " ")
+               (script (@ (src ,(sa %base-url% "/js/guilecraft.js"))
                           (type "text/javascript"))
                        " "))))
 

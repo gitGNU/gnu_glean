@@ -6,17 +6,25 @@
 body > div.navbar-inverse {
     border-top: 2px solid #fff;
 }
+body .help {
+}
 body > div.navbar-inverse > div.help{
     background-color: #fff;
     margin: auto;
 }
-.nav > li:nth-child(4) {
-    background-color: #fff;
+.nav > li:nth-last-child(1) {
+    background-image: url("http://localhost/images/help.png");
+    background-repeat: no-repeat;
+    width: 150px;
+    text-align:center
 }
-.nav > li:nth-child(4) a:hover,
-.nav > li:nth-child(4) a:focus,
-.nav > li:nth-child(4) a:active {
+.nav > li:nth-last-child(1) a {
     color: #000;
+}
+.nav > li:nth-last-child(1) a:hover,
+.nav > li:nth-last-child(1) a:focus,
+.nav > li:nth-last-child(1) a:active {
+    color: rgb(153, 153, 153)
 }
 
 /* Set Details
