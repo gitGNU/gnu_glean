@@ -31,16 +31,21 @@
 ;;; 2) Provide functionality to uniformly retrieve any data from
 ;;;    Guilecraft sets.
 ;;;
+;;;; Tests:
+;;; (tests library-store)
+;;;
 ;;;; Code:
 
 (define-module (guilecraft library-store)
   #:use-module (guilecraft base32)
   #:use-module (guilecraft config)
+  #:use-module (guilecraft data-types scorecards)
   #:use-module (guilecraft data-types sets)
   #:use-module (guilecraft hash)
   #:use-module (guilecraft monads)
   #:use-module (guilecraft utils)
   #:use-module (ice-9 ftw)
+  #:use-module (ice-9 match)
   #:use-module (ice-9 vlist)
   #:use-module (rnrs bytevectors)
   #:use-module (srfi srfi-1)
@@ -57,7 +62,8 @@
             known-crownsets
             search-sets
             set-details
-            crownset-hashmap
+            hashtree?
+            make-hashtree
             ))
 
 ;; A library is a database of all known sets indexed by their
@@ -519,8 +525,8 @@ it is known in LIBRARY-PAIR."
                                 (set-creator set))))
 
 (define (crownset-hash-index set)
-  "Return a list containing pairs of every set-fullhash and set
-contained referred to by SET."
+  "Return a list containing pairs of the form '(fullhash . set) for  SET and
+every set referred to in SET's contents field."
   (define (minor-index set index)
     (cond ((rootset? set)
            (cons (cons (rootset-hash set) set) index))
@@ -529,22 +535,30 @@ contained referred to by SET."
 
   (cons (cons (set-fullhash set) set) (fold minor-index '() (set-contents set))))
 
-(define (crownset-hashmap set)
-  (define (hashtraverse-set set)
-    "Return a set-hashmap, a list containing lists of blobhashes for
-each set and it's children that this hashtraverser is passed."
-    (cond ((problem? (car (set-contents set)))
-           (list (rootset-hash set)))
-          (else (list (set-fullhash set)
-                      (map hashtraverse-set
-                           (set-contents set))))))
-  (hashtraverse-set set))
+(define (hashtree? obj)
+  "Return #t if OBJ is a hashtree, #f otherwise.
+
+A hashtree is a list with a pair of the form '(blobhash . properties)as its
+car, and either '() or a list containing hashtrees as its cdr."
+  (match obj
+    ((((? blobhash?) . (? list?)) ((? hashtree?) ...)) #t)
+    ((((? blobhash?) . (? list?))) #t)
+    (_ #f)))
+
+(define (make-hashtree set)
+  "Return a hashtree, starting with SET."
+  (cond ((rootset? set)
+         (list (cons (rootset-hash set)
+                     (set-properties set))))
+        (else (list (cons (set-fullhash set)
+                          (set-properties set))
+                    (map make-hashtree (set-contents set))))))
 
 (define (set-fullhash set)
   "Return a sha256 hash of the product of recursively concatenating
 all of SET's children."
   (define (hashtraverse-set set)
-    (cond ((problem? (car (set-contents set)))
+    (cond ((rootset? set)
            (symbol->string (rootset-hash set)))
           (else (apply sha256-symbol
                        (cons (symbol->string (set-id set))

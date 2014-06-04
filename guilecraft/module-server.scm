@@ -278,7 +278,7 @@ COUNTER, or raise 'invalid-set."
                                   (library-hash %library-dir%)))
                      hashpairs)))
           (if (not (null? sets))
-              (hashmaps (map crownset-hashmap sets))
+              (hashmaps (map make-hashtree sets))
               (raise 'unknown-set-ids)))
         (raise 'invalid-set-ids))))
 
