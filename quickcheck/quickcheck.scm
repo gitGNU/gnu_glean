@@ -103,9 +103,11 @@
 
 (define (quickcheck test . generators)
   (define (fail i args)
-    (format #t "Falsifiable after ~a tests: ~s~%" (+ 1 i) args))
+    (format #t "Falsifiable after ~a tests: ~s~%" (+ 1 i) args)
+    #f)
   (define (succeed i)
-    (format #t "OK: Passed ~a tests~%" i))
+    (format #t "OK: Passed ~a tests~%" i)
+    #t)
   (define (loop i j)
     (if (or (= i num-tests)
             (= j max-tests))
