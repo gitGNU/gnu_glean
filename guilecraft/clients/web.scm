@@ -165,7 +165,7 @@
                                     ,(login-block))))
                     (div (@ (class "row"))
                          (div (@ (class ,width))
-                              ,(list-available)))))))
+                              ,(list-available #f 'list)))))))
 
 (define (login rc)
   (frame #:state (query-string->state rc)
@@ -321,7 +321,7 @@ password.")
                `((p "You can disable any of your active modules by
 checking their checkbox and clicking on ‘De-activate.‘")
                  ,(render-modules active-modules "Active Modules" st8
-                                  "Disable")
+                                  "Disable" 'table)
                  ,(state->form-fields st8)
                  (input (@ (type  "hidden")
                            (name  "operation")
@@ -334,7 +334,7 @@ checking their checkbox and clicking on ‘De-activate.‘")
     ,(form "/mod-action"
            `((p "You can enable new modules by checking their checkbox
 and clicking on ‘Activate’.")
-             ,(list-available "Enable" st8)
+             ,(list-available "Enable" 'table st8)
              ,(state->form-fields st8)
              (input (@ (type  "hidden")
                        (name  "operation")
@@ -378,7 +378,8 @@ and clicking on ‘Activate’.")
                  ,(render-if null? contents "Contents"
                              (lambda (k) (render-modules k
                                                          "Contents"
-                                                         st8)))))))))
+                                                         st8
+                                                         #f 'list)))))))))
   (let* ((st8 (query-string->state rc))
          (rsp (view-set (string->symbol (params rc "hash")) st8))
          (content (if (stateful? rsp)
@@ -647,57 +648,84 @@ Please visit your account page where you will be able to enable some."
   (define (render-module module)
     (match module
       ((hash id name version keywords synopsis logo)
-       `(tr
-         ,(if active
-              `((td (input (@ (type "checkbox")
-                              (name ,hash)) " ")))
-              " ")
-         (td
-          ,(if (string-null? logo)
-               " "
-               `((img (@ (src ,logo)
-                         (alt ,(sa "Logo of " name))
-                         (width "100"))))))
-         (td (p (a (@ (href ,(wrap st8 "/detail"
-                                   (string-append
-                                    "hash="
-                                    (if (symbol? hash)
-                                        (symbol->string hash)
-                                        hash))))
-                      (title "Click to view details about this set"))
-                   ,(if (string-null? name)
-                        (symbol->string id)
-                        (string-append name " (" version ")")))))
-         (td ,(if (null? keywords)
-                  ""
-                  `(p ,(string-append "Keywords: "
-                                      (string-join keywords ", "))))
-             (p ,synopsis))))))
+       (cond
+        ((eqv? format 'table)
+         `(tr
+           ,(if active
+                `((td (input (@ (type "checkbox")
+                                (name ,hash)) " ")))
+                " ")
+           (td
+            ,(if (string-null? logo)
+                 " "
+                 `((img (@ (src ,logo)
+                           (alt ,(sa "Logo of " name))
+                           (width "100"))))))
+           (td (p (a (@ (href ,(wrap st8 "/detail"
+                                     (string-append
+                                      "hash="
+                                      (if (symbol? hash)
+                                          (symbol->string hash)
+                                          hash))))
+                        (title "Click to view details about this set"))
+                     ,(if (string-null? name)
+                          (symbol->string id)
+                          (string-append name " (" version ")")))))
+           (td ,(if (null? keywords)
+                    ""
+                    `(p ,(string-append "Keywords: "
+                                        (string-join keywords ", "))))
+               (p ,synopsis))))
+        (else
+         `(li ,(if (string-null? logo)
+                   " "
+                   `((img (@ (src ,logo)
+                             (alt ,(sa "Logo of " name))
+                             (width "100")))))
+              (h3 (a (@ (href ,(wrap st8 "/detail"
+                                     (string-append
+                                      "hash="
+                                      (if (symbol? hash)
+                                          (symbol->string hash)
+                                          hash))))
+                        (title "Click to view details about this set"))
+                     ,(if (string-null? name)
+                          (symbol->string id)
+                          (string-append name " (" version ")"))))
+              ,(if (null? keywords)
+                   ""
+                   `(p (@ (class "keywords"))
+                       ,(string-append "Keywords: "
+                                       (string-join keywords ", "))))
+              (p (@ (class "synopsis")) ,synopsis)))))))
   (panel title
          (if (nothing? modules)
              (nothing-handler modules)
-             `(div (@ (class "table-responsive"))
-                   (table
-                    (@ (class "table table-stripped"))
-                    (thead
-                     (tr ,(if active `(th ,active) "")
-                         (th "logo")
-                         (th "name (version)")
-                         (th "synopsis")))
-                    (tbody
-                     ,(map render-module modules)))))))
+             (cond ((eqv? format 'table)
+                    `(div (@ (class "table-responsive"))
+                          (table
+                           (@ (class "table table-stripped"))
+                           (thead
+                            (tr ,(if active `(th ,active) "")
+                                (th "logo")
+                                (th "name (version)")
+                                (th "synopsis")))
+                           (tbody
+                            ,(map render-module modules)))))
+                   (else `(div (@ (class "modules"))
+                               (ul ,(map render-module modules))))))))
 
-(define* (list-available #:optional (active #f)
+(define* (list-available #:optional (active #f) (format 'table)
                          (st8 (mk-state 37146
                                         %lounge-port%
                                         %library-port%)))
   (let ((rsp (known-modules st8)))
     (cond ((stateful? rsp)
            (render-modules (result rsp) "Available Modules"
-                           st8 active))
+                           st8 active format))
           (else
            (render-modules rsp "Available Modules"
-                           st8 active)))))
+                           st8 active format)))))
 
 (define* (frame #:key (state #f)
                 (page `(p "This is a test page"))

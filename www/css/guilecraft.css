@@ -33,6 +33,20 @@ img.set-logo-large {
     float: right;
 }
 
+div.modules ul {
+    list-style: none;
+}
+div.modules img {
+    float:left;
+    margin: 1em 1em 1em 0;
+}
+div.modules .keywords {
+    font-size: 90%;
+}
+div.modules .synopsis {
+    font-size: 110%;
+}
+
 /* Challenge styles
 -------------------------------------------------- */
 iframe.website {
