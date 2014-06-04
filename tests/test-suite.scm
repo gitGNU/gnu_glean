@@ -31,15 +31,18 @@
   #:export (run-server-tests))
 
 (define (run-test-suite)
-  (with-cwd (string-append %guilecraft-dir% "/logs/")
+  (with-cwd %log-dir%
 	    (lambda ()
 	      (use-modules
+               (tests sets)
                (tests base32)
                (tests hash)
+               ;; ----
                ;; FIXME: Old style scorecards
                ;;(tests scorecards)
                ;; FIXME: Uses make-mod-blob
                ;; (tests comtools-offline)
+               ;; ----
                (tests lounge-server)
                (tests library-server)
                )
@@ -56,8 +59,6 @@
 		    (use-modules (tests comtools-online)
                                  ;; FIXME: Causes Crash
 				 ;;(tests server-responses)
-                                 ;;DEPRECATED:
-                                 ;;(tests clients-min)
                                  )
 		    (begin (format #t "
 No server is running; we will skip communication tests.\n")

@@ -33,7 +33,8 @@
   #:use-module (guilecraft data-types module-requests)
   #:use-module (guilecraft data-types profile-requests)
   #:export (
-	    $set
+	    $mk-rootset
+            $mk-set
 	    $question
 	    $solution
 	    $option
@@ -69,15 +70,35 @@
 	    $record
 	    $tagged-list
 	    quickname
-	    $short-list
+            $short-list
+	    $short-assoc
 	    ))
 
 ;;;;; Set Generators
-(define ($set)
+(define ($mk-rootset)
   "Return a randomised set."
-  (make-set ($symbol) (($short-list $prob)) ($string) ($string)
-	    ($string) ($string) ($string) (($short-list $medii))
-	    (($short-list $medii)) ($boolean)))
+  (make-set ($symbol) (($short-list $prob)) ; id / contents
+            ($string) ($string)             ; name / version
+            ($string) ($string)             ; synopsis / description
+            (($short-list $string))         ; keywords
+            ($string)                       ; creator
+            (($short-list $medii))          ; attribution
+            (($short-list $medii))          ; resources
+            ($string)                       ; logo
+            ((($short-assoc $symbol $string))))) ; properties
+
+(define ($mk-set)
+  "Return a randomised set."
+  (make-set ($symbol)                   ; id
+            (($short-list $mk-rootset)) ; contents
+            ($string) ($string)         ; name / version
+            ($string) ($string)         ; synopsis / description
+            (($short-list $string))     ; keywords
+            ($string)                   ; creator
+            (($short-list $medii))      ; attribution
+            (($short-list $medii))      ; resources
+            ($string)                   ; logo
+            ((($short-assoc $symbol $string))))) ; properties
 
 ;; FIXME: should randomly populate the media fields
 (define ($medii)
@@ -168,6 +189,11 @@ GENERATOR."
   (lambda ()
     (build-list ($small)
 		(lambda (_) (generator)))))
+(define ($short-assoc key-generator value-generator)
+  "Return an association list with up to ten members of type returned by
+KEY-GENERATOR and VALUE-GENERATOR"
+  (lambda ()
+    ($short-list ($pair key-generator value-generator))))
 
 (define (quickname name)
   "Return is undefined. Print quickcheck intro message and NAME."
@@ -182,7 +208,7 @@ GENERATOR."
 
 (define ($record)
   "Return a random record enumerated in the list."
-  ((from-list (list $profile $scorecard $set))))
+  ((from-list (list $profile $scorecard $mk-set))))
 
 (define ($tagged-list)
   "Return a random record enumerated in the list."
@@ -191,7 +217,7 @@ GENERATOR."
 		    (lambda ()
 		      (record->list* ($scorecard)))
 		    (lambda ()
-		      (record->list* ($set)))))))
+		      (record->list* ($mk-set)))))))
 
 ;;;;; Support Generators & Functions
 ;;;; This section contains library internal definitions that should

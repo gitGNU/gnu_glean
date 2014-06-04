@@ -308,7 +308,7 @@ cannot be found in LIBRARY-PAIR."
               (set-creator set)
               (set-attribution set)
               (set-resources set)
-              (set-module set)
+              (set-properties set)
               (if (rootset? set)
                   '()
                   (map set-summary (set-contents set)))

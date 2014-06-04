@@ -52,25 +52,31 @@
 ;;; (SET-ID <set>) -> set-id
 ;;; (SET-INFO <set>) -> set-information
 ;;; (SET-)
-
+;;;
+;;;; Tests:
+;;; (tests sets)
+;;;
 ;;; Code:
 
 ;;;;; Module Definition
 (define-module (guilecraft data-types sets)
+  #:use-module (ice-9 match)
   #:use-module (rnrs records syntactic)
   #:use-module (rnrs records procedural)
   #:use-module (guilecraft utils)
   #:export (
 	    set
-	    module
+            set?
+            rootset?
+            module
+            module?
+            tutorial
+            tutorial?
 	    
 	    make-set
 	    mecha-set
 	    set-rcd
-	    set?
-            rootset?
-            module?
-	    set-id
+ 	    set-id
 	    set-contents
 	    set-info
 	    set-name
@@ -81,7 +87,7 @@
 	    set-creator
 	    set-attribution
 	    set-resources
-	    set-module
+	    set-properties
             set-logo
 
 	    problem
@@ -129,20 +135,36 @@
 ;;;; used by humans to generate sets and/or modules.
 (define* (module id #:key (contents '()) (name "") (version "")
 	   (synopsis "") (description "") (keywords '())
-           (creator "") (attribution '()) (resources '()) (logo ""))
+           (creator "") (attribution '()) (resources '()) (logo "")
+           (properties '()))
   "High level convenenience interface to make-set, for the
 creation of modules."
   (make-set id contents name version synopsis description keywords
-            creator attribution resources #t logo))
+            creator attribution resources logo
+            (if (assoc 'module properties)
+                properties
+                (acons 'module #t properties))))
 
 (define* (set id #:key (contents '()) (name "") (version "")
               (synopsis "") (description "") (keywords '())
               (creator "") (attribution '()) (resources '())
-              (logo ""))
+              (logo "") (properties '()))
   "High level convenenience interface to make-set, for the
 creation of sets."
   (make-set id contents name version synopsis description keywords
-            creator attribution resources #f logo))
+            creator attribution resources logo properties))
+
+(define* (tutorial id #:key (contents '()) (name "") (version "")
+                   (synopsis "") (description "") (keywords '())
+                   (creator "") (attribution '()) (resources '())
+                   (logo "") (properties '()))
+  "High level convenenience interface to make-set, for the
+creation of tutorials."
+  (make-set id contents name version synopsis description keywords
+            creator attribution resources logo
+            (if (assoc 'tutorial properties)
+                properties
+                (acons 'tutorial #t properties))))
 
 ;;;;; Set Structure
 ;;;; The (rnrs records syntactic) record definitions for all things
@@ -332,8 +354,8 @@ and the rnrs records definition."
 				  (immutable creator)
 				  (immutable attribution)
 				  (immutable resources)
-				  (immutable module)
-                                  (immutable logo))))
+                                  (immutable logo)
+				  (immutable properties))))
 ;; mecha-set is to be used for non-human set construction (e.g. when
 ;; pushing through (exchange).
 (define mecha-set-rcd
@@ -351,7 +373,7 @@ and the rnrs records definition."
    ;; commands.
    (lambda (new)
      (lambda (id contents name version synopsis description keywords
-		 creator attribution resources module logo)
+		 creator attribution resources logo properties)
        (validator new
 		  (list (vid? 'err-set-id)
 			(vlist? vsets-or-vproblems? 'err-set-contents)
@@ -363,10 +385,10 @@ and the rnrs records definition."
 			(vstring? 'err-set-creator)
 			(vlist? vmedia? 'err-set-attribution)
 			(vlist? vmedia? 'err-set-resources)
-			(vboolean? 'err-set-module)
-                        (vstring? 'err-set-logo))
+                        (vstring? 'err-set-logo)
+			(vlist? vpair? 'err-set-properties))
 		  id contents name version synopsis description
-                  keywords creator attribution resources module logo)))))
+                  keywords creator attribution resources logo properties)))))
 (define make-set (record-constructor set-rcd))
 (define set? (record-predicate set-rtd))
 (define set-id (record-accessor set-rtd 0))
@@ -379,16 +401,24 @@ and the rnrs records definition."
 (define set-creator (record-accessor set-rtd 7))
 (define set-attribution (record-accessor set-rtd 8))
 (define set-resources (record-accessor set-rtd 9))
-(define set-module (record-accessor set-rtd 10))
-(define set-logo (record-accessor set-rtd 11))
+(define set-logo (record-accessor set-rtd 10))
+(define set-properties (record-accessor set-rtd 11))
 
 (define (rootset? set)
   "Return #t if set-contents contains problems (which means it's a
 rootset). #f otherwise."
-  (problem? (car (set-contents set))))
+  (match (set-contents set)
+    ((? null?) #t)
+    (((? problem?) ...) #t)
+    (_ #f)))
 (define (module? set)
   "Return #t if set is a module, #f otherwise."
-  (set-module set))
+  (let ((props (assoc 'module (set-properties set))))
+    (and props (cdr props))))
+(define (tutorial? set)
+  "Return #t if set is a tutorial, #f otherwise."
+  (let ((props (assoc 'tutorial (set-properties set))))
+    (and props (cdr props))))
 
 ;;;;; Validators
 ;;;; VALIDATOR and VALIDATE work together to try to detect mistakes in
@@ -508,6 +538,8 @@ vlist-."
 ;;;; more general vedicates below.
 (define (vid? symbol)
   (vtype? symbol? symbol))
+(define (vpair? symbol)
+  (vtype? pair? symbol))
 (define (vstring? symbol)
   (vtype? string? symbol))
 (define (vboolean? symbol)

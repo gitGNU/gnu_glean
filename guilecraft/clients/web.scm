@@ -350,7 +350,7 @@ and clicking on ‘Activate’.")
           "" `(dt ,title (dd ,(if renderer (renderer obj) obj)))))
     (match detail
       ((hash id name version keywords synopsis description creator
-             attribution resources module contents logo)
+             attribution resources properties contents logo)
        (panel name
               `(,(if (string-null? logo)
                      ""
@@ -373,8 +373,9 @@ and clicking on ‘Activate’.")
                  ;;     (dd attribution))
                  ;; (dt "Further Resources"
                  ;;     (dd resources))
-                 ,(render-if (const #t) module "Selectable Set?"
-                             (lambda (k) (if k "Yes" "No")))
+                 ,(render-if (const #f) properties "Selectable Set?"
+                             (lambda (k)
+                               (if (assoc 'module k) "Yes" "No")))
                  ,(render-if null? contents "Contents"
                              (lambda (k) (render-modules k
                                                          "Contents"
