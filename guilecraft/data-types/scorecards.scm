@@ -109,7 +109,7 @@ blobhash, in SCORECARD. Otherwise return #f."
 
 (define (make-dummy-blob)
   "Return a score-blob with no real data."
-  (make-blob 'no-tag '() '() #f 0))
+  (make-blob 'no-tag '() '() #f 0 '() '()))
 
 (define (dummy-blob? score-blob)
   "Return #t if score-mod-blob is a dummy-blob."
@@ -128,15 +128,24 @@ blobhash, in SCORECARD. Otherwise return #f."
 ;;   (cdr (scorecard-data scorecard)))
 
 (define (lower-score? blob1 blob2)
-  "Return #t if blob1 is dummy-blob, or if its score is
-lower than that of blob1."
+  "Return #t if blob1's score is lower than that of blob2, or if blob1 has the
+'tutorial property or effect. Return #f if blob1 is dummy-blob, or if its
+smaller than blob2."
   (cond ((not (and (blob? blob2) (blob? blob1)))
-	 (error 'lower-score? "blob1 or blob2 not a blob."))
-	((dummy-blob? blob1) #f) ;; dummy blob is always larger
-	((> (blob-score blob1)
-	    (blob-score blob2))
-	 #f) ;; if blob1 is larger; false.
-	(else #t)))
+         (error 'lower-score? "blob1 or blob2 not a blob."))
+        ((dummy-blob? blob1) #f) ;; dummy blob is always larger
+        ((property-or-effect? 'tutorial blob1) #t)
+        ((property-or-effect? 'tutorial blob2) #f)
+        ((> (blob-score blob1) (blob-score blob2)) #f) ;; if blob1 is larger; false.
+        (else #t)))
+
+(define (property-or-effect? key blob)
+  "Return #t if property or effect identified by KEY is active in BLOB, #f
+otherwise."
+  (let ((prop (assoc key (blob-properties blob)))
+        (effect (assoc key (blob-effects blob))))
+    (or (and (pair? prop) (cdr prop))
+        (and (pair? effect) (cdr effect)))))
 
 (define (active-module? crown-blob active-modules)
   "Return #t if the blob-hash in crown-blob is part of the
@@ -162,33 +171,45 @@ ASSESSMENT-RESULT."
   ;; (expensive lookup?)
   ;; - increase the score of the parent to the score of the lowest
   ;; scoring child in its tree.
+  (let* ((data (scorecard-data scorecard))
+         (initial-blob (data 'get blobhash)))
 
-  (define (update-skorecard data blobhash)
-    (let ((blob (data 'get blobhash)))
-      (define (update-data)
-        (let ((new-blob (update-blob blob assessment-result)))
-          (data 'put blobhash new-blob)
-          data))
+    (define (update-skorecard data blobhash)
+      (let ((blob (data 'get blobhash)))
+        (define (update-data)
+          (let ((new-blob (update-blob blob assessment-result initial-blob)))
+            (data 'put blobhash new-blob)
+            data))
+        (if (null? (blob-parents blob))
+            (update-data)
+            ;; INFO: Currently this only modifies the car of parents,
+            ;; which could conceivably contain more than one element. We
+            ;; may need to process the other parents too… perhaps.
+            (update-skorecard (update-data) (car (blob-parents blob))))))
 
-      (if (null? (blob-parents blob))
-          (update-data)
-          ;; INFO: Currently this only modifies the car of parents,
-          ;; which could conceivably contain more than one element. We
-          ;; may need to process the other parents too… perhaps.
-          (update-skorecard (update-data) (car (blob-parents blob))))))
+    (make-scorecard (update-skorecard data blobhash))))
 
-  (make-scorecard (update-skorecard (scorecard-data scorecard) blobhash)))
-
-(define (update-blob blob assessment-result)
+(define (update-blob blob assessment-result initial-blob)
   "Return a new blob constructed on the basis of BLOB, with its score
-adapted according to ASSESSMENT-RESULT and its counter progressed."
+adapted according to ASSESSMENT-RESULT, its counter progressed, and its
+effects updated if INITIAL-BLOB contains 'tutorial key.."
   (make-blob (blob-hash blob)
 	     (blob-parents blob)
 	     (blob-children blob)
              (modify-score (blob-score blob)
                            assessment-result)
              (progress-counter (blob-counter blob)
-                               assessment-result)))
+                               assessment-result)
+             (blob-properties blob)
+             (if (property-or-effect? 'tutorial initial-blob)
+                 (add-effect 'tutorial (blob-effects blob))
+                 (blob-effects blob))))
+
+(define (add-effect key blob-effects)
+  "Return a new blob-effects if BLOB-EFFECTS does not contain KEY. Return
+BLOB-EFFECTS otherwise."
+  (let ((current (assoc key blob-effects)))
+    (if current blob-effects (acons key #t blob-effects))))
 
 (define (modify-score old-score assessment-result)
   "Returns a score modified by an algorithm on the basis of
