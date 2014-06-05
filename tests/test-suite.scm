@@ -34,18 +34,15 @@
   (with-cwd %log-dir%
 	    (lambda ()
 	      (use-modules
-               (tests sets)
                (tests base32)
                (tests hash)
-               ;; ----
-               ;; FIXME: Old style scorecards
-               ;;(tests scorecards)
-               ;; FIXME: Uses make-mod-blob
-               ;; (tests comtools-offline)
-               ;; ----
+               (tests sets)
+               (tests scorecards)
+               (tests lounge-store)
+               (tests library-store)
+               (tests comtools-offline)
                (tests lounge-server)
-               (tests library-server)
-               )
+               (tests library-server))
 	      (let* ((path %library-port%))
 		(if (and (access? path W_OK)
 			 (catch #t

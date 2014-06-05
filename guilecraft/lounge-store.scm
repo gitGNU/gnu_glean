@@ -588,6 +588,9 @@ key in profiles. Return #f otherwise."
 
 
 ;;;;;; On Scorecards and Blobhashes
+;;
+;; FIXME: this commentary is partly obsolete.
+;;
 ;; Scorecards are essentially a flat (hash?) table, associating a
 ;; given blobhash with the corresponding blob.
 ;;
@@ -615,47 +618,28 @@ key in profiles. Return #f otherwise."
 ;; number of levels along this path.  (This search is carried out by
 ;; (fetch-next-blobhash)).
 
+(define (hashmap->blobs hashmap)
+  "Return a list of blobs, by converting each hashtree in HASHMAP to blobs."
+  (fold append '() (map hashtree->blobs hashmap)))
 
-(define (hashmap->blobs hashtree)
-  "Return a flat list of blobs on the basis of HASHMAP."
-  (hashmap hashtree '()))
-
-(define (hashmap subtree parents)
-  "Subtree is a list of 2 element lists, the car of which is an
-identifier, the cadr of which is a further subtree. If the cadr is '()
-then we have reached the bottom."
-  (define (children subtree)
-    "The children in a subtree are the first descendants in it, i.e. the
-car of the 2 elem pairs."
-    (map car subtree))
-  (define (qblob name parents children)
-    (make-blob name parents children 0 0))
-
-  ;; FIXME: use ice9 match
-  (fold append
-        '()
-        (map (lambda (2-els)
-               (if (null? (cdr 2-els))
-                   (cons (qblob (car 2-els)
-                                parents
-                                '())
-                         '())
-                   (cons (qblob (car 2-els)
-                                parents
-                                (children (cadr 2-els)))
-                         (hashmap (cadr 2-els) (list (car 2-els))))))
-             subtree)))
-
-;; Example hashmap.
-(define hmap '((dyucztliu5g4llkslb3bo4w4rvq3pmff2ib2vqxlcssldcy4jcpa
-                ((x4c2x5v2tx2qyjupiicu6ljsteqyjbl7hwgonbyrkdn22kcaateq
-                  ((uxxrthejznsxxld3bnd6vzitpmoja77rgeivqwfqslv4ulg2yazq)
-                   (b24le6auq4tflnp7crsdzvjqc3igq75utsinobllfbhe2bobckza)
-                   (q4kggp2holmxoak6afgxbrdvtcnhxb2nfybkh2cfmofyqdfdvmca)
-                   (l2pikntbm3xhhve3wnolsorusogbmksaq7mtsjsyuhzu3mnvde2q)
-                   (#{6npfg64yjplkocvqdpijqd2zdlmwdalczlq7ntnhw3ae3yj4xvbq}#)
-                   (ez3qyedjcps7kj5wa3p56gw5wcf34u6sxe7albfkuqqsvxzntsha)
-                   (cco3wvdmcv5anndzwr2i3qnj2pfwnii4roilsyuwcknl3rgbnw5a)
-                   (aopve5hjnmmhcowdfc4afxzxrmhqgu4wrhy45hnyu427raitvczq)))
-                 (rbpmcgmzsczyocm6a5e6qzryf4773syulfhgm5lurkllam5f3yda
-                  ((eqydayggtxa3w6iw2swrcvy2qiqhhw6xzwnaudrkhmteuvvb2tyq)))))))
+(define* (hashtree->blobs hashtree #:optional (parents '()))
+  "Return a list of blobs by converting HASHTREE into blobs recursively."
+  ;; FIXME: this procedure is currently not tail-recursive. It is also an
+  ;; expensive operation in general and would benefit from being
+  ;; re-factored. A lot.
+  (define no-children '())
+  (define (qblob name parents children properties)
+    (make-blob name parents children 0 0 properties '()))
+  (define (children subtrees) (map caar subtrees))
+  (match hashtree
+    (((hash . properties) subtrees)
+     (cons (qblob hash parents
+                  (children subtrees)
+                  properties)
+           (flatten
+            (map (lambda (subtree)
+                   (hashtree->blobs subtree (list hash)))
+                 subtrees))))
+    (((hash . properties))
+     (list (qblob hash parents no-children properties)))
+    (_ #f)))

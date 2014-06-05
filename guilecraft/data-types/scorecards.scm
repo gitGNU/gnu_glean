@@ -45,7 +45,9 @@
 				  (immutable parents)
 				  (immutable children)
 				  (immutable score)
-				  (immutable counter))))
+				  (immutable counter)
+                                  (immutable properties)
+                                  (immutable effects))))
 (define blob-rcd
   (make-record-constructor-descriptor blob-rtd #f #f))
 (define make-blob (record-constructor blob-rcd))
@@ -55,6 +57,8 @@
 (define blob-children (record-accessor blob-rtd 2))
 (define blob-score (record-accessor blob-rtd 3))
 (define blob-counter (record-accessor blob-rtd 4))
+(define blob-properties (record-accessor blob-rtd 5))
+(define blob-effects (record-accessor blob-rtd 6))
 
 (define scorecard-rtd
   (make-record-type-descriptor 'score-card #f #f #f #f

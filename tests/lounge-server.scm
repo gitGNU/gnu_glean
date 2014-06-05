@@ -40,9 +40,11 @@
 (define %nlng     "new-lng")
 (define %nlib     "new-lib")
 (define %act-mods '((git . etrdurined)))
-(define %sccard   '((etrdurined ((child1)
-                                 (child2 ((child21)
-                                          (child22)))))))
+(define %sccard   '(((etrdurined . ((module . #t)))
+                     (((child1 . ()))               ; subtree 1
+                      ((child2 . ((tutorial . #t))) ; subtree 2
+                       (((child21 . ()))            ; subtree 1
+                        ((child22 . ()))))))))      ; subtree 2
 
 (test-begin "lounge-server")
 

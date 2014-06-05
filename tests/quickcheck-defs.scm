@@ -47,8 +47,7 @@
 
 	    $scorecard
 	    $empty-scorecard
-	    $set-blob
-	    $mod-blob
+ 	    $blob
 
 	    $request
 	    $response
@@ -140,17 +139,16 @@
 
 (define ($scorecard)
   "Return a randomised scorecard."
-  (make-scorecard (($short-list $mod-blob))))
+  (make-scorecard (($short-list $blob))))
 (define ($empty-scorecard)
   "Return an empty scorecard."
   (make-scorecard '()))
 
-(define ($mod-blob)
+(define ($blob)
   "Return a randomised mod-blob."
-  (make-mod-blob ($symbol) (($short-list $set-blob))))
-(define ($set-blob)
-  "Return a randomised set-blob."
-  (make-set-blob ($symbol) ($integer) ($integer)))
+  (make-blob ($symbol) (list ($symbol)) (($short-list $symbol))
+             ($small) ($integer) (($short-assoc $symbol $string))
+             (($short-assoc $symbol $string))))
 
 ;;;;; Request Generators
 (define ($unk-rs)
@@ -211,6 +209,11 @@ KEY-GENERATOR and VALUE-GENERATOR"
 (define ($record)
   "Return a random record enumerated in the list."
   ((from-list (list $profile $scorecard $mk-set))))
+
+(define ($simple-tagged-list)
+  "Return a random simple record (without without nested records)."
+  ((from-list (list (lambda () (record->list* ($blob)))
+                    (lambda () (record->list* ($id ($string))))))))
 
 (define ($tagged-list)
   "Return a random record enumerated in the list."

@@ -5,16 +5,16 @@
   #:export (gov-uk-module))
 
 (define tutorial
-  (set 'tutorial
-       #:name "GOV.UK Tutorial"
-       #:version "0.1"
-       #:synopsis "Learn your way around the www.gov.uk portal: \
+  (tutorial 'tutorial
+            #:name "GOV.UK Tutorial"
+            #:version "0.1"
+            #:synopsis "Learn your way around the www.gov.uk portal: \
 find out about its most important features and how to use them."
-       #:contents
-       (list (problem (q "The general layout of..."
-                         (media #:urls
-                                '("https://www.gov.uk/")))
-                      #f))))
+            #:contents
+            (list (problem (q "The general layout of..."
+                              (media #:urls
+                                     '("https://www.gov.uk/")))
+                           #f))))
 
 (define gov-uk-module
   (module

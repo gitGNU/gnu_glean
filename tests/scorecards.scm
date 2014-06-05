@@ -29,42 +29,12 @@
 
 (test-begin "scorecard-tests")
 
-(quickname "scorecard-skeleton")
-(quickcheck (lambda (x)
-	      (scorecard? (make-scorecard-skeleton x)))
-	    ($short-list $set))
+(test-assert "basic blob creation"
+  (quickcheck (lambda (_) (blob? _))
+              $blob))
 
-(test-assert "dummy-set-blob"
-  (and (blob? (make-dummy-blob))
-       (dummy-blob? (make-dummy-blob))))
-
-(test-assert "The empty scorecard"
-  (empty-scorecard? (make-empty-scorecard)))
-
-(test-equal "first in scorecard"
-	    (make-blob
-	     'test '() '() 0 0)
-	    (scorecard-first (scorecard-data (make-scorecard-skeleton
-					      (list test-gmodule)))))
-
-(test-equal "rest of scorecard"
-	    '()
-	    (scorecard-rest (scorecard-data (make-scorecard-skeleton
-					     (list test-gmodule)))))
-
-(test-assert "lower score"
-  (lower-score? (make-set-blob 'foo '() '() 1 3)
-		(make-set-blob 'bar '() '() 4 1)))
-
-(test-eq "update-scorecard"
-	 1
-	 (set-blob-score
-	  (scorecard-first
-	   (update-scorecard
-	    (make-scorecard-skeleton
-	     (list test-gmodule))
-	    'test
-	    'gset-tag
-	    #t))))
+(test-assert "basic scorecard creation"
+  (quickcheck (lambda (_) (scorecard? _))
+              $scorecard))
 
 (test-end "scorecard-tests")
