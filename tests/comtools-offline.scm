@@ -32,42 +32,17 @@
 
 (test-begin "transformation-tests")
 
-(quickname "robustness-tests")
-(quickname "record->list")
-(quickcheck (lambda (_) (list? (record->list _))) $record)
-(quickname "list->record")
-(quickcheck (lambda (_) (record? (list->record _))) $tagged-list)
-(quickname "record->list*")
-(quickcheck (lambda (_) (list? (record->list* _))) $record)
-(quickname "list->record*")
-(quickcheck (lambda (_) (record? (list->record* _))) $tagged-list)
-
-;; Dummy objects for procedures used by "challenge request" and "eval
-;; request".
-(define test-scorecard
-  (make-scorecard
-   (list
-    (make-mod-blob 'git (list
-			  (make-set-blob 'status 0 0)
-			  (make-set-blob 'branch 50 5)))
-    (make-mod-blob 'bzr (list
-			  (make-set-blob 'st 0 3)
-			  (make-set-blob 'commit 50 7))))))
-
+(test-assert "record->list"
+  (quickcheck (lambda (_) (list? (record->list _)))
+              $record))
+(test-assert "list->record"
+  (quickcheck (lambda (_) (record? (list->record _)))
+              $simple-tagged-list))
 (test-assert "record->list*"
-	     (equal?
-	      (record->list* test-scorecard)
-	      '(":symbol: scorecard"
-		((":symbol: mod-blob" ":symbol: git"
-		  ((":symbol: set-blob" ":symbol: status" 0 0)
-		   (":symbol: set-blob" ":symbol: branch" 50 5)))
-		 (":symbol: mod-blob" ":symbol: bzr"
-		  ((":symbol: set-blob" ":symbol: st" 0 3)
-		   (":symbol: set-blob" ":symbol: commit" 50 7)))))))
-
+  (quickcheck (lambda (_) (list? (record->list* _)))
+              $record))
 (test-assert "list->record*"
-	     (equal? (list->record* (record->list*
-				     test-scorecard))
-		     test-scorecard))
+  (quickcheck (lambda (_) (record? (list->record* _)))
+              $tagged-list))
 
 (test-end "transformation-tests")

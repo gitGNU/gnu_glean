@@ -36,7 +36,7 @@
     #:attribution (($short-list $medii))
     #:resources (($short-list $medii))
     #:logo ($string)
-    #:properties ((($short-assoc $symbol $string)))))
+    #:properties (($short-assoc $symbol $string))))
 (define ($set)
   (set
     ($symbol)
@@ -48,7 +48,7 @@
     #:attribution (($short-list $medii))
     #:resources (($short-list $medii))
     #:logo ($string)
-    #:properties ((($short-assoc $symbol $string)))))
+    #:properties (($short-assoc $symbol $string))))
 (define ($tutorial)
   (tutorial
     ($symbol)
@@ -60,7 +60,7 @@
     #:attribution (($short-list $medii))
     #:resources (($short-list $medii))
     #:logo ($string)
-    #:properties ((($short-assoc $symbol $string)))))
+    #:properties (($short-assoc $symbol $string))))
 
 (test-begin "set-tests")
 ;; Test basic set generation

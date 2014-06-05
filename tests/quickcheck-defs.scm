@@ -68,7 +68,8 @@
 
 	    $datum
 	    $record
-	    $tagged-list
+	    $simple-tagged-list
+            $tagged-list
 	    quickname
             $short-list
 	    $short-assoc
@@ -85,8 +86,7 @@
             (($short-list $medii))          ; attribution
             (($short-list $medii))          ; resources
             ($string)                       ; logo
-            ((($short-assoc $symbol $string))))) ; properties
-
+            (($short-assoc $symbol $string)))) ; properties
 (define ($mk-set)
   "Return a randomised set."
   (make-set ($symbol)                   ; id
@@ -98,7 +98,7 @@
             (($short-list $medii))      ; attribution
             (($short-list $medii))      ; resources
             ($string)                   ; logo
-            ((($short-assoc $symbol $string))))) ; properties
+            (($short-assoc $symbol $string)))) ; properties
 
 ;; FIXME: should randomly populate the media fields
 (define ($medii)
@@ -130,7 +130,9 @@
 (define ($profile)
   "Return a randomised profile."
   (let ((name ($string)))
-    (make-profile name ($id name) (($short-list $symbol)) ($scorecard))))
+    (make-profile name ($id name) ($string) ($string)
+                  (($short-list ($pair $symbol $symbol)))
+                  ($scorecard))))
 
 (define ($id name)
   "Return a randomised id."
@@ -193,7 +195,7 @@ GENERATOR."
   "Return an association list with up to ten members of type returned by
 KEY-GENERATOR and VALUE-GENERATOR"
   (lambda ()
-    ($short-list ($pair key-generator value-generator))))
+    (($short-list ($pair key-generator value-generator)))))
 
 (define (quickname name)
   "Return is undefined. Print quickcheck intro message and NAME."

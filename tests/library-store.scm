@@ -19,7 +19,7 @@
 ;; 59 Temple Place - Suite 330        Fax:    +1-617-542-2652
 ;; Boston, MA  02111-1307,  USA       gnu@gnu.org
 
-(define-module (tests library-server)
+(define-module (tests library-store)
   #:use-module (srfi srfi-64)      ; Provide test suite
   #:use-module (guilecraft data-types base-requests)
   #:use-module (guilecraft data-types module-requests)
@@ -37,11 +37,11 @@
 
 (test-assert "make hashmap"
   (quickcheck (lambda (_)
-                (hashtree? (make-hashmap _)))
-              $mk-set))
+                (hashtree? (make-hashtree _)))
+              $mk-rootset))
 (test-assert "make deep hashmap"
   (quickcheck (lambda (_)
-                (hashtree? (make-hashmap _)))
-              $mk-deep-set))
+                (hashtree? (make-hashtree _)))
+              $mk-set))
 
 (test-end "library-store")
