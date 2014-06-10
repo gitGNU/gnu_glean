@@ -27,7 +27,7 @@
 
   #:use-module (guilecraft data-types scorecards))
 
-(test-begin "scorecard-tests")
+(test-begin "scorecards")
 
 (test-assert "basic blob creation"
   (quickcheck (lambda (_) (blob? _))
@@ -37,4 +37,4 @@
   (quickcheck (lambda (_) (scorecard? _))
               $scorecard))
 
-(test-end "scorecard-tests")
+(test-end "scorecards")

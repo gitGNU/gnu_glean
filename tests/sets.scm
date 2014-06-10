@@ -62,7 +62,7 @@
     #:logo ($string)
     #:properties (($short-assoc $symbol $string))))
 
-(test-begin "set-tests")
+(test-begin "sets")
 ;; Test basic set generation
 (test-assert "basic rootset generation"
   (quickcheck (lambda (_) (set? _))
@@ -81,4 +81,4 @@
   (quickcheck (lambda (_) (tutorial? _))
               $tutorial))
 
-(test-end "set-tests")
+(test-end "sets")

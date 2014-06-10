@@ -38,9 +38,6 @@ dnl GUILECRAFT_CHECK_ARTANIS
 dnl AM_CONDITIONAL([INSTALL_ARTANIS],
 dnl                [test "x$ac_cv_guilecraft_artanis_installed" = xno])
 
-dnl Populate host variable for guild compilation.
-GUIX_SYSTEM_TYPE
-
 dnl Locate libgcrypt & test it.
 AC_ARG_WITH([libgcrypt-prefix],
   [AS_HELP_STRING([--with-libgcrypt-prefix=DIR], [search for GNU libgcrypt in DIR])],
@@ -78,8 +75,6 @@ AC_CONFIG_FILES([
 dnl These ones will be relevant later on: once set up.
 dnl AC_CONFIG_FILES([scripts/guix], [chmod +x scripts/guix])
 
-dnl : high priority ! : 
-dnl AC_CONFIG_FILES([pre-inst-env], [chmod +x pre-inst-env])
-dnl AC_CONFIG_FILES([test-env],     [chmod +x test-env])
+AC_CONFIG_FILES([pre-inst-env], [chmod +x pre-inst-env])
 
 AC_OUTPUT

@@ -1,0 +1,61 @@
+#!/bin/sh
+
+# guilecraft --- fast learning tool.         -*- coding: utf-8 -*-
+#
+# Copyright © 2014 Alex Sassmannshausen <alex.sassmannshausen@gmail.com>
+#
+# This file is part of Guilecraft.
+#
+# Guilecraft is free software; you can redistribute it and/or modify it
+# under the terms of the GNU General Public License as published by the
+# Free Software Foundation; either version 3 of the License, or (at your
+# option) any later version.
+#
+# Guilecraft is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with Guilecraft; if not, contact:
+#
+# Free Software Foundation           Voice:  +1-617-542-5942
+# 59 Temple Place - Suite 330        Fax:    +1-617-542-2652
+# Boston, MA  02111-1307,  USA       gnu@gnu.org
+
+# Commentary:
+#
+# Usage: ./pre-inst-env COMMAND ARG...
+#
+# Run COMMAND in a pre-installation environment.  Typical use is
+# "./pre-inst-env guilecraft.scm -t".
+#
+# This file is a (stripped down, but otherwise largely unmodified)
+# version of the one contained in the GNU Guix project, authored by
+# Ludovic Courtès <ludo@gnu.org>.
+#
+# Code:
+
+# By default we may end up with absolute directory names that contain '..',
+# which get into $GUILE_LOAD_PATH, leading to '..' in the module file names
+# recorded by Guile.  To avoid that, make sure we get a real absolute
+# directory name.
+abs_top_srcdir="`cd "@abs_top_srcdir@" > /dev/null; pwd`"
+abs_top_builddir="`cd "@abs_top_builddir@" > /dev/null; pwd`"
+
+GUILE_LOAD_COMPILED_PATH="$abs_top_builddir${GUILE_LOAD_COMPILED_PATH:+:}$GUILE_LOAD_COMPILED_PATH"
+GUILE_LOAD_PATH="$abs_top_builddir:$abs_top_srcdir${GUILE_LOAD_PATH:+:}:$GUILE_LOAD_PATH"
+export GUILE_LOAD_COMPILED_PATH GUILE_LOAD_PATH
+
+# Define $PATH so that `guilecraft.scm' and friends are easily found.
+# scripts does not exist yet, but may well soon exist.
+PATH="$abs_top_builddir/scripts:$abs_top_builddir:$PATH"
+export PATH
+
+# FIXME: Perhaps need to use something similar later?
+# Define $GUILECRAFT_UNINSTALLED to prevent `Guilecraft' from
+# prepending @guilemoduledir@ to the Guile load paths.
+#GUILECRAFT_UNINSTALLED=1
+#export GUILECRAFT_UNINSTALLED
+
+exec "$@"

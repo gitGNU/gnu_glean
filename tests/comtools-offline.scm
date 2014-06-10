@@ -30,7 +30,7 @@
   #:use-module (guilecraft comtools)) ; Provide functions to be
 				      ; tested.
 
-(test-begin "transformation-tests")
+(test-begin "comtools-offline")
 
 (test-assert "record->list"
   (quickcheck (lambda (_) (list? (record->list _)))
@@ -45,4 +45,4 @@
   (quickcheck (lambda (_) (record? (list->record* _)))
               $tagged-list))
 
-(test-end "transformation-tests")
+(test-end "comtools-offline")
