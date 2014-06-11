@@ -13,6 +13,7 @@ guilecraft/config.scm
 /wip-modules/
 /tests/concurrency.scm
 reports.scm
+pre-inst-env
 TAGS
 COPYING
 INSTALL
