@@ -85,6 +85,8 @@
             ;; External libraries
             %libgcrypt
             ;; Config template manipulation
+            make-config
+            make-setting
             config-target
             config-name
             config-write
