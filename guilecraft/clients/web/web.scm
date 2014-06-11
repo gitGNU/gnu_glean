@@ -29,7 +29,7 @@
 ;;;
 ;;;; Code:
 
-(define-module (guilecraft clients web)
+(define-module (guilecraft clients web web)
   #:use-module (artanis artanis)
   #:use-module (guilecraft clients monadic-min)
   #:use-module (guilecraft config)

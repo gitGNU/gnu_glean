@@ -43,7 +43,7 @@
   #:use-module (guilecraft library-store)
   #:use-module (guilecraft clients repl)
   #:use-module (guilecraft clients cli)
-  #:use-module (guilecraft clients web)
+  #:use-module (guilecraft clients web web)
   #:use-module (guilecraft utils)
   #:export (boot))
 
