@@ -32,124 +32,32 @@
 (define-module (guilecraft clients web web)
   #:use-module (artanis artanis)
   #:use-module (guilecraft clients monadic-min)
+  #:use-module (guilecraft clients web bootstrap)
   #:use-module (guilecraft config)
-  #:use-module (guilecraft data-types base-requests)
   #:use-module (guilecraft data-types sets)
   #:use-module (guilecraft monads)
   #:use-module (guilecraft utils)
   #:use-module (ice-9 match)
-  #:use-module (sxml simple)
   #:use-module (web uri)
   #:export (web-client))
-
-;; For inclusion in Artanis
-(define (params-raw rc)
-  (unless (rc-qt rc) ((@@ (artanis artanis) init-query!) rc))
-  (rc-qt rc))
-(define (params-map proc rc)
-  (map proc (params-raw rc)))
-(define (params-filter pred rc)
-  (filter pred (params-raw rc)))
 
 ;; Make text more easily fit the 72columns
 (define (sa . args)
   (apply string-append args))
 
 (define (web-client)
-
-  (init-server)
-
-  (get "/$"
-       (lambda (rc)
-         (response-emit (tpl->html (index rc)))))
-  (get "/css/bootstrap-theme.css"
-       (lambda (rc)
-         (emit-response-with-file
-          (string-append %guilecraft-dir%
-                         "/www/css/bootstrap-theme.min.css"))))
-  (get "/css/bootstrap.css"
-       (lambda (rc)
-         (emit-response-with-file
-          (string-append %guilecraft-dir%
-                         "/www/css/bootstrap.min.css"))))
-  (get "/css/sticky-footer-navbar.css"
-       (lambda (rc)
-         (emit-response-with-file
-          (string-append %guilecraft-dir%
-                         "/www/css/sticky-footer-navbar.css"))))
-  (get "/css/guilecraft.css"
-       (lambda (rc)
-         (emit-response-with-file
-          (string-append %guilecraft-dir%
-                         "/www/css/guilecraft.css"))))
-  (get "/js/jquery.min.js"
-       (lambda (rc)
-         (emit-response-with-file
-          (string-append %guilecraft-dir%
-                         "/www/js/jquery.min.js"))))
-  (get "/js/bootstrap.min.js"
-       (lambda (rc)
-         (emit-response-with-file
-          (string-append %guilecraft-dir%
-                         "/www/js/bootstrap.min.js"))))
-  (get "/js/guilecraft.js"
-       (lambda (rc)
-         (emit-response-with-file
-          (string-append %guilecraft-dir%
-                         "/www/js/guilcraft.js"))))
-  (get "/login"
-       (lambda (rc)
-         (let ((st8 (query-string->state rc)))
-           (if st8
-               (redirect-to rc (wrap st8 "/account"))
-               (response-emit (tpl->html (login rc)))))))
-  (get "/register"
-       (lambda (rc)
-         (let ((st8 (query-string->state rc)))
-           (if st8
-               (redirect-to rc (wrap st8 "/account"))
-               (response-emit (tpl->html (register rc)))))))
-  (get "/account"
-       (lambda (rc)
-         (let ((st8 (query-string->state rc)))
-           (if st8
-               (response-emit (tpl->html (account rc)))
-               (redirect-to rc (wrap st8 "/login"))))))
-    (get "/session"
-       (lambda (rc)
-         (response-emit (tpl->html (session rc)))))
-    (get "/detail"
-       (lambda (rc)
-         (response-emit (tpl->html (detail rc)))))
-  (get "/hello"
-       (lambda (rc)
-         (response-emit
-          (tpl->html
-           `((p "OK — Not yet implemented.")
-             ;; (p "Query Table contents:")
-             ;; (dl
-             ;;  ,(params-map (lambda (kv-pair)
-             ;;                 `((dt ,(car kv-pair))
-             ;;                   (dd ,(cadr kv-pair))))
-             ;;               rc)))))))
-             )))))
-
-  (post "/auth-action"
-        (lambda (rc)
-          (auth-action rc)))
-  (post "/reg-action"
-        (lambda (rc)
-          (reg-action rc)))
-  (post "/mod-action"
-        (lambda (rc)
-          (mod-action rc)))
-  (post "/del-action"
-        (lambda (rc)
-          (del-action rc)))
-  (post "/eval-action"
-        (lambda (rc)
-          (eval-action rc)))
-  (run))
+  (artanis-dispatch %guilecraft-dir%
+                    #:index index
+                    #:login (cons "/account" login)
+                    #:register (cons "/account" register)
+                    #:account (cons account "/login")
+                    #:session session
+                    #:detail detail
+                    #:auth-action auth-action
+                    #:reg-action reg-action
+                    #:mod-action mod-action
+                    #:del-action del-action
+                    #:eval-action eval-action))
 
 (define (index rc)
   (let* ((state (query-string->state rc))
@@ -344,43 +252,6 @@ and clicking on ‘Activate’.")
                      "Activate")))))
 
 (define (detail rc)
-  (define (render-set detail st8)
-    (define* (render-if empty-pred obj title #:optional (renderer #f))
-      (if (empty-pred obj)
-          "" `(dt ,title (dd ,(if renderer (renderer obj) obj)))))
-    (match detail
-      ((hash id name version keywords synopsis description creator
-             attribution resources properties contents logo)
-       (panel name
-              `(,(if (string-null? logo)
-                     ""
-                     `((img (@ (src ,logo)
-                               (alt ,(sa "Logo of " name))
-                               (class "set-logo-large")
-                               (width "150")))))
-                (dl
-                 (dt "Name"
-                     (dd ,(if (string-null? name)
-                              (symbol->string id)
-                              (string-append name " (" version ")"))))
-                 ,(render-if null? keywords "Keywords"
-                             (lambda (k) (string-join k ", ")))
-                 ,(render-if string-null? synopsis "Synopsis")
-                 ,(render-if string-null? description "Description")
-                 ,(render-if string-null? creator "Author(s)")
-                 ;; Tricky format? No plain string?
-                 ;; (dt "Attribution"
-                 ;;     (dd attribution))
-                 ;; (dt "Further Resources"
-                 ;;     (dd resources))
-                 ,(render-if (const #f) properties "Selectable Set?"
-                             (lambda (k)
-                               (if (assoc 'module k) "Yes" "No")))
-                 ,(render-if null? contents "Contents"
-                             (lambda (k) (render-modules k
-                                                         "Contents"
-                                                         st8
-                                                         #f 'list)))))))))
   (let* ((st8 (query-string->state rc))
          (rsp (view-set (string->symbol (params rc "hash")) st8))
          (content (if (stateful? rsp)
@@ -492,8 +363,6 @@ Please visit your account page where you will be able to enable some."
       (redirect-to rc (wrap st8 "/account" (sa "result=" msg)))
       (response-emit
        (tpl->html
-        ;;('reg-failed (redirect-to rc "/login?login_failed=true"))
-        ;;('invalid-rq (redirect-to rc "/login"))
         (frame #:page (nothing-handler st8))))))
 (define (mod-action rc)
   (define (parse-ids)
@@ -643,79 +512,6 @@ Please visit your account page where you will be able to enable some."
                      (class "btn btn-success"))
                   "Play"))))
 
-(define* (render-modules modules title st8
-                         #:optional (active #f) (format 'table))
-  ;; format is ignored for now: defaults to table.
-  (define (render-module module)
-    (match module
-      ((hash id name version keywords synopsis logo)
-       (cond
-        ((eqv? format 'table)
-         `(tr
-           ,(if active
-                `((td (input (@ (type "checkbox")
-                                (name ,hash)) " ")))
-                " ")
-           (td
-            ,(if (string-null? logo)
-                 " "
-                 `((img (@ (src ,logo)
-                           (alt ,(sa "Logo of " name))
-                           (width "100"))))))
-           (td (p (a (@ (href ,(wrap st8 "/detail"
-                                     (string-append
-                                      "hash="
-                                      (if (symbol? hash)
-                                          (symbol->string hash)
-                                          hash))))
-                        (title "Click to view details about this set"))
-                     ,(if (string-null? name)
-                          (symbol->string id)
-                          (string-append name " (" version ")")))))
-           (td ,(if (null? keywords)
-                    ""
-                    `(p ,(string-append "Keywords: "
-                                        (string-join keywords ", "))))
-               (p ,synopsis))))
-        (else
-         `(li ,(if (string-null? logo)
-                   " "
-                   `((img (@ (src ,logo)
-                             (alt ,(sa "Logo of " name))
-                             (width "100")))))
-              (h3 (a (@ (href ,(wrap st8 "/detail"
-                                     (string-append
-                                      "hash="
-                                      (if (symbol? hash)
-                                          (symbol->string hash)
-                                          hash))))
-                        (title "Click to view details about this set"))
-                     ,(if (string-null? name)
-                          (symbol->string id)
-                          (string-append name " (" version ")"))))
-              ,(if (null? keywords)
-                   ""
-                   `(p (@ (class "keywords"))
-                       ,(string-append "Keywords: "
-                                       (string-join keywords ", "))))
-              (p (@ (class "synopsis")) ,synopsis)))))))
-  (panel title
-         (if (nothing? modules)
-             (nothing-handler modules)
-             (cond ((eqv? format 'table)
-                    `(div (@ (class "table-responsive"))
-                          (table
-                           (@ (class "table table-stripped"))
-                           (thead
-                            (tr ,(if active `(th ,active) "")
-                                (th "logo")
-                                (th "name (version)")
-                                (th "synopsis")))
-                           (tbody
-                            ,(map render-module modules)))))
-                   (else `(div (@ (class "modules"))
-                               (ul ,(map render-module modules))))))))
-
 (define* (list-available #:optional (active #f) (format 'table)
                          (st8 (mk-state 37146
                                         %lounge-port%
@@ -732,6 +528,7 @@ Please visit your account page where you will be able to enable some."
                 (page `(p "This is a test page"))
                 (title (sa %title% " — Fast Learning Tool"))
                 (rc #f))
+  (define frame-helper (frame-maker %base-url%))
   (define (parse-help)
     (let ((msg (if rc (params rc "help") #f)))
       `(div (@ (class "row help"))
@@ -773,54 +570,13 @@ de-activated." 'success))
                         'success)))
           "")))
 
-  `(html (@ (lang "en"))
-         (head
-          (meta (@ (charset    "utf-8")))
-          (meta (@ (http-equiv "X-UA-Compatible")
-                   (content    "IE=edge")))
-          (meta (@ (name    "viewport")
-                   (content "width=device-width, initial-scale=1")))
-          (title ,title)
-          ;; Minified bootstrap css
-          (link (@ (rel  "stylesheet")
-                   (type "text/css")
-                   (href ,(sa %base-url% "/css/bootstrap.min.css"))))
-          ;; Optional Theme
-          ;; (link (@ (href "starter-template.css")
-          ;;          (rel  "stylesheet")))>
-          (link (@ (rel  "stylesheet")
-                   (type "text/css")
-                   (href ,(sa %base-url% "/css/bootstrap-theme.min.css"))))
-          (link (@ (rel  "stylesheet")
-                   (type "text/css")
-                   (href ,(sa %base-url% "/css/guilecraft.css"))))
-          ;; <!-- HTML5 shim and Respond.js IE8 support of HTML5 elements and media queries -->
-          ;; <!--[if lt IE 9]>
-          ;;   <script src="https://oss.maxcdn.com/libs/html5shiv/3.7.0/html5shiv.js"></script>
-          ;;   <script src="https://oss.maxcdn.com/libs/respond.js/1.4.2/respond.min.js"></script>
-          ;; <![endif]-->
-          )
-         (body (@ (role "document"))
-               ,(header-region (parse-help) state)
-               (div (@ (class "container")
-                       (role  "main"))
-                    ,(parse-msg)
-                    ,page)
-               ,(footer-region)
-               ;; jQuery (necessary for Bootstrap's JavaScript plugins)
-               (script (@ (src ,(sa %base-url% "/js/jquery.min.js"))
-                          (type "text/javascript"))
-                       " ")
-               ;; Include all compiled plugins (below), or include individual
-               ;; files as needed
-
-               ;; Latest compiled and minified JavaScript
-               (script (@ (src ,(sa %base-url% "/js/bootstrap.min.js"))
-                          (type "text/javascript"))
-                       " ")
-               (script (@ (src ,(sa %base-url% "/js/guilecraft.js"))
-                          (type "text/javascript"))
-                       " "))))
+  (frame-helper `(,(header-region (parse-help) state)
+                  (div (@ (class "container")
+                          (role  "main"))
+                       ,(parse-msg)
+                       ,page)
+                  ,(footer-region))
+                title))
 
 (define* (header-region help #:optional st8)
   `(div (@ (class "navbar navbar-inverse") ; navbar-fixed-top
@@ -863,134 +619,3 @@ de-activated." 'success))
                               "Help  ^"))))))))
 (define* (footer-region)
   `(div (@ (id "footer")) ,%footer%))
-
-(define (nothing-handler nothing)
-  (match (list (nothing-id nothing)
-               (nothing-context nothing))
-    ((noth-id noth-con)
-     (cond ((eqv? 'servers-down noth-id)
-            (alert "The lounge and library which you make use of seem
-to currently be down. Please try again later." 'warning))
-           ((eqv? 'lounge-down noth-id)
-            (alert "The lounge you are registered with seems to
-currently be down. Please try again later." 'warning))
-           ((eqv? 'library-down noth-id)
-            (alert "The library which you make use of seems to
-currently be down. Please try again later." 'warning))
-           (else
-            (let ((neg-ori (neg-orig noth-con))
-                  (neg-msg (neg-msg  noth-con)))
-              (cond ((eqv? 'username-taken neg-msg)
-                     (alert
-                      "Your chosen username is no longer available."
-                      'warning))
-                    ((eqv? 'invalid-username neg-msg)
-                     (alert
-                      "Your chosen username is not a valid user name."
-                      'warning))
-                    ((eqv? 'unknown-user neg-msg)
-                     (alert
-                      "The username you entered is unknown here."
-                      'warning))
-                    ((eqv? 'incorrect-password neg-msg)
-                     (alert
-                      "The password you supplied is not your currently
-registered password."
-                      'warning))
-                    ((eqv? 'invalid-token neg-msg)
-                     (alert "Your session is no longer valid." 'info))
-                    ((eqv? 'no-active-modules neg-msg)
-                     (alert "You have not yet enabled any modules. \
-Please visit your account page where you will be able to enable some."
-                            'info))
-                    ((eqv? 'exchange-error noth-id)
-                     (alert (string-append "We got a negative
-response. Message: " (object->string neg-msg)) 'danger))
-                    (else
-                     (alert "Unknown error." 'danger)))))))))
-
-(define (state->form-fields state)
-  `(fieldset
-    (input (@ (type "hidden")
-              (name "token")
-              (value ,(number->string (state-tk state)))))
-    (input (@ (type "hidden")
-              (name "lounge")
-              (value ,(state-lng state))))
-    (input (@ (type "hidden")
-              (name "library")
-              (value ,(state-lib state))))))
-
-(define* (wrap state target #:optional (extra #f))
-  (if state
-      (state->query-string state target extra)
-      target))
-(define* (state->query-string state #:optional (target #f) (extra #f))
-  (let ((result (sa (if target (sa target "?") "")
-                    "token=" (number->string (state-tk state))
-                    "&lounge=" (state-lng state)
-                    "&library=" (state-lib state)
-                    (if extra (sa "&" extra) ""))))
-    result))
-
-(define (query-string->state rc)
-  (let ((tk  (params rc "token"))
-        (lng (params rc "lounge"))
-        (lib (params rc "library")))
-    (if (and tk lng lib)
-        (mk-state (string->number tk)
-                  (uri-decode lng)
-                  (uri-decode lib))
-        #f)))
-
-;;;;; Bootstrap Helpers
-(define* (panel heading contents #:optional (type 'default))
-  "Return an sxml representation of a bootstrap panel containing the
-string HEADING and the sxml value CONTENTS. If TYPE is given it should
-be a symbol ('default, 'primary, 'success, 'info, 'warning or
-'danger)."
-  `(div (@ (class ,(sa "panel panel-" (symbol->string type))))
-        (div (@ (class "panel-heading"))
-             (h3 (@ (class "panel-title")) ,heading))
-        (div (@ (class "panel-body"))
-             ,contents)))
-
-(define* (form action contents #:optional (method "post"))
-  "Return an sxml representation of a bootstrap form. ACTION should a
-string URI. CONTENTS should be an SXML list."
-  `(form (@ (action ,action)
-            (method ,method)
-            (role   "form"))
-         ,contents))
-
-(define* (alert message #:optional (type 'default))
-  "Return an sxml representation of a bootstrap alert containing the
-string MESSAGE. If TYPE is given it should be a symbol ('default,
-'primary, 'success, 'info, 'warning or 'danger)."
-  `(div (@ (class ,(string-append "alert alert-"
-                                  (symbol->string type))))
-        (p ,message)))
-
-(define (video-source url)
-  "Embed videos from a variety of sources on the basis of URL."
-  (define (vimeo)
-    `((iframe (@ (src ,url)
-                 (class "video")
-                 (width "500")
-                 (height "300")
-                 (frameborder "0")
-                 (webkitallowfullscreen "1")
-                 (mozallowfullscreen "1")
-                 (allowfullscreen "1"))
-              " ")))
-  (vimeo))
-(define (image-source url)
-  "Embed images from a variety of sources on the basis of URL."
-  `(img (@ (src ,url)
-           (width "300")
-           (class "image"))))
-(define (website-source url)
-  "Return an sxml representation of URL embedded in an iframe."
-  `(iframe (@ (src ,url)
-              (class "website"))
-           " "))
