@@ -171,11 +171,12 @@
                   (uri-decode lib))
         #f)))
 
-(define (frame-maker base-url)
+(define* (frame-maker base-url #:optional (css (list "/css/custom.css")))
   "Return a procedure which takes state, page title and rc, and which in turn
 returns an sxml representation of a bootstrap ready page.  BASE-URL should be
 a string representing the base-url of the project. The CSS and JS will be
-loaded relative to it."
+loaded relative to it.  CSS will either default to inserting a single
+custom.css call, or call for each item in the CSS list."
   (define (resource path) (string-append base-url path))
 
   (lambda* (#:optional (page `(p "This is a test page"))
@@ -203,9 +204,11 @@ the page."
             (link (@ (rel  "stylesheet")
                      (type "text/css")
                      (href ,(resource "/css/guilecraft.css"))))
-            (link (@ (rel  "stylesheet")
-                     (type "text/css")
-                     (href ,(resource "/css/custom.css"))))
+            ,(map (lambda (url)
+                    `(link (@ (rel  "stylesheet")
+                              (type "text/css")
+                              (href ,(resource url)))))
+                  css)
             ;; <!-- [if lt IE 9] >
             ;;    <script src="https://oss.maxcdn.com/libs/html5shiv/3.7.0/html5shiv.js"></script>
             ;;    <script src="https://oss.maxcdn.com/libs/respond.js/1.4.2/respond.min.js"></script>
@@ -377,16 +380,18 @@ response. Message: " (object->string neg-msg)) 'danger))
                                                        #f 'list)))))))))
 
 ;;;; Bootstrap Components
-(define* (panel heading contents #:optional (type 'default))
+(define* (panel heading contents #:optional (type 'default) (xtraclass ""))
   "Return an sxml representation of a bootstrap panel containing the
 string HEADING and the sxml value CONTENTS. If TYPE is given it should
 be a symbol ('default, 'primary, 'success, 'info, 'warning or
 'danger)."
-  `(div (@ (class ,(string-append "panel panel-" (symbol->string type))))
-        (div (@ (class "panel-heading"))
-             (h3 (@ (class "panel-title")) ,heading))
-        (div (@ (class "panel-body"))
-             ,contents)))
+  `(div (@ (class ,xtraclass))
+        (div (@ (class ,(string-append "panel panel-"
+                                       (symbol->string type))))
+             (div (@ (class "panel-heading"))
+                  (h3 (@ (class "panel-title")) ,heading))
+             (div (@ (class "panel-body"))
+                  ,contents))))
 
 (define* (form action contents #:optional (method "post"))
   "Return an sxml representation of a bootstrap form. ACTION should a
