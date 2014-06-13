@@ -51,6 +51,7 @@
             frame-maker
             nothing-handler
             ;; Views
+            modules-carousel
             render-modules
             render-set
             ;; Bootstrap
@@ -282,6 +283,50 @@ response. Message: " (object->string neg-msg)) 'danger))
                      (alert "Unknown error." 'danger)))))))))
 
 ;;;; Views Components
+(define* (modules-carousel modules st8)
+  "Return the list MODULES as an sxml representation, formatted as a carousel.
+ST8 will wrap any links part of the carousel."
+  (define (link-module hash name contents)
+    `(a (@ (href ,(wrap st8 "/detail"
+                        (string-append "hash="
+                                       (if (symbol? hash)
+                                           (symbol->string hash)
+                                           hash))))
+           (title ,(string-append "Click to view details about " name)))
+        ,contents))
+  (define (name-module name id version)
+    (let ((vers (if version
+                    (string-append " (" version ")")
+                    "")))
+      (if (string-null? name)
+          (string-append (symbol->string id) vers)
+          (string-append name vers))))
+  (define (render-module modules countdown result)
+    (if (or (= countdown 0)
+            (null? modules))
+        (reverse result)
+        (match (car modules)
+          ((hash id name version keywords synopsis logo)
+           (let ((nam (name-module name id version)))
+             (render-module (cdr modules) (1- countdown)
+                            (cons
+                             `(div (@ (class "col-md-3"))
+                                   (div (@ (class "carousel image"))
+                                        ,(link-module hash nam
+                                                      (img logo
+                                                           `("Details on" ,name))))
+                                   (div (@ (class "carousel caption"))
+                                        ,(link-module hash nam `(p ,nam))))
+                             result)))))))
+  (if (null? modules)
+      '()
+      `((div (@ (class "col-md-1 control"))
+             (span (@ (class "left disabled"))))
+        (div (@ (class "col-md-10"))
+             ,(render-module modules 4 '()))
+        (div (@ (class "col-md-1 control"))
+             (span (@ (class "right disabled")))))))
+
 (define* (render-modules modules title st8
                          #:optional (active #f) (format 'table))
   ;; format is ignored for now: defaults to table.
@@ -408,6 +453,20 @@ string MESSAGE. If TYPE is given it should be a symbol ('default,
   `(div (@ (class ,(string-append "alert alert-"
                                   (symbol->string type))))
         (p ,message)))
+
+(define* (img img alt #:optional (xtraclasses "") (responsive #t)
+              (width "100"))
+  "Return an sxml respresentation of IMG with alt consisting of the list of
+strings ALT joined together."
+  (cond ((string-null? img) "")
+        (responsive `(img (@ (src   ,img)
+                             (alt   ,(string-join alt " "))
+                             (class ,(string-append xtraclasses
+                                                    " img-responsive")))))
+        (else `(img (@ (src   ,img)
+                       (alt   ,(string-join alt " "))
+                       (class ,xtraclasses)
+                       (width ,width))))))
 
 (define (logo img name class width)
   (if (string-null? img)
