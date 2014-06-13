@@ -56,6 +56,7 @@
             render-modules
             render-set
             ;; Bootstrap
+            img
             panel
             form
             alert
