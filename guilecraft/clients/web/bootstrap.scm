@@ -48,6 +48,7 @@
             wrap
             state->query-string
             query-string->state
+            dummy-state?
             frame-maker
             nothing-handler
             ;; Views
@@ -65,8 +66,8 @@
 
 ;;;; Web Handler
 (define* (artanis-dispatch resource-dir #:key index login register account
-                           session detail auth-action reg-action mod-action
-                           del-action eval-action)
+                           session search content browse detail auth-action
+                           reg-action mod-action del-action eval-action)
   (define (source path)
     (lambda (rc)
       (emit-response-with-file (string-append resource-dir path))))
@@ -100,6 +101,9 @@
   (get "/$" (present index))
   (get "/session" (present session))
   (get "/detail" (present detail))
+  (get "/search" (present search))
+  (get "/content" (present content))
+  (get "/browse" (present browse))
   (get "/login" (maybe-present login))
   (get "/register" (maybe-present register))
   (get "/account" (maybe-present account))
@@ -171,6 +175,7 @@
                   (uri-decode lng)
                   (uri-decode lib))
         #f)))
+(define (dummy-state? state) (= (state-tk state) 0))
 
 (define* (frame-maker base-url #:optional (css (list "/css/custom.css")))
   "Return a procedure which takes state, page title and rc, and which in turn
