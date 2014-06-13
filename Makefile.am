@@ -35,7 +35,8 @@ MODULES =					\
   guilecraft/clients/cli.scm			\
   guilecraft/clients/monadic-min.scm		\
   guilecraft/clients/repl.scm			\
-  guilecraft/clients/web.scm			\
+  guilecraft/clients/web/web.scm		\
+  guilecraft/clients/web/bootstrap.scm		\
   guilecraft/comtools.scm			\
   guilecraft/data-manager.scm			\
   guilecraft/data-types/base-requests.scm	\
@@ -93,6 +94,8 @@ AM_SH_LOG_FLAGS = -x -e
 
 EXTRA_DIST =					\
   artanis					\
+  www						\
+  modules					\
   HACKING					\
   ROADMAP					\
   TODO						\

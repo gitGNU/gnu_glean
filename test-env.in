@@ -1,0 +1,34 @@
+#!/bin/sh
+
+# GNU Guix --- Functional package management for GNU
+# Copyright © 2012, 2013, 2014 Ludovic Courtès <ludo@gnu.org>
+#
+# This file is part of GNU Guix.
+#
+# GNU Guix is free software; you can redistribute it and/or modify it
+# under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 3 of the License, or (at
+# your option) any later version.
+#
+# GNU Guix is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with GNU Guix.  If not, see <http://www.gnu.org/licenses/>.
+
+# Usage: ./test-env COMMAND ARG...
+#
+# Run the daemon in the build directory, and run COMMAND within
+# `pre-inst-env'.  This is used to run unit tests with the just-built
+# daemon, unless `--disable-daemon' was passed at configure time.
+
+prefix="@prefix@"
+datarootdir="@datarootdir@"
+datadir="@datadir@"
+localstatedir="@localstatedir@"
+export prefix datarootdir datadir localstatedir
+
+"@abs_top_builddir@/pre-inst-env" "$@"
+exit $?

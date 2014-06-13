@@ -84,7 +84,7 @@ is not covered here.  Please see the files @file{README} and
 
 @menu
 * Requirements::                Software needed to build and run Guilecraft.
-* Installation::
+* Setting Up Shop::
 @end menu
 
 @node Requirements
@@ -104,8 +104,8 @@ Guile site directory. See below for getting the web client up and
 running.
 
 @c *********************************************************************
-@node Installation
-@section Installation
+@node Setting Up Shop
+@section Setting Up Shop
 
 Stuff about Artanis, and setting up the web client?
 
