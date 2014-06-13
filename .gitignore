@@ -14,6 +14,7 @@ guilecraft/config.scm
 /tests/concurrency.scm
 reports.scm
 pre-inst-env
+test-env
 TAGS
 COPYING
 INSTALL
