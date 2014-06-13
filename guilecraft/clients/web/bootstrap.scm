@@ -462,17 +462,18 @@ string MESSAGE. If TYPE is given it should be a symbol ('default,
 
 (define* (img img alt #:optional (xtraclasses "") (responsive #t)
               (width "100"))
-  "Return an sxml respresentation of IMG with alt consisting of the list of
-strings ALT joined together."
-  (cond ((string-null? img) "")
-        (responsive `(img (@ (src   ,img)
-                             (alt   ,(string-join alt " "))
-                             (class ,(string-append xtraclasses
-                                                    " img-responsive")))))
-        (else `(img (@ (src   ,img)
-                       (alt   ,(string-join alt " "))
-                       (class ,xtraclasses)
-                       (width ,width))))))
+  "Return an sxml respresentation of IMG with ALT as the alt.  ALT should be a
+list of strings or a single string."
+  (let ((alt (if (string? alt) alt (string-join alt " "))))
+    (cond ((string-null? img) "")
+          (responsive `(img (@ (src   ,img)
+                               (alt   ,alt)
+                               (class ,(string-append xtraclasses
+                                                      " img-responsive")))))
+          (else `(img (@ (src   ,img)
+                         (alt   ,alt)
+                         (class ,xtraclasses)
+                         (width ,width)))))))
 
 (define (logo img name class width)
   (if (string-null? img)
