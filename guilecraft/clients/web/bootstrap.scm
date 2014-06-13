@@ -88,11 +88,11 @@
       (let ((st8 (query-string->state rc)))
         (match path/proc-pair
           (((? string? path) . (? procedure? proc))
-           (if st8
+           (if (and st8 (not (dummy-state? st8)))
                (redirect-to rc (wrap st8 path))
                (response-emit (tpl->html (proc rc)))))
           (((? procedure? proc) . (? string? path))
-           (if st8
+           (if (and st8 (not (dummy-state? st8)))
                (response-emit (tpl->html (proc rc)))
                (redirect-to rc (wrap st8 path))))
           (_ (present "Error: maybe-present not implemented."))))))
