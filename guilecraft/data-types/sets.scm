@@ -60,6 +60,7 @@
 
 ;;;;; Module Definition
 (define-module (guilecraft data-types sets)
+  #:use-module (srfi srfi-1)
   #:use-module (ice-9 match)
   #:use-module (rnrs records syntactic)
   #:use-module (rnrs records procedural)
@@ -72,6 +73,7 @@
             module?
             tutorial
             tutorial?
+            number-of-problems
 	    
 	    make-set
 	    mecha-set
@@ -133,6 +135,15 @@
 ;;;;; Set Usage
 ;;;; This section details porcelain commands that should normally be
 ;;;; used by humans to generate sets and/or modules.
+(define (number-of-problems set)
+  (define (num-of-problems-helper set count)
+    (if (rootset? set)
+        (+ count (length (set-contents set)))
+        (fold num-of-problems-helper count (set-contents set))))
+
+  (if (set? set)
+      (num-of-problems-helper set 0)))
+
 (define* (module id #:key (contents '()) (name "") (version "")
 	   (synopsis "") (description "") (keywords '())
            (creator "") (attribution '()) (resources '()) (logo "")
