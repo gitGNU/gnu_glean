@@ -47,12 +47,12 @@
                 (match (hashtree->blobs _)
                   (((? blob?) ...) #t)
                   (_ #f)))
-              $mk-hashtree))
+              50 $mk-hashtree))
 (test-assert "hashmap->blobs"
   (quickcheck (lambda (_) 
                 (match (hashmap->blobs _)
                   (((? blob?) ...) #t)
                   (_ #f)))
-              ($short-list $mk-hashtree)))
+              50 ($short-list $mk-hashtree)))
 
 (test-end "lounge-store")

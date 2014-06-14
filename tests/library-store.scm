@@ -34,14 +34,13 @@
 
 (test-begin "library-store")
 
-
 (test-assert "make hashmap"
   (quickcheck (lambda (_)
                 (hashtree? (make-hashtree _)))
-              $mk-rootset))
+              50 $mk-rootset))
 (test-assert "make deep hashmap"
   (quickcheck (lambda (_)
                 (hashtree? (make-hashtree _)))
-              $mk-set))
+              50 $mk-set))
 
 (test-end "library-store")
