@@ -21,9 +21,9 @@
 
 ;;;;; Module Definition
 (define-module (tests quickcheck-defs)
-  #:use-module (rnrs)
   #:use-module (quickcheck quickcheck)
   #:use-module (ice-9 format)
+  #:use-module (srfi srfi-1)
   #:use-module (srfi srfi-27)
   #:use-module (guilecraft comtools)
   #:use-module (guilecraft data-types gprofiles)
@@ -75,29 +75,39 @@
 	    ))
 
 ;;;;; Set Generators
-(define ($mk-rootset)
-  "Return a randomised set."
-  (make-set ($symbol) (($short-list $prob)) ; id / contents
-            ($string) ($string)             ; name / version
-            ($string) ($string)             ; synopsis / description
-            (($short-list $string))         ; keywords
-            ($string)                       ; creator
-            (($short-list $medii))          ; attribution
-            (($short-list $medii))          ; resources
-            ($string)                       ; logo
+(define* ($mk-rootset #:optional num_problems)
+  "Return a randomised set.  If NUM_PROBLEMS is a number, force $rootset to
+produce this number of problems."
+  (make-set ($symbol)                          ; id
+            (($short-list $prob num_problems)) ; contents
+            ($string) ($string)                ; name / version
+            ($string) ($string)                ; synopsis / description
+            (($short-list $string))            ; keywords
+            ($string)                          ; creator
+            (($short-list $medii))             ; attribution
+            (($short-list $medii))             ; resources
+            ($string)                          ; logo
             (($short-assoc $symbol $string)))) ; properties
-(define ($mk-set)
-  "Return a randomised set."
-  (make-set ($symbol)                   ; id
-            (($short-list $mk-rootset)) ; contents
-            ($string) ($string)         ; name / version
-            ($string) ($string)         ; synopsis / description
-            (($short-list $string))     ; keywords
-            ($string)                   ; creator
-            (($short-list $medii))      ; attribution
-            (($short-list $medii))      ; resources
-            ($string)                   ; logo
-            (($short-assoc $symbol $string)))) ; properties
+(define* ($mk-set #:optional base_num (depth 1))
+  "Return a randomised set containing DEPTH levels of children.  The final
+level consists of rootsets.  If BASE_NUM is a number, force $mk-set to produce
+child-sets with each BASE_NUM of children."
+  (make-set ($symbol)                                ; id
+            (if (= depth 1)
+                (($short-list (lambda ()
+                                ($mk-rootset base_num))
+                              base_num))
+                (($short-list (lambda ()
+                                ($mk-set base_num (1- depth)))
+                              base_num)))                 ; contents
+            ($string) ($string)                      ; name / version
+            ($string) ($string)                      ; synopsis / description
+            (($short-list $string))                  ; keywords
+            ($string)                                ; creator
+            (($short-list $medii))                   ; attribution
+            (($short-list $medii))                   ; resources
+            ($string)                                ; logo
+            (($short-assoc $symbol $string))))       ; properties
 
 ;; FIXME: should randomly populate the media fields
 (define ($medii)
@@ -183,11 +193,11 @@
   (quit-rq))
 
 ;;;;; Extra Generators & Functions
-(define ($short-list generator)
+(define* ($short-list generator #:optional num_problems)
   "Return a list with up to ten members of type returned by
 GENERATOR."
   (lambda ()
-    (build-list ($small)
+    (build-list (if (number? num_problems) num_problems ($small))
 		(lambda (_) (generator)))))
 (define ($short-assoc key-generator value-generator)
   "Return an association list with up to ten members of type returned by

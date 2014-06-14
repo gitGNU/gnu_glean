@@ -66,19 +66,29 @@
 ;; Test basic set generation
 (test-assert "basic rootset generation"
   (quickcheck (lambda (_) (set? _))
-              $mk-rootset))
+              50 $mk-rootset))
 (test-assert "basic set generation"
   (quickcheck (lambda (_) (set? _))
-              $mk-set))
+              50 $mk-set))
 
 (test-assert "set generation"
   (quickcheck (lambda (_) (set? _))
-              $set))
+              50 $set))
 (test-assert "module generation"
   (quickcheck (lambda (_) (module? _))
-              $module))
+              50 $module))
 (test-assert "tutorial generation"
   (quickcheck (lambda (_) (tutorial? _))
-              $tutorial))
+              50 $tutorial))
+
+(test-assert "rootset num problems"
+  (quickcheck (lambda (_)
+                (= 5 (number-of-problems _)))
+              50 (lambda () ($mk-rootset 5))))
+
+(test-assert "set num problems"
+  (quickcheck (lambda (_)
+                (= (* 5 5) (number-of-problems _)))
+              50 (lambda () ($mk-set 5))))
 
 (test-end "sets")
