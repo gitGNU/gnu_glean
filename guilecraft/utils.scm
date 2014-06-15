@@ -35,7 +35,10 @@
             gmsg
             rprinter
             relevant?
+            display=>
             ))
+
+(define (display=> x) (format #t "~a\n" x) x)
 
 (define (seq a b)
   "Return a list, counting upwards, from A to B (inclusive)."
