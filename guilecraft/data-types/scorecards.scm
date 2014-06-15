@@ -5,6 +5,7 @@
   #:use-module (guilecraft data-manager)
   #:use-module (guilecraft utils)
   #:use-module (rnrs)
+  #:use-module (srfi srfi-1)
   #:export (make-scorecard
 	    scorecard?
 	    scorecard-data
@@ -16,6 +17,8 @@
 	    blob-children
 	    blob-score
 	    blob-counter
+            blob-properties
+            blob-effects
 
 	    make-empty-scorecard
 	    empty-scorecard?
@@ -77,9 +80,6 @@
   (let ((data (scorecard-data scorecard)))
     (define (list-blobs)
       (data 'values))
-    (clog "printing all blobs")
-    (rprinter (list-blobs))
-    (rprinter (data 'get blobhash))
     ((scorecard-data scorecard) 'get blobhash)))
 
 (define (check-blob blobhash scorecard)
@@ -163,21 +163,14 @@ active-modules list."
   "Return a new scorecard, on the basis of SCORECARD, with the score
 of the blob identified by BLOBHASH, and its parents, adjusted based on
 ASSESSMENT-RESULT."
-  ;; INFO: Currently this increases the assessed blobhash and all its
-  ;; parents by one. It may be desirable, when dealing with large
-  ;; sets, to either:
-  ;;
-  ;; - increase the score of each parent by 1/total-number-of-children
-  ;; (expensive lookup?)
-  ;; - increase the score of the parent to the score of the lowest
-  ;; scoring child in its tree.
   (let* ((data (scorecard-data scorecard))
          (initial-blob (data 'get blobhash)))
 
     (define (update-skorecard data blobhash)
       (let ((blob (data 'get blobhash)))
         (define (update-data)
-          (let ((new-blob (update-blob blob assessment-result initial-blob)))
+          (let ((new-blob (update-blob blob assessment-result initial-blob
+                                       (number-of-child-blobs blob scorecard))))
             (data 'put blobhash new-blob)
             data))
         (if (null? (blob-parents blob))
@@ -189,7 +182,32 @@ ASSESSMENT-RESULT."
 
     (make-scorecard (update-skorecard data blobhash))))
 
-(define (update-blob blob assessment-result initial-blob)
+(define number-of-child-blobs
+  (let ((previous (make-hash-table)))
+    (lambda (blob scorecard)
+      "Return the total number of children associated with BLOB in SCORECARD.
+The procedure is memoized as it will be called often and repeatedly for the
+same inputs."
+      (let ((data (scorecard-data scorecard)))
+        (define (child-hashes->child-blobs hashes)
+          (map (lambda (blobhash) (data 'get blobhash)) hashes))
+        (define (num-of-child-blobs-helper child-hashes total)
+          (or (hash-ref previous child-hashes)
+              (if (null? child-hashes) total
+                  (hash-set! previous
+                             child-hashes
+                             (fold num-of-child-blobs-helper
+                                   (+ total (length child-hashes))
+                                   (map blob-children
+                                        (child-hashes->child-blobs
+                                         child-hashes)))))))
+
+        (if (and (blob? blob) (procedure? data))
+            (num-of-child-blobs-helper (blob-children blob) 0)
+            (error 'number-of-child-blobs "Blob or data not right."))))))
+
+(define (update-blob blob assessment-result initial-blob
+                     number-of-child-blobs)
   "Return a new blob constructed on the basis of BLOB, with its score
 adapted according to ASSESSMENT-RESULT, its counter progressed, and its
 effects updated if INITIAL-BLOB contains 'tutorial key.."
@@ -197,7 +215,8 @@ effects updated if INITIAL-BLOB contains 'tutorial key.."
 	     (blob-parents blob)
 	     (blob-children blob)
              (modify-score (blob-score blob)
-                           assessment-result)
+                           assessment-result
+                           number-of-child-blobs)
              (progress-counter (blob-counter blob)
                                assessment-result)
              (blob-properties blob)
@@ -211,11 +230,13 @@ BLOB-EFFECTS otherwise."
   (let ((current (assoc key blob-effects)))
     (if current blob-effects (acons key #t blob-effects))))
 
-(define (modify-score old-score assessment-result)
+(define (modify-score old-score assessment-result number-of-child-blobs)
   "Returns a score modified by an algorithm on the basis of
 assessment-result, to take the place of old-score."
   (if assessment-result
-      (1+ old-score)
+      (+ old-score (if (< 0 number-of-child-blobs)
+                       (/ 1 number-of-child-blobs)
+                       1))
       old-score))
 
 (define (progress-counter old-counter-value assessment-result)
