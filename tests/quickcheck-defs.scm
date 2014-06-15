@@ -35,7 +35,9 @@
   #:export (
 	    $mk-rootset
             $mk-set
-	    $question
+            $mk-hashtree
+            $mk-hashmap
+            $question
 	    $solution
 	    $option
 	    $medii
@@ -47,7 +49,8 @@
 
 	    $scorecard
 	    $empty-scorecard
- 	    $blob
+            $mk-rootblob
+            $mk-blob-list
 
 	    $request
 	    $response
@@ -109,6 +112,14 @@ child-sets with each BASE_NUM of children."
             ($string)                                ; logo
             (($short-assoc $symbol $string))))       ; properties
 
+(define* ($mk-hashtree #:optional (input $mk-set))
+  "Return a randomised hashtree built of INPUT (should be $mk-set or
+$mk-rootset)."
+  ((@@ (guilecraft library-store) make-hashtree) (input)))
+
+(define* ($mk-hashmap #:optional (num-trees 1) (input $mk-set))
+  (($short-list (lambda () ($mk-hashtree input)) num-trees)))
+
 ;; FIXME: should randomly populate the media fields
 (define ($medii)
   "Return a randomised media record."
@@ -149,16 +160,44 @@ child-sets with each BASE_NUM of children."
 
 (define ($scorecard)
   "Return a randomised scorecard."
-  (make-scorecard (($short-list $blob))))
+  (make-scorecard (($short-list $mk-rootblob))))
 (define ($empty-scorecard)
   "Return an empty scorecard."
   (make-scorecard '()))
 
-(define ($blob)
-  "Return a randomised mod-blob."
-  (make-blob ($symbol) (list ($symbol)) (($short-list $symbol))
-             ($small) ($integer) (($short-assoc $symbol $string))
-             (($short-assoc $symbol $string))))
+(define* ($mk-rootblob #:optional (parent '()))
+  "Return a randomised blob with now children."
+  (make-blob ($symbol)                          ; id
+             (if parent (list parent) '())      ; parent
+             '()                                ; children
+             ($small)                           ; score
+             ($integer)                         ; counter
+             (($short-assoc $symbol $string))   ; properties
+             (($short-assoc $symbol $string)))) ; effects
+
+(define* ($mk-blob #:optional child_num (depth 1) (parent '()))
+  "Return a randomised blob containing DEPTH levels of children.  The final
+level consists of rootblobs.  If CHILD_NUM is a number, force $mk-blob to produce
+child-blobs with each CHILD_NUM of children."
+  (let ((id ($symbol)))
+    (make-blob id                                 ; id
+               (if (and parent (not (null? parent)))
+                   (list parent) '())             ; parent
+               (cond ((< depth 1)
+                      '())                    ; children
+                     ((= depth 1)
+                      (($short-list (lambda ()
+                                      ($mk-rootblob id))
+                                    child_num)))
+                     (else
+                      (($short-list (lambda ()
+                                      ($mk-blob child_num (1- depth) id))
+                                    child_num))))
+               ($small)                           ; score
+               ($integer)                         ; counter
+               (($short-assoc $symbol $string))   ; properties
+               (($short-assoc $symbol $string))))) ; effects
+
 
 ;;;;; Request Generators
 (define ($unk-rs)
@@ -222,7 +261,7 @@ KEY-GENERATOR and VALUE-GENERATOR"
 
 (define ($simple-tagged-list)
   "Return a random simple record (without without nested records)."
-  ((from-list (list (lambda () (record->list* ($blob)))
+  ((from-list (list (lambda () (record->list* ($mk-rootblob)))
                     (lambda () (record->list* ($id ($string))))))))
 
 (define ($tagged-list)

@@ -29,12 +29,6 @@
   #:use-module (ice-9 match)
   #:use-module (ice-9 vlist))
 
-(define ($mk-roothashtree)
-  "Return a randomised hashmap built of only rootsets."
-  ((@@ (guilecraft library-store) make-hashtree) ($mk-rootset)))
-(define ($mk-hashtree)
-  "Return a randomised hashmap built of only rootsets."
-  ((@@ (guilecraft library-store) make-hashtree) ($mk-set)))
 (define hashtree->blobs
   (@@ (guilecraft lounge-store) hashtree->blobs))
 (define hashmap->blobs
