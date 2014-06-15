@@ -37,6 +37,8 @@ dnl Check whether Artanis is installed; install otherwise.
 dnl GUILECRAFT_CHECK_ARTANIS
 dnl AM_CONDITIONAL([INSTALL_ARTANIS],
 dnl                [test "x$ac_cv_guilecraft_artanis_installed" = xno])
+dnl For now simply check whether it's already installed.
+GUILE_MODULE_REQUIRED([artanis artanis])
 
 dnl Locate libgcrypt & test it.
 AC_ARG_WITH([libgcrypt-prefix],
