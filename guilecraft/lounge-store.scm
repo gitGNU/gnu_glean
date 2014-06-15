@@ -631,6 +631,36 @@ key in profiles. Return #f otherwise."
   (define (qblob name parents children properties)
     (make-blob name parents children 0 0 properties '()))
   (define (children subtrees) (map caar subtrees))
+  (hashtree-map hashtree
+                (lambda (hash properties subtrees)
+                  (cons (qblob hash parents
+                               (children subtrees)
+                               properties)
+                        (flatten
+                         (map (lambda (subtree)
+                                (hashtree->blobs subtree (list hash)))
+                              subtrees))))
+                (lambda (hash properties)
+                  (list (qblob hash parents no-children properties)))
+                (const #f)))
+
+(define (hashtree-map hashtree branch-proc leaf-proc error-proc)
+  (match hashtree
+    (((hash . properties) subtrees)
+     (branch-proc hash properties subtrees))
+    (((hash . properties))
+     (leaf-proc hash properties))
+    (_ (error-proc))))
+
+(define* (old-hashtree->blobs hashtree #:optional (parents '()))
+  "Return a list of blobs by converting HASHTREE into blobs recursively."
+  ;; FIXME: this procedure is currently not tail-recursive. It is also an
+  ;; expensive operation in general and would benefit from being
+  ;; re-factored. A lot.
+  (define no-children '())
+  (define (qblob name parents children properties)
+    (make-blob name parents children 0 0 properties '()))
+  (define (children subtrees) (map caar subtrees))
   (match hashtree
     (((hash . properties) subtrees)
      (cons (qblob hash parents
