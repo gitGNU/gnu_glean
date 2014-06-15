@@ -55,18 +55,15 @@
 	    $request
 	    $response
 
-	    $alive-rq
-	    ;;$auth-rq
-	    ;;$auth-rs
-	    $chall-rq
-	    $chall-rs
-	    $eval-rq
-	    $eval-rs
-	    $ack-rs
-	    $neg-rs
-	    $unk-rs
-
-	    $quit-rq
+	    $aliveq
+ 	    $challq
+	    $challs
+	    $evalq
+	    $evals
+	    $acks
+	    $negs
+	    $unks
+	    $quitq
 
 	    $datum
 	    $record
@@ -200,36 +197,36 @@ child-blobs with each CHILD_NUM of children."
 
 
 ;;;;; Request Generators
-(define ($unk-rs)
+(define ($unks)
   "Return a randomised unk-response."
-  (unk-rs ($datum)))
-(define ($neg-rs)
+  (unks ($datum)))
+(define ($negs)
   "Return a randomised neg-response."
-  (neg-rs ($datum) ($symbol)))
-(define ($ack-rs)
+  (negs ($datum) ($symbol)))
+(define ($acks)
   "Return a randomised ack-response."
-  (ack-rs ($datum)))
+  (acks ($datum)))
 
-(define ($alive-rq)
-  "Return an $alive-rq."
-  (alive-rq))
+(define ($aliveq)
+  "Return an $aliveq."
+  (aliveq))
 
-(define ($eval-rq)
+(define ($evalq)
   "Return a randomised eval-request."
-  (eval-rq ($profile)))
-(define ($eval-rs)
+  (evalq ($profile)))
+(define ($evals)
   "Return a randomised eval-response."
-  (eval-rs ($profile) ($boolean)))
-(define ($chall-rq)
+  (evals ($profile) ($boolean)))
+(define ($challq)
   "Return a randomised chall-request."
-  (chall-rq ($profile)))
-(define ($chall-rs)
+  (challq ($profile)))
+(define ($challs)
   "Return a randomised chall-response."
-  (chall-rs ($profile) ($challenge)))
+  (challs ($profile) ($challenge)))
 
-(define ($quit-rq)
+(define ($quitq)
   "Return a quit-request."
-  (quit-rq))
+  (quitq))
 
 ;;;;; Extra Generators & Functions
 (define* ($short-list generator #:optional num_problems)
