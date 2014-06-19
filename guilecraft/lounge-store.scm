@@ -47,6 +47,7 @@
             lounge?
             lounge-profiles
             lounge-tokens
+            store-profile
             pdiff
             pdiff-hash
             pdiff-profile

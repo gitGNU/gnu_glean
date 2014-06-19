@@ -31,9 +31,13 @@
 (define-module (guilecraft lounge-filesystem)
   #:use-module (guilecraft config)
   #:use-module (guilecraft data-types gprofiles)
+  #:use-module (guilecraft lounge-store)
+  #:use-module (guilecraft monads)
   #:use-module (guilecraft utils)
+  #:use-module (ice-9 ftw)
   #:use-module (ice-9 vlist)
   #:use-module (ice-9 match)
+  #:use-module (srfi srfi-1)
   #:export (compile-lounge
             write-diff))
 
@@ -75,43 +79,40 @@ then ask BRICK to write itself to that folder, against TIME."
 to be written to disk in LNG-DIR. The return value is unspecified."
   (fire-kiln (make-brick diff) lng-dir time))
 
+
+;;;; Compile Lounge: initial loading of previous session data.
+;;; As we have stored the data as diffs enclosed in a list, loading the data
+;;; should be simple: simply read the data and pass the diff and pass it to
+;;; the normal processing procedure for a new diff: update-lounge.
+;;;
 ;;; General Method:
+;;; 
 ;;; - Traverse lounge dir.
-;;; - For each hash encountered, traverse and load data.
-;;; - Once all data is loaded and the relevance of the profile
-;;;   established (e.g. no burn-brick),
-;;; - feed result of this data profile producing procedures
-;;;   (make-profile, make-scorecard, update-scorecard etc.).
+;;; - For each hash-dir encountered, traverse it, open each file (ignoring
+;;; folders for now), read list, extract diff and pass to update-lounge.
 ;;; - Move to next hash.
 (define (compile-lounge lng-dir)
-  ;; Following to consider: 
-  ;; If a hash contains a burn-brick, ignore the hash.
-  ;;
-  ;; A hash could contain a link to a previous hash. If this is so we
-  ;; need to build the profile on the basis of current content and
-  ;; previous content. Either: checkpoint previous hash results in
-  ;; current hash (above) or traverse down, then build profile from
-  ;; there.  The lowest profile may already have been processed, as it
-  ;; will contain nothing to indicate that it is part of a compound
-  ;; profile at present (could be solved by adding a link to the new
-  ;; hash to the old hash).  In fact, at present, each lower level
-  ;; hash is already processed by the time we get to the later hashes,
-  ;; because, hopefully ftw walks the directory according to simple
-  ;; sort (i.e. older files are loaded first, because their filename
-  ;; is smaller).  This means that continuing to work on a profile
-  ;; should be as simple as locating that profile in the already
-  ;; loaded data, and changing its hash (?).
-  ;;
-  ;; When processing counters we need to consider #t/#f (to be passed
-  ;; to update-scorecard) and 0 values. The latter mean that the
-  ;; counter file we are considering is newly added to the scorecard
-  ;; -> create new entry in scorecard.  Using update-scorecard should
-  ;; take care of percolating the scores, as we add them, to non-root
-  ;; and crownsets.
-  ;;
-  ;; Loading actives files and counters files should be able to be
-  ;; done in parallel.
-  ;; 
-  ;; Perform ftw etc.
-  vlist-null)
+  (define (enter? . args) #t)
+  (define (leaf path stat result)
+    (cons path result))
+  (define (down path stat result) result)
+  (define (up path stat result) result)
+  (define (skip path stat result) result)
+  (define (error path stat errno result)
+    (format #t "~a\n~a\n~a\n~a\n" path stat errno result))
+
+  (call-with-values
+      (lambda ()
+        (file-system-fold enter? leaf down up skip error '() lng-dir))
+    (lambda (result overview)
+      (fold (lambda (filename result)
+              (match (with-input-from-file filename read)
+                ((diff stamp)
+                 (cdr (store-profile diff result)))
+                (_ (format #t "Failed to match: ~a\n" (basename filename))
+                   #f)))
+            vlist-null
+            (sort result (lambda (filepath1 filepath2)
+                           (string<? (basename filepath1)
+                                     (basename filepath2))))))))
 
