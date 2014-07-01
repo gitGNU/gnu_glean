@@ -28,6 +28,7 @@
 
 (define-module (guilecraft config)
   #:use-module (srfi srfi-9)
+  #:use-module (guilecraft config-utils)
   #:export (
             ;; Package Definition
             %guilecraft-package-name%
@@ -50,19 +51,6 @@
             %default-lounge%
             %default-client%
             %client.conf%
-            ;;; Web Client
-            %web-dirs%
-            %web.conf%
-            %web-configs%
-            %base-url%
-            %title%
-            %navigation%
-            %intro%
-            %footer%
-            ;;; REPL Client
-            %repl-dir%
-            %repl-config%
-            %repl.conf%
             ;; Library configuration
             %ignore-keywords%
             %library-config%
@@ -84,12 +72,6 @@
  	    %profile-directory%         ; obsolete (%lounge-dir)
             ;; External libraries
             %libgcrypt
-            ;; Config template manipulation
-            make-config
-            make-setting
-            config-target
-            config-name
-            config-write
             ))
 
 ;;;; Package Definition
@@ -163,32 +145,6 @@
 (define %default-client%  'repl)
 (define %client-log%      (string-append %log-dir%  "/client.log"))
 
-;;;;; Web Client configuration
-(define %web-dir%      (string-append %client-dir% "/web-client"))
-(define %web-data-dir% (string-append %web-dir% "/www"))
-(define %css-dir%      (string-append %web-data-dir% "/css"))
-(define %js-dir%       (string-append %web-data-dir% "/js"))
-(define %img-dir%      (string-append %web-data-dir% "/images"))
-(define %custom-css%   (string-append %css-dir% "/custom.css"))
-(define %custom-js%    (string-append %js-dir% "/custom.js"))
-
-(define %web.conf%     (string-append %web-dir% "/web.conf"))
-(define %web-dirs%     (list %web-dir% %css-dir% %js-dir% %img-dir%))
-;;(define %web-aux%      (list %web-config% %custom-css% %custom-js%))
-
-;; base URL from which we can fetch static files hosted by us.
-(define %base-url%        "http://localhost")
-(define %title%           "Guilecraft")
-(define %navigation%      "")
-(define %intro%           `((p  "Glean knowledge freely.")))
-(define %footer%          `(div (@ (class "container"))
-                                (p (@ (style "text-align:center;padding-top:1em"))
-                                   "Copyright © 2014 Alex Sassmannshausen")))
-
-;;;;; REPL Client configuration
-(define %repl-dir%      (string-append %client-dir% "/repl-client"))
-(define %repl.conf%     (string-append %repl-dir% "/repl.conf"))
-
 ;;;;; Deprecated
 ;; Socket for the modules server
 (define %module-socket-file%
@@ -197,61 +153,11 @@
 (define %profile-socket-file%
   (string-append %socket-dir% "/lounge.sock"))
 
-
 ;;;; External libraries
 (define %libgcrypt
   "@LIBGCRYPT@")
 
 
-;;;; Configuration File Management
-
-(define-record-type <configuration>
-  (make-config name target contents)
-  configuration?
-  (name     config-name     set-config-name)
-  (target   config-target   set-config-target)
-  (contents config-contents set-config-contents))
-
-(define-record-type <setting-element>
-  (make-setting name default docstring)
-  setting?
-  (name      setting-name      set-setting-name)
-  (default   setting-default   set-setting-default)
-  (docstring setting-docstring set-setting-docstring))
-
-(define* (config-write config)
-  (define (prep-setting value)
-    (cond ((string? value)
-           (string-append "\"" value "\""))
-          ((symbol? value)
-           (string-append "'" (symbol->string value)))
-          ((list? value)
-           (string-append "'" (object->string value)))
-          (else value)))
-  (define (setting-write setting)
-    (let ((docstring (setting-docstring setting)))
-      (if docstring
-          (format #t ";; ~a\n(define ~a ~a)\n"
-                  docstring
-                  (setting-name setting)
-                  (prep-setting (setting-default setting)))
-          (format #t "(define ~a ~a)\n"
-                  (setting-name setting)
-                  (prep-setting (setting-default setting))))))
-
-  (if (string? (config-target config))
-      (with-output-to-file (config-target config)
-        (lambda ()
-          (if (config-name config)
-              (format #t ";; ~a Configuration File\n\n"
-                      (config-name config))
-              (format #t "/* Custom code for the web client */"))
-          (for-each setting-write (config-contents config))))
-      (begin
-        (format #t ";; ~a Configuration File\n\n"
-                (config-name config))
-        (for-each setting-write (config-contents config)))))
-
 (define log-setting
   (make-setting "%log-level%" 'inform
                 (string-append
@@ -271,32 +177,6 @@
                                 "Default Lounge server to use.")
                  ,(make-setting "%default-library%" %default-library%
                                 "Default Library server to use."))))
-
-;; Web Config
-(define %web-config%
-  (make-config "Web" %web.conf%
-               `(,(make-setting "%base-url%" %base-url%
-                                "Web Client: Base URL for static files.")
-                 ,(make-setting "%title%" %title%
-                                "Web Client: Base title for all pages.")
-                 ,(make-setting "%navigation%" %navigation%
-                                "Web Client: Primary navigation links.")
-                 ,(make-setting "%intro%" %intro%
-                                "Web Client: Intro block content.")
-                 ,(make-setting "%footer%" %footer%
-                                "Web Client: Footer block content."))))
-;; Custom CSS / JS are simply empty by default.
-;; #f name values indicate non-scheme files.
-(define %custom-css%
-  (make-config #f %custom-css% '()))
-(define %custom-js%
-  (make-config #f %custom-js% '()))
-(define %web-configs%      (list %web-config% %custom-css% %custom-js%))
-
-;; REPL Config
-;; Just uses the basic client config for now.
-(define %repl-config%
-  (make-config "REPL" %repl.conf% `()))
 
 ;;;;; Lounge Configuration
 (define %lounge-config%

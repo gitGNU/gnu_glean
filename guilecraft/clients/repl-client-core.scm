@@ -28,24 +28,15 @@
 ;;;
 ;;;; Code:
 
-(define-module (guilecraft clients repl)
+(define-module (guilecraft clients repl-client-core)
   #:use-module (rnrs)
   #:use-module (guilecraft clients monadic-min)
   #:use-module (guilecraft monads)
+  #:use-module (guilecraft components)
   #:use-module (guilecraft config)
   #:use-module (guilecraft data-types sets)
   #:use-module (guilecraft utils)
-  #:export (
-            repl-client
-            register
-            login
-            delete
-            available
-            detail
-            activate
-            next
-            solve
-            ))
+  #:export (component))
 
 (define (repl-client)
   ((@ (system repl server) spawn-server))
@@ -222,3 +213,10 @@ Example: (suggest `(\"next\" . \"Retrieve the next challenge.\")
 (define help-solve
   (cons "solve \"your answer\""
         "Solve your current challenge."))
+
+(define component
+  (define-component
+    #:name        "repl-client"
+    #:provides    repl-client
+    #:directories '()
+    #:uses        (list (primary-config '()))))

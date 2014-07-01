@@ -29,17 +29,18 @@
 ;;;
 ;;;; Code:
 
-(define-module (guilecraft clients web web)
+(define-module (guilecraft clients web web-client-core)
   #:use-module (artanis artanis)
   #:use-module (guilecraft clients monadic-min)
   #:use-module (guilecraft clients web bootstrap)
+  #:use-module (guilecraft components)
   #:use-module (guilecraft config)
   #:use-module (guilecraft data-types sets)
   #:use-module (guilecraft monads)
   #:use-module (guilecraft utils)
   #:use-module (ice-9 match)
   #:use-module (web uri)
-  #:export (web-client))
+  #:export (component))
 
 ;; Make text more easily fit the 72columns
 (define (sa . args)
@@ -619,3 +620,43 @@ de-activated." 'success))
                               "Help  ^"))))))))
 (define* (footer-region)
   `(div (@ (id "footer")) ,%footer%))
+
+(define %base-url%        "http://localhost")
+(define %title%           "Guilecraft")
+(define %navigation%      "")
+(define %intro%           `((p  "Glean knowledge freely.")))
+(define %footer%          `(div (@ (class "container"))
+                                (p (@ (style "text-align:center;padding-top:1em"))
+                                   "Copyright © 2014 Alex Sassmannshausen")))
+
+(define component
+  (define-component
+    #:name        "web-client"
+    #:provides    web-client 
+    #:directories '("www" "www/js" "www/css" "www/images")
+    #:uses        (list
+                   (config #:name "custom.js"
+                           #:lang 'js
+                           #:settings '()
+                           #:path "www/js/custom.js")
+                   (config #:name "custom.css"
+                           #:lang 'css
+                           #:settings '()
+                           #:path "www/css/custom.css")
+                   (primary-config
+                    (list
+                     (setting
+                      #:name "%base-url%" #:default %base-url%
+                      #:docstring "Web Client: Base URL for static files.")
+                     (setting
+                      #:name  "%title%" #:default %title%
+                      #:docstring "Web Client: Base title for all pages.")
+                     (setting
+                      #:name  "%navigation%" #:default %navigation%
+                      #:docstring "Web Client: Primary navigation links.")
+                     (setting
+                      #:name  "%intro%" #:default %intro%
+                      #:docstring "Web Client: Intro block content.")
+                     (setting
+                      #:name  "%footer%" #:default %footer%
+                      #:docstring "Web Client: Footer block content."))))))

@@ -38,35 +38,16 @@
   #:use-module (tests test-suite)  ; In case of -t option: run
                                    ; test-suite
   #:use-module (guilecraft config)
+  #:use-module (guilecraft config-utils)
+  #:use-module (guilecraft components)
   #:use-module (guilecraft module-server)
   #:use-module (guilecraft profile-server)
   #:use-module (guilecraft library-store)
-  #:use-module (guilecraft clients repl)
-  #:use-module (guilecraft clients cli)
-  #:use-module (guilecraft clients web web)
   #:use-module (guilecraft utils)
   #:export (boot))
 
-;; Each entry in the clients assoc list should be an id paired with a list
-;; consisting of:
-;; - the procedure to launch the client,
-;; - a string or, a list of strings identifying configuration dirs that must
-;;   be ensured to exist during boot.
-;; - a <configuration> record, or a list of <configuration> records that we
-;;   identify configuration files we should ensure exist.
-;; - a string or a list of strings identifying configuration files that should
-;;   be loaded prior to starting the client.
-(define clients
-  `((repl . (,repl-client ,%repl-dir% ,%repl-config% ,%repl.conf%))
-    (web  . (,web-client  ,%web-dirs% ,%web-configs% ,%web.conf%))))
-(define (client? value)
-  (if (boolean? value)
-      value
-      (assq-ref clients (string->symbol value))))
-
 ;; Define the list of accepted options and their special properties
-(define *option-grammar* `((client (single-char #\c) (value optional)
-                                   (predicate ,client?))
+(define *option-grammar* `((client (single-char #\c) (value optional))
                            (config (value #t))
                            (export (single-char #\e) (value #t))
                            (help (single-char #\h) (value #f))
@@ -151,26 +132,22 @@ Options will be surrounded by square brackets if optional."
             (else (ensure-user-dirs %client-dir%)
                   (ensure-config    %client-config%)
                   (load-config      %client.conf%)
-                  (client (option-ref options 'client #f)
-                          %default-client%))))))
+                  ;; Simply apply the thunk returned by client.
+                  ;; core_root Should be derived from config: either env or
+                  ;; result of ./configure.
+                  ((get-client (getenv "CORE_ROOT")
+                               %guilecraft-dir%
+                               (if (option-ref options 'client #f)
+                                   (option-ref options 'client #f)
+                                   %default-client%))))))))
 
-(define (client client default)
-  (let ((selected (if (boolean? client)
-                      default
-                      (string->symbol client))))
-    (format #t "Client: ~a\nDefault: ~a\n" selected default)
-    (match (assq-ref clients selected)
-      ((proc dirs files configs)
-       (if (list? dirs)                 ; Build client dirs
-           (for-each ensure-user-dirs dirs)
-           (ensure-user-dirs dirs))
-       (if (list? files)                ; Build client files
-           (for-each ensure-config files)
-           (ensure-config files))
-       (if (list? configs)              ; Load client configs
-           (for-each load-config configs)
-           (load-config configs))
-       (proc)))))
+(define (get-client core-root extensions-root default)
+  ((component-node core-root
+                   (string-append core-root "/guilecraft/clients")
+                   extensions-root
+                   (string-append extensions-root "/clients")
+                   default)
+   'get))
 
 ;;; Just a place-holder
 (define (main-loop)
@@ -179,23 +156,3 @@ Options will be surrounded by square brackets if optional."
     ;; for now we drop into read, but we want to drop into server
     ;; listening mode.
     (read)))
-
-(define (ensure-user-dirs . dirs)
-  (for-each mkdir-p dirs))
-
-(define (ensure-config config)
-  (if (access? (config-target config) R_OK)
-      (format #t "~a configuration exists.\n" (config-name config))
-      (begin
-        (format #t "~a configuration is being created… "
-                (config-name config))
-        (config-write config)
-        (format #t "[Done]\n"))))
-
-(define (load-config config)
-  ;; Parse optional root config-file
-  (let ((config-module (resolve-module '(guilecraft config))))
-    (save-module-excursion
-     (lambda ()
-       (set-current-module config-module)
-       (primitive-load config)))))
