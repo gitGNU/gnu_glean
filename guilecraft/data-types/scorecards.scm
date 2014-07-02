@@ -133,9 +133,13 @@ blobhash, in SCORECARD. Otherwise return #f."
 smaller than blob2."
   (cond ((not (and (blob? blob2) (blob? blob1)))
          (error 'lower-score? "blob1 or blob2 not a blob."))
-        ((dummy-blob? blob1) #f) ;; dummy blob is always larger
-        ((property-or-effect? 'tutorial blob1) #t)
-        ((property-or-effect? 'tutorial blob2) #f)
+        ((property-or-effect? 'tutorial blob1) ; considering tutorials…
+         (cond ((complete-tutorial? blob1) #f) ; blob1: completed tutorial
+               ((and (property-or-effect? 'tutorial blob2)
+                     (> (blob-score blob2) (blob-score blob1)))
+                #f)                   ; blob2: tutorial & already in progress.
+               (else #t)))            ; blob1: incomplete tutorial
+        ((dummy-blob? blob1) #f);; dummy blob is always larger
         ((> (blob-score blob1) (blob-score blob2)) #f) ;; if blob1 is larger; false.
         (else #t)))
 
@@ -220,15 +224,38 @@ effects updated if INITIAL-BLOB contains 'tutorial key.."
              (progress-counter (blob-counter blob)
                                assessment-result)
              (blob-properties blob)
-             (if (property-or-effect? 'tutorial initial-blob)
-                 (add-effect 'tutorial (blob-effects blob))
-                 (blob-effects blob))))
+             (consider-effects/properties blob assessment-result initial-blob
+                                          number-of-child-blobs)))
+
+(define (consider-effects/properties blob assessment-result initial-blob
+                                     number-of-child-blobs)
+  "Specialized dispatch to create blob-effects on the basis of the blob's
+current context, and properties. Returns a blob-effects suitable assoc-list."
+  (cond ((and (property-or-effect? 'tutorial initial-blob)
+              (blob-score-completed-tutorial? (modify-score (blob-score blob)
+                                                            assessment-result
+                                                            number-of-child-blobs)))
+         (remove-effect 'tutorial (blob-effects blob)))
+        ((and (property-or-effect? 'tutorial initial-blob)
+              (incomplete-tutorial? initial-blob))
+         (add-effect 'tutorial (blob-effects blob)))
+        (else (blob-effects blob))))
 
 (define (add-effect key blob-effects)
   "Return a new blob-effects if BLOB-EFFECTS does not contain KEY. Return
 BLOB-EFFECTS otherwise."
   (let ((current (assoc key blob-effects)))
     (if current blob-effects (acons key #t blob-effects))))
+
+(define (remove-effect key blob-effects)
+  "Return a new blob-effects with KEY removed, if BLOB-EFFECTS contains
+KEY. Return BLOB-EFFECTS otherwise."
+  (let ((current (assoc key blob-effects)))
+    (if current
+        (filter (lambda (acons-pair)
+                  (not (eqv? key (car acons-pair))))
+                blob-effects)
+        blob-effects)))
 
 (define (modify-score old-score assessment-result number-of-child-blobs)
   "Returns a score modified by an algorithm on the basis of
@@ -243,3 +270,14 @@ assessment-result, to take the place of old-score."
   "Returns the increment of counter-value or 0 if counter-value
 is equal to or greater the number of problems in the gset."
   (1+ old-counter-value))
+
+;;;;; Tutorial Property Considerations
+(define (blob-score-completed-tutorial? score) (>= score 1))
+(define (complete-tutorial? blob)
+  "Return #t if blob is a tutorial and it is \"complete\", i.e. it and all
+children have been solved at least once. Return #f if it is not yet complete."
+  (blob-score-completed-tutorial? (blob-score blob)))
+(define (incomplete-tutorial? blob)
+  "Return #t if blob is a tutorial and it is \"incomplete\", i.e. it or one
+of its children have not yet been solved. Return #f if it is complete."
+  (not (blob-score-completed-tutorial? (blob-score blob))))
