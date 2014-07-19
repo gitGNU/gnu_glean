@@ -1,7 +1,7 @@
 ;;; guilecraft --- learning the world using Guile.         -*- coding: utf-8 -*-
 
 (define-module (store test)
-  #:use-module (guilecraft data-types sets)
+  #:use-module (guilecraft core-templates)
   #:export (test-module))
 
 (define test-module

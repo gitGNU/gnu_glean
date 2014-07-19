@@ -1,7 +1,7 @@
 ;;; guilecraft --- learning the world using Guile.         -*- coding: utf-8 -*-
 
 (define-module (store git)
-  #:use-module (guilecraft data-types sets)
+  #:use-module (guilecraft core-templates)
   #:export (git-module))
 
 (define git-init

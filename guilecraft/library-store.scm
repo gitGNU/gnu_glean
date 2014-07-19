@@ -39,6 +39,7 @@
 (define-module (guilecraft library-store)
   #:use-module (guilecraft base32)
   #:use-module (guilecraft config)
+  #:use-module (guilecraft core-templates)
   #:use-module (guilecraft data-types scorecards)
   #:use-module (guilecraft data-types sets)
   #:use-module (guilecraft hash)
@@ -196,7 +197,8 @@ represented by LIBRARY-HASH-PAIR."
             "Return all sets defined in MODULE."
             (module-map (lambda (name value)
                           name ;; ignored
-                          (variable-ref value))
+                          (resolve-set
+                           (variable-ref value)))
                         module))
 
           (fold (lambda (module library)

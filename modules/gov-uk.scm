@@ -1,8 +1,26 @@
 ;;; guilecraft --- learning the world using Guile.         -*- coding: utf-8 -*-
 
 (define-module (store gov-uk)
-  #:use-module (guilecraft data-types sets)
+  #:use-module (guilecraft core-templates)
   #:export (gov-uk-module))
+
+(define layout
+  (tutorial 'layout
+            #:name "GOV.UK General Layout"
+            #:contents
+            (list (problem (q "The general layout of..."
+                              (media #:urls
+                                     '("https://www.gov.uk/")))
+                           #f))))
+(define complete
+  (tutorial 'complete
+            #:name "GOV.UK Completed Tutorial"
+            #:contents
+            (list (problem (q "Congratulations! You have completed the
+GOV.UK tutorial!"
+                              (media #:images
+                                     '("http://localhost/images/ptfs/tick.png")))
+                           #f))))
 
 (define tutorial
   (tutorial 'tutorial
@@ -11,10 +29,7 @@
             #:synopsis "Learn your way around the www.gov.uk portal: \
 find out about its most important features and how to use them."
             #:contents
-            (list (problem (q "The general layout of..."
-                              (media #:urls
-                                     '("https://www.gov.uk/")))
-                           #f))))
+            (list layout complete)))
 
 (define gov-uk-module
   (module
