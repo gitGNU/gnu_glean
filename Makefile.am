@@ -34,10 +34,11 @@ MODULES =					\
   guilecraft/boot.scm				\
   guilecraft/clients/cli.scm			\
   guilecraft/clients/monadic-min.scm		\
-  guilecraft/clients/repl.scm			\
-  guilecraft/clients/web/web.scm		\
+  guilecraft/clients/repl-client-core.scm	\
+  guilecraft/clients/web/web-client-core.scm	\
   guilecraft/clients/web/bootstrap.scm		\
   guilecraft/comtools.scm			\
+  guilecraft/core-templates.scm			\
   guilecraft/data-manager.scm			\
   guilecraft/data-types/base-requests.scm	\
   guilecraft/data-types/gprofiles.scm		\
