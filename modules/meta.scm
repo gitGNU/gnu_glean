@@ -16,5 +16,5 @@
     #:description "Long Description: background on git, introductory text"
     #:creator "Alex Sassmannshausen"
     #:attribution (list (media #:text "Git man pages & website"))
-    #:contents `(,git-gmodule ,test-module)
+    #:contents `(,git-module ,test-module)
     #:resources (list (media #:urls '("http://www.git-scm.com")))))
