@@ -570,7 +570,7 @@ identified by CURRENT-BLOBHASH. Otherwise return the latter blob."
                 (active-module-hashes
                  (profile-active-modules profile))))))
     (if (dummy-blob? selected-blob)
-        (throw 'no-blob-found-in-scorecard!)
+        #f
         (cons (blob-hash selected-blob) (blob-counter selected-blob)))))
 
 (define (name-taken? name profiles)
