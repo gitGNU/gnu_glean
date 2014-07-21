@@ -72,6 +72,7 @@
             state-tk
             state-lng
             state-lib
+            mlogger
             )
   #:replace (imported-modules
              compiled-modules))
@@ -358,6 +359,32 @@ applying MVALUE to MPROC."
 ;; $84 = (631260 . 3947)
 ;;
 ;; I do not even know how to start thinking of this without the monad!
+
+;;;; Logging for monads
+;;
+;; mlogger implements an approach to logging in monads.  It takes a predicate
+;; and a dictionary, after which, for every call to it (for instance from
+;; within a monadic bind procedure), it will apply the predicate to supplied
+;; values and if it passes, pass the value to the dictionary.
+;;
+;; The dictionary should as a result return 3 values:
+;; - source (e.g. procedure name of the procedure causing the value currently
+;;   being logged)
+;; - message (e.g. an informative string)
+;; - value (e.g. a value to assist in interpreting the situation)
+
+(define (mlogger predicate dictionary-proc)
+  "Return a procedure which, when invoked, will return messages according to
+patterns looked up against DICTIONARY-PROC."
+  (lambda* (obj #:optional (level 1))
+    "Print a meaningful log message derived from the context of the monadic
+stateful."
+    (if (> level 9) (format #t "\n-- Detailed Log --\n~a\n\n" obj))
+    (if (predicate obj)
+        (match (dictionary-proc obj level)
+          ((src msg val) (format #t "[~a]\t~a ~a.\n" src msg val)))
+        (format #t
+                "MLOGGER: obj does not conform to expected predicate.\n"))))
 
 
 ;;;; Monad Tests

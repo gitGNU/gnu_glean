@@ -101,6 +101,62 @@
 of 'unimportant."
   (stateful (list value) state))
 
+(define (lounge-monad-dict stateful level)
+  (match (car (result stateful))
+    ((? token? tk)  (list 'authenticate "Token:" tk)) ; authenticate
+    (($ <lounge> profiles tks)                        ; fetch-lounge
+     (list 'fetch-lounge "Lounge:"
+           (string-append (number->string (vlist-length profiles))
+                          " Profile(s) & "
+                          (number->string (vlist-length tks))
+                          " Token(s)")))
+    (((? blobhash?) . (? number?))
+     (list 'hash/counter-pair "Challenge:" (car (result stateful))))
+    (((? string? name) (? string? lng) (? string? lib) ; view-profile
+      (? list? active-modules))
+     (list 'view-profile "Profile:"
+           (if (> level 5) 
+               (string-join (list name lng lib
+                                  (object->string active-modules))
+                            ", ")
+               name)))
+    (#f
+     (list 'modify-profile "Updated:" 'ok))       ; modify-profile
+    ('purge-ok
+     (list 'purge-profile "Purged:" 'ok))
+    (('diff (? string?) 'score ((? blobhash?) . (? boolean? evaluation)))
+     (list 'scorecard-diff "Updating Scorecard:" evaluation))
+    (('diff (? string?) 'meta (name #t lng lib #f))
+     (list 'register-profile "Registering:" name))
+    (('diff (? string?) 'meta ((? string? name) (? boolean?) #f #f new-phash))
+     (list 'modify-profile "Updating name:" name))
+    (('diff (? string?) 'meta (#f #t #f #f new-phash))
+     (list 'modify-profile "Updating password:" new-phash))
+    (('diff (? string?) 'meta (#f #f #f (? string? lib) #f))
+     (list 'modify-profile "Updating library:" lib))
+    (('diff (? string?) 'meta ())
+     (list 'delete-profile "Deleting:" 'ok))
+    (('diff (? string?) 'active-modules ((? pair?) ...))
+     (list 'modify-profile "Activating:" 'pairs))
+    (('diff (? string?) 'active-modules ((? symbol?) (? pair?) ...))
+     (list 'modify-profile "De-Activating:" 'pairs))
+    (('diff (? string?) 'hashmap hashmap)
+     (list 'modify-profile "Enabling:" hashmap))
+    ((? profile?)
+     (list 'update-lounge "Modification:" 'ok))
+    ((? nothing? noth)
+     (let* ((id  (nothing-id noth))   ; Nothing msg
+            (src (match id            ; Deduce src from id
+                   ('username-taken 'register-profile)
+                   ('unknown-user   'login)
+                   ('invalid-token  'authenticate)
+                   (_ 'unknown))))
+       (list src "Nothing:"
+             (if (> level 5)
+                 (cons id (nothing-context noth))
+                 id))))               ; -> log msg.
+    (_ (list 'unknown "Result:" stateful))))
+
 ;; synonym for result, to take into account nothing possibility.
 (define (extract st8teful)
   "Retrieve the result from ST8TEFUL, taking into account nothings. If
@@ -129,7 +185,7 @@ applying MVALUE to MPROC."
   (lambda (lng-dir)
     (let* ((new-stateful (mvalue lng-dir)) ; generate next stateful
            (reslt        (result new-stateful)))
-      (format #t "Stateful: ~a\n" new-stateful)
+      ((mlogger stateful? lounge-monad-dict) new-stateful)
       (cond ((nothing? (car reslt)) (car reslt))
             ;; As lounge should never be modified by mvalue (that
             ;; would mean that lounge logic would be carrying out
@@ -314,7 +370,8 @@ the basis of DIFF. The return value is irrelevant."
                (_ (error "lounge -- Cache unsuccessfull."))))
             ;; Delete Token (Delete Profile step 2)
             ((eqv? operation 'purge)
-             (set! tokens (vhash-delete token tokens)))
+             (set! tokens (vhash-delete token tokens))
+             'purge-ok)
             ;; Authenticate
             ((token?        operation)
              (let ((tk-pair (renew-tk operation
