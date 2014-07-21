@@ -167,7 +167,7 @@ PARTS into one 'informational problem' each.  Each string thus represents a
 segment in the module.  Finally, the optional synopsis will provide a synopsis
 for this 'tutorial chapter'."
   (define (parts->problems parts)
-    (map (lambda (string) (problem string #f)) parts))
+    (map (lambda (string) (problem (q string) #f)) parts))
   (define (monadic-check-name obj)
     (lambda () (validate-name obj)))
   (define (monadic-check-parts obj)
@@ -201,7 +201,7 @@ is not provided a generic completion message will be provided."
                                         keywords creator attribution resources
                                         logo))
         (properties (monadic-check-properties properties 'tutorial))
-        (contents   (monadic-check-contents chapters))
+        (contents   (monadic-check-contents (append chapters (list completion))))
         (set        (transient-set meta properties contents)))
      (return set))))
 
