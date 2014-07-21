@@ -418,18 +418,24 @@ and the rnrs records definition."
 (define (rootset? set)
   "Return #t if set-contents contains problems (which means it's a
 rootset). #f otherwise."
-  (match (set-contents set)
-    ((? null?) #t)
-    (((? problem?) ...) #t)
-    (_ #f)))
+  (if (set? set)
+      (match (set-contents set)
+        ((? null?) #t)
+        (((? problem?) ...) #t)
+        (_ #f))
+      #f))
 (define (module? set)
   "Return #t if set is a module, #f otherwise."
-  (let ((props (assoc 'module (set-properties set))))
-    (and props (cdr props))))
+  (if (set? set)
+      (let ((props (assoc 'module (set-properties set))))
+        (and props (cdr props)))
+      #f))
 (define (tutorial? set)
   "Return #t if set is a tutorial, #f otherwise."
-  (let ((props (assoc 'tutorial (set-properties set))))
-    (and props (cdr props))))
+  (if (set? set)
+      (let ((props (assoc 'tutorial (set-properties set))))
+        (and props (cdr props)))
+      #f))
 
 ;;;;; Validators
 ;;;; VALIDATOR and VALIDATE work together to try to detect mistakes in
