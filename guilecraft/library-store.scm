@@ -76,8 +76,15 @@
   library?
   (catalogue library-cat)
   (reference library-ref))
+
 (define (empty-library)
   (library vlist-null vlist-null))
+
+(define (empty-library? obj)
+  (and (library? obj)
+       (vlist-null? (library-cat obj))
+       (vlist-null? (library-ref obj))))
+
 (define (pretty-print-library lib)
   (define (comp-string vlist . set?)
     (vlist-map (lambda (cat-entry)
@@ -195,19 +202,40 @@ represented by LIBRARY-HASH-PAIR."
           "Return the library vhash from the sets in LIBRARY-MODULES."
           (define (sets-from-module module)
             "Return all sets defined in MODULE."
-            (module-map (lambda (name value)
-                          name ;; ignored
-                          (resolve-set
-                           (variable-ref value)))
-                        module))
+            (filter (lambda (set)
+                      (if (module? set)
+                          set
+                          (begin
+                            (format #t "~a: not a module, eliminating."
+                                    (cond ((set? set) (set-name set))
+                                          ((nothing? set) 'nothing)
+                                          (else set)))
+                            #f)))
+                    (module-map
+                     (lambda (name value)
+                       (format #t "Loading ~a..." name)
+                       (let ((maybe (resolve-set (variable-ref value))))
+                         (if (set? maybe)
+                             (format #t "[success]\n")
+                             (format #t "[failure]\n"))
+                         maybe))
+                     (module-public-interface module))))
 
           (fold (lambda (module library)
                   (fold library-cons
                         library                     ; library thus far
                         (sets-from-module module))) ; these sets
                 (empty-library)                     ; new library
-                (library-modules library-dir)))     ; set src files
+                ;; If cached-library is not empty then we must force a reload
+                ;; of modules to be loaded as glean will be using cached
+                ;; modules otherwise.
+                (if (empty-library? cached-library) ; set module objects
+                    (library-modules library-dir)
+                    (filter-map (lambda (module)
+                                  (false-if-exception (reload-module module)))
+                                (library-modules library-dir)))))
 
+        ;; If LIBRARY-HASH has not changed, return cached library.
         (if (bytevector=? library-hash hash)
             cached-library
             (begin (set! hash           library-hash)
@@ -482,7 +510,7 @@ it is known in LIBRARY-PAIR."
   (vhash-fold proc init vhash))
 
 (define (library-modules library-dir)
-  "Return the list of modules that provide packages for the distribution."
+  "Return the list of modules that provide content for the library."
   (define not-slash
     (char-set-complement (char-set #\/)))
   (define (data-files library-dir)
@@ -513,9 +541,9 @@ it is known in LIBRARY-PAIR."
                 (let ((name (map string->symbol
                                  (string-tokenize (string-drop-right path 4)
                                                   not-slash))))
-                  (if (not (%search-load-path (symbol->string (cadr name))))
+                  (if (not (member (dirname library-dir) %load-path))
                       (add-to-load-path (dirname library-dir)))
-                  (false-if-exception (resolve-interface name))))
+                  (false-if-exception (resolve-module name))))
               (data-files library-dir)))
 
 
@@ -562,10 +590,13 @@ all of SET's children."
   (define (hashtraverse-set set)
     (cond ((rootset? set)
            (symbol->string (rootset-hash set)))
-          (else (apply sha256-symbol
-                       (cons (symbol->string (set-id set))
+          ((set? set)
+           (apply sha256-symbol
+                  (cons (symbol->string (set-id set))
                              (map hashtraverse-set
-                                  (set-contents set)))))))
+                                  (set-contents set)))))
+          (else
+           (error "HASHTRAVERSE-SET -- SET is not a set" set))))
   (hashtraverse-set set))
 
 (define (rootset-hash set)
