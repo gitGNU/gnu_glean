@@ -344,7 +344,7 @@ ST8 will wrap any links part of the carousel."
          `(tr
            ,(if active
                 `((td (input (@ (type "checkbox")
-                                (name ,hash)) " ")))
+                                (name ,(symbol->string hash))) " ")))
                 " ")
            (td ,(medium-logo logo name))
            (td (p (a (@ (href ,(wrap st8 "/detail"
