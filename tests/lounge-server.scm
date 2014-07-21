@@ -152,9 +152,6 @@
                                       (request (authq %nname %npass)))))
                     (dels (server-dispatcher (request (delq tk)))))
                (and (acks? dels)
-                    (delq? (ack-orig dels))
-                    (let ((lng (car (result ((fetch-lounge) "")))))
-                      (and (vlist-null? (lounge-profiles lng))
-                           (vlist-null? (lounge-tokens   lng)))))))
+                    (delq? (ack-orig dels)))))
 
 (test-end "lounge-server")

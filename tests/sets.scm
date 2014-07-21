@@ -23,6 +23,7 @@
   #:use-module (srfi srfi-64)      ; Provide test suite
   #:use-module (quickcheck quickcheck)
   #:use-module (tests quickcheck-defs)
+  #:use-module (guilecraft core-templates)
   #:use-module (guilecraft data-types sets))
 
 (define ($module)
