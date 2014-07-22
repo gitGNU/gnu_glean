@@ -130,18 +130,28 @@ blobhash, in SCORECARD. Otherwise return #f."
 (define (lower-score? blob1 blob2)
   "Return #t if blob1's score is lower than that of blob2, or if blob1 has the
 'tutorial property or effect. Return #f if blob1 is dummy-blob, or if its
-smaller than blob2."
-  (cond ((not (and (blob? blob2) (blob? blob1)))
-         (error 'lower-score? "blob1 or blob2 not a blob."))
-        ((property-or-effect? 'tutorial blob1) ; considering tutorials…
-         (cond ((complete-tutorial? blob1) #f) ; blob1: completed tutorial
-               ((and (property-or-effect? 'tutorial blob2)
-                     (> (blob-score blob2) (blob-score blob1)))
-                #f)                   ; blob2: tutorial & already in progress.
-               (else #t)))            ; blob1: incomplete tutorial
-        ((dummy-blob? blob1) #f);; dummy blob is always larger
-        ((> (blob-score blob1) (blob-score blob2)) #f) ;; if blob1 is larger; false.
-        (else #t)))
+larger than blob2."
+  ;; FIXME: It would make more sense for this procedure to return the higher
+  ;; priority blob (lower score, or active tutorial), rather than return #t or
+  ;; #f.  Or rather, it would make more sense for the procedure that calls
+  ;; this to call a procedure that works as described above.
+  (let ((log #f)
+        (res (cond ((not (and (blob? blob2) (blob? blob1)))
+                    (error "lower-score? -- invalid blob1/2." blob1 blob2))
+                   ((tutorial-in-progress? blob2)
+                    (cons  "blob2 in progress. -> defer." #f))
+                   ((incomplete-tutorial? blob1)
+                    (cons "blob1 incomplete! -> blob1." #t))
+                   ((complete-tutorial? blob1)
+                    (cons "blob1 is complete! -> defer."#f))
+                   ((dummy-blob? blob1)
+                    (cons "blob1 is a dummy. -> defer." #f))
+                   ((> (blob-score blob1) (blob-score blob2))
+                    (cons "blob1 is bigger -> defer." #f))
+                   (else
+                    (cons "blob1 is smaller! -> blob1." #t)))))
+    (if log (format #t "~a\n" (car res)))
+    (cdr res)))
 
 (define (property-or-effect? key blob)
   "Return #t if property or effect identified by KEY is active in BLOB, #f
@@ -273,11 +283,22 @@ is equal to or greater the number of problems in the gset."
 
 ;;;;; Tutorial Property Considerations
 (define (blob-score-completed-tutorial? score) (>= score 1))
+
 (define (complete-tutorial? blob)
-  "Return #t if blob is a tutorial and it is \"complete\", i.e. it and all
+  "Return #t if BLOB is a tutorial and it is \"complete\", i.e. it and all
 children have been solved at least once. Return #f if it is not yet complete."
-  (blob-score-completed-tutorial? (blob-score blob)))
+  (and (property-or-effect? 'tutorial blob)
+       (blob-score-completed-tutorial? (blob-score blob))))
+
 (define (incomplete-tutorial? blob)
-  "Return #t if blob is a tutorial and it is \"incomplete\", i.e. it or one
+  "Return #t if BLOB is a tutorial and it is \"incomplete\", i.e. it or one
 of its children have not yet been solved. Return #f if it is complete."
-  (not (blob-score-completed-tutorial? (blob-score blob))))
+  (and (property-or-effect? 'tutorial blob)
+       (not (blob-score-completed-tutorial? (blob-score blob)))))
+
+(define (tutorial-in-progress? blob)
+  "Return #t if BLOB is a tutorial and it is currently in progress, #f
+otherwise."
+  (and (property-or-effect? 'tutorial blob) ; is tutorial
+       (> (blob-score blob) 0)              ; tutorial started
+       (incomplete-tutorial? blob)))        ; tutorial not complete.
