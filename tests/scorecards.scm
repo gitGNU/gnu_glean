@@ -1,4 +1,4 @@
-;;; guilecraft --- fast learning tool.         -*- coding: utf-8 -*-
+;;; glean --- fast learning tool.         -*- coding: utf-8 -*-
 
 ;; Copyright (C) 2008, 2010, 2012 Alex Sassmannshausen
 
@@ -26,17 +26,17 @@
   #:use-module (quickcheck quickcheck)
   #:use-module (tests quickcheck-defs)
 
-  #:use-module (guilecraft utils)
-  #:use-module (guilecraft data-types scorecards))
+  #:use-module (glean utils)
+  #:use-module (glean data-types scorecards))
 
 (define number-of-child-blobs
-  (@@ (guilecraft data-types scorecards) number-of-child-blobs))
+  (@@ (glean data-types scorecards) number-of-child-blobs))
 (define hashmap->blobs
-  (@@ (guilecraft lounge-store) hashmap->blobs))
+  (@@ (glean lounge-store) hashmap->blobs))
 (define make-hashtree
-  (@@ (guilecraft library-store) make-hashtree))
+  (@@ (glean library-store) make-hashtree))
 (define hashtree-map
-  (@@ (guilecraft lounge-store) hashtree-map))
+  (@@ (glean lounge-store) hashtree-map))
 
 (define (exp-growth num depth)
   (define (helper num depth total)
@@ -87,7 +87,7 @@ INPUT."
               50 (lambda () (lambda () ($mk-set 2 2)))))
 
 (define modify-score
-  (@@ (guilecraft data-types scorecards) modify-score))
+  (@@ (glean data-types scorecards) modify-score))
 
 (define (mod-score-tester generator assess)
   "Check that scorecard updates match individual score-modify results for

@@ -1,4 +1,4 @@
-;;; guilecraft --- fast learning tool.         -*- coding: utf-8 -*-
+;;; glean --- fast learning tool.         -*- coding: utf-8 -*-
 
 ;; Copyright (C) 2008, 2010, 2012 Alex Sassmannshausen
 
@@ -21,18 +21,18 @@
 
 (define-module (tests lounge-store)
   #:use-module (srfi srfi-64)      ; Provide test suite
-  #:use-module (guilecraft config)
-  #:use-module (guilecraft data-types scorecards)
-  #:use-module (guilecraft lounge-store)
+  #:use-module (glean config)
+  #:use-module (glean data-types scorecards)
+  #:use-module (glean lounge-store)
   #:use-module (quickcheck quickcheck)
   #:use-module (tests quickcheck-defs)
   #:use-module (ice-9 match)
   #:use-module (ice-9 vlist))
 
 (define hashtree->blobs
-  (@@ (guilecraft lounge-store) hashtree->blobs))
+  (@@ (glean lounge-store) hashtree->blobs))
 (define hashmap->blobs
-  (@@ (guilecraft lounge-store) hashmap->blobs))
+  (@@ (glean lounge-store) hashmap->blobs))
 
 (test-begin "lounge-store")
 

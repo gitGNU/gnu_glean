@@ -1,7 +1,7 @@
-;;; guilecraft --- learning the world using Guile.         -*- coding: utf-8 -*-
+;;; glean --- learning the world using Guile.         -*- coding: utf-8 -*-
 
 (define-module (store meta)
-  #:use-module (guilecraft core-templates)
+  #:use-module (glean core-templates)
   #:use-module (store git)
   #:use-module (store test)
   #:export (meta-gmodule))

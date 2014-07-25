@@ -1,4 +1,4 @@
-;;; guilecraft --- fast learning tool.         -*- coding: utf-8 -*-
+;;; glean --- fast learning tool.         -*- coding: utf-8 -*-
 
 ;; Copyright (C) 2008, 2010, 2012 Alex Sassmannshausen
 
@@ -20,10 +20,10 @@
 ;; Boston, MA  02111-1307,  USA       gnu@gnu.org
 
 (define-module (tests test-utils)
-  #:use-module (guilecraft config)
-  #:use-module (guilecraft data-types sets)
-  #:use-module (guilecraft data-types gprofiles)
-  #:use-module (guilecraft data-types scorecards)
+  #:use-module (glean config)
+  #:use-module (glean data-types sets)
+  #:use-module (glean data-types gprofiles)
+  #:use-module (glean data-types scorecards)
 
   #:export (test-gmodule
             test-gprofile

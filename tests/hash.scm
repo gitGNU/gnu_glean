@@ -1,4 +1,4 @@
-;;; guilecraft --- fast learning tool.         -*- coding: utf-8 -*-
+;;; glean --- fast learning tool.         -*- coding: utf-8 -*-
 
 ;;; Copyright © 2013, 2014 Ludovic Courtès <ludo@gnu.org>
 ;;; Alex Sassmannshausen <alex.sassmannshausen@gmail.com>
@@ -21,15 +21,15 @@
 ;; Boston, MA  02111-1307,  USA       gnu@gnu.org
 
 (define-module (tests hash)
-  #:use-module (guilecraft hash)
-  #:use-module (guilecraft base32)
+  #:use-module (glean hash)
+  #:use-module (glean base32)
   #:use-module (srfi srfi-1)
   #:use-module (srfi srfi-11)
   #:use-module (srfi srfi-64)
   #:use-module (rnrs bytevectors)
   #:use-module (rnrs io ports))
 
-;; Test the (guilecraft hash) module.
+;; Test the (glean hash) module.
 
 (define %empty-sha256
   ;; SHA256 hash of the empty string.

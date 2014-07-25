@@ -1,23 +1,23 @@
 #!/bin/sh
 
-# guilecraft --- fast learning tool.         -*- coding: utf-8 -*-
+# glean --- fast learning tool.         -*- coding: utf-8 -*-
 #
 # Copyright © 2014 Alex Sassmannshausen <alex.sassmannshausen@gmail.com>
 #
-# This file is part of Guilecraft.
+# This file is part of Glean.
 #
-# Guilecraft is free software; you can redistribute it and/or modify it
+# Glean is free software; you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
 # Free Software Foundation; either version 3 of the License, or (at your
 # option) any later version.
 #
-# Guilecraft is distributed in the hope that it will be useful,
+# Glean is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
 #
 # You should have received a copy of the GNU General Public License
-# along with Guilecraft; if not, contact:
+# along with Glean; if not, contact:
 #
 # Free Software Foundation           Voice:  +1-617-542-5942
 # 59 Temple Place - Suite 330        Fax:    +1-617-542-2652
@@ -28,7 +28,7 @@
 # Usage: ./pre-inst-env COMMAND ARG...
 #
 # Run COMMAND in a pre-installation environment.  Typical use is
-# "./pre-inst-env guilecraft.scm -t".
+# "./pre-inst-env glean.scm -t".
 #
 # This file is a (stripped down, but otherwise largely unmodified)
 # version of the one contained in the GNU Guix project, authored by
@@ -47,7 +47,7 @@ GUILE_LOAD_COMPILED_PATH="$abs_top_builddir${GUILE_LOAD_COMPILED_PATH:+:}$GUILE_
 GUILE_LOAD_PATH="$abs_top_builddir:$abs_top_srcdir${GUILE_LOAD_PATH:+:}:$GUILE_LOAD_PATH"
 export GUILE_LOAD_COMPILED_PATH GUILE_LOAD_PATH
 
-# Define $PATH so that `guilecraft.scm' and friends are easily found.
+# Define $PATH so that `glean.scm' and friends are easily found.
 # scripts does not exist yet, but may well soon exist.
 PATH="$abs_top_builddir/scripts:$abs_top_builddir:$PATH"
 export PATH
@@ -56,9 +56,9 @@ CORE_ROOT=${abs_top_builddir}
 export CORE_ROOT
 
 # FIXME: Perhaps need to use something similar later?
-# Define $GUILECRAFT_UNINSTALLED to prevent `Guilecraft' from
+# Define $GLEAN_UNINSTALLED to prevent `Glean' from
 # prepending @guilemoduledir@ to the Guile load paths.
-#GUILECRAFT_UNINSTALLED=1
-#export GUILECRAFT_UNINSTALLED
+#GLEAN_UNINSTALLED=1
+#export GLEAN_UNINSTALLED
 
 exec "$@"

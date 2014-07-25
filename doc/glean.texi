@@ -1,0 +1,159 @@
+\input texinfo
+@c -*-texinfo-*-
+
+@c %**start of header
+@setfilename glean.info
+@documentencoding UTF-8
+@settitle Glean Reference Manual
+@c %**end of header
+
+@include version.texi
+
+@copying
+Copyright @copyright{} 2014 Alex Sassmannshausen
+
+Permission is granted to copy, distribute and/or modify this document
+under the terms of the GNU Free Documentation License, Version 1.3 or
+any later version published by the Free Software Foundation; with no
+Invariant Sections, no Front-Cover Texts, and no Back-Cover Texts.  A
+copy of the license is included in the section entitled ``GNU Free
+Documentation License''.
+@end copying
+
+@dircategory Education
+@direntry
+* glean: (glean).       Glean, glean knowledge freely.
+* glean lounge: (glean)Invoking glean lounge
+                      using the lounge server.
+* glean library: (glean)Invoking glean library
+                      using the library server
+@end direntry
+
+@titlepage
+@title Glean Reference Manual
+@subtitle Using the Glean Learning Tool
+@author Alex Sassmannshausen
+
+@page
+@vskip 0pt plus 1filll
+Edition @value{EDITION} @*
+@value{UPDATED} @*
+
+@insertcopying
+@end titlepage
+
+@contents
+
+@c *********************************************************************
+@node Top
+@top Glean
+
+This document describes Glean version @value{VERSION}, a functional
+package management tool written for the GNU system.
+
+@menu
+* Introduction::                What is Glean about?
+* Installation::                Installing Glean.
+* Programming Interface::       Using Glean in Scheme.
+* Contributing::                Your help needed!
+
+* Acknowledgments::             Thanks!
+* GNU Free Documentation License::  The license of this manual.
+* Concept Index::               Concepts.
+* Function Index::              Functions.
+@end menu
+
+@c *********************************************************************
+@node Introduction
+@chapter Introduction
+
+Glean …
+
+@c *********************************************************************
+@node Installation
+@chapter Installation
+
+Glean is available for download from its website at
+@url{http://glean.somewhere/}.  This section describes the software
+requirements of Glean, as well as how to install it and get ready
+to use it.
+
+The build procedure for Glean is the same as for other GNU software, and
+is not covered here.  Please see the files @file{README} and
+@file{INSTALL} in the Glean source tree for additional details.
+
+@menu
+* Requirements::                Software needed to build and run Glean.
+* Setting Up Shop::
+@end menu
+
+@node Requirements
+@section Requirements
+
+Glean depends on the following packages:
+
+@itemize
+@item @url{http://gnu.org/software/guile/, GNU Guile}, version 2.0.5 or later;
+@item @url{http://gnupg.org/, GNU libgcrypt}
+@end itemize
+
+In addition, if you want to run the standard Glean web client (UI)
+then you'll need to install Artanis.  A version comes bundled with
+Glean, and it can be installed by simply copying it to the usual
+Guile site directory. See below for getting the web client up and
+running.
+
+@c *********************************************************************
+@node Setting Up Shop
+@section Setting Up Shop
+
+Stuff about Artanis, and setting up the web client?
+
+
+@c *********************************************************************
+@node Programming Interface
+@chapter Programming Interface
+
+Glean provides several Scheme programming interfaces (APIs) to
+(build tutorials and subject areas?) …
+
+
+@c *********************************************************************
+@node Contributing
+@chapter Contributing
+
+This project is a cooperative effort, and we need your help to make it
+grow!  Please get in touch with us on @email{glean@@somewhere.org}
+and @code{#glean} on the somewhere? IRC network.  We welcome ideas,
+bug reports, patches, and anything that may be helpful to the project.
+
+Please see the HACKING file that comes with the Glean source code
+for practical details about contributions.
+
+
+@c *********************************************************************
+@node Acknowledgments
+@chapter Acknowledgments
+
+Glean is based...
+
+@c *********************************************************************
+@node GNU Free Documentation License
+@appendix GNU Free Documentation License
+
+@include fdl-1.3.texi
+
+@c *********************************************************************
+@node Concept Index
+@unnumbered Concept Index
+@printindex cp
+
+@node Function Index
+@unnumbered Function Index
+@printindex fn
+
+@bye
+
+@c Local Variables:
+@c ispell-local-dictionary: "american";
+@c End:

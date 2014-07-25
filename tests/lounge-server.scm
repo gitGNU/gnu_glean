@@ -1,4 +1,4 @@
-;;; guilecraft --- fast learning tool.         -*- coding: utf-8 -*-
+;;; glean --- fast learning tool.         -*- coding: utf-8 -*-
 
 ;; Copyright (C) 2008, 2010, 2012 Alex Sassmannshausen
 
@@ -21,16 +21,16 @@
 
 (define-module (tests lounge-server)
   #:use-module (srfi srfi-64)      ; Provide test suite
-  #:use-module (guilecraft config)
-  #:use-module (guilecraft data-types base-requests)
-  #:use-module (guilecraft data-types profile-requests)
-  #:use-module (guilecraft monads)
-  #:use-module (guilecraft lounge-store)
-  #:use-module (guilecraft profile-server)
+  #:use-module (glean config)
+  #:use-module (glean data-types base-requests)
+  #:use-module (glean data-types profile-requests)
+  #:use-module (glean monads)
+  #:use-module (glean lounge-store)
+  #:use-module (glean profile-server)
   #:use-module (ice-9 vlist))
 
 (define (server-dispatcher rq)
-  ((@@  (guilecraft profile-server) server-dispatcher) rq))
+  ((@@  (glean profile-server) server-dispatcher) rq))
 (define %name     "Blogs")
 (define %pass     "J0e")
 (define %lng      "lng")

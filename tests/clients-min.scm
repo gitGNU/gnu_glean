@@ -1,4 +1,4 @@
-;;; guilecraft --- fast learning tool.         -*- coding: utf-8 -*-
+;;; glean --- fast learning tool.         -*- coding: utf-8 -*-
 
 ;; Copyright (C) 2008, 2010, 2012 Alex Sassmannshausen
 
@@ -21,12 +21,12 @@
 
 (define-module (tests clients-min)
   #:use-module (srfi srfi-64)      ; Provide test suite
-  #:use-module (guilecraft config)
-  #:use-module (guilecraft monads)
-  #:use-module (guilecraft data-types base-requests)
-  #:use-module (guilecraft data-types profile-requests)
-  #:use-module (guilecraft data-types module-requests)
-  #:use-module (guilecraft clients monadic-min))
+  #:use-module (glean config)
+  #:use-module (glean monads)
+  #:use-module (glean data-types base-requests)
+  #:use-module (glean data-types profile-requests)
+  #:use-module (glean data-types module-requests)
+  #:use-module (glean clients monadic-min))
 
 (test-begin "clients-min-tests")
 

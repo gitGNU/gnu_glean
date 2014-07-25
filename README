@@ -1,13 +1,13 @@
 -*- mode: org -*-
 
-Guilecraft is a ...
+Glean is a ...
 
 It provides [[http://www.gnu.org/software/guile/][Guile]] Scheme APIs, including a high-level embedded
 domain-specific ...
 
 * Requirements
 
-Guilecraft currently depends on the following packages:
+Glean currently depends on the following packages:
 
   - [[http://gnu.org/software/guile/][GNU Guile 2.0.x]], version 2.0.5 or later
   - [[http://gnupg.org/][GNU libgcrypt]]
@@ -17,7 +17,7 @@ Guilecraft currently depends on the following packages:
 
 See the manual for the installation instructions, either by running
 
-  info -f doc/guilecraft.info "(guilecraft) Installation"
+  info -f doc/glean.info "(glean) Installation"
 
 or by checking the [[http://www.gnu.org/software/guix/manual/guix.html#Installation][web copy of the manual]].
 
@@ -26,7 +26,7 @@ file.
 
 * Contact
 
-Guilecraft is hosted at http://guilecraft.org.
+Glean is hosted at http://glean.org.
 
 * Related software
 

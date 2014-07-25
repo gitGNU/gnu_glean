@@ -1,0 +1,97 @@
+/* This will contain custom CSS for the Glean Theme
+--------------------------------------------------------- */
+
+/* Sticky Navbar styles
+-------------------------------------------------- */
+body > div.navbar-inverse {
+    border-top: 2px solid #fff;
+}
+body .help {
+}
+body > div.navbar-inverse > div.help{
+    background-color: #fff;
+    margin: auto;
+}
+.nav > li:nth-last-child(1) {
+    background-image: url("http://localhost/images/help.png");
+    background-repeat: no-repeat;
+    width: 150px;
+    text-align:center
+}
+.nav > li:nth-last-child(1) a {
+    color: #000;
+}
+.nav > li:nth-last-child(1) a:hover,
+.nav > li:nth-last-child(1) a:focus,
+.nav > li:nth-last-child(1) a:active {
+    color: rgb(153, 153, 153)
+}
+
+/* Set Details
+-------------------------------------------------- */
+img.set-logo-large {
+    float: right;
+}
+
+div.modules ul {
+    list-style: none;
+}
+div.modules img {
+    float:left;
+    margin: 1em 1em 1em 0;
+}
+div.modules .keywords {
+    font-size: 90%;
+}
+div.modules .synopsis {
+    font-size: 110%;
+}
+
+/* Challenge styles
+-------------------------------------------------- */
+iframe.website {
+    border: none;
+    width: 100%;
+    min-height: 768px;
+}
+iframe.video {
+    float: right;
+}
+img.image {
+    fload: right;
+}
+
+/* Sticky footer styles
+-------------------------------------------------- */
+html {
+  position: relative;
+  min-height: 100%;
+}
+body {
+  /* Margin bottom by footer height */
+  margin-bottom: 60px;
+}
+#footer {
+  position: absolute;
+  bottom: 0;
+  width: 100%;
+  /* Set the fixed height of the footer here */
+  height: 60px;
+  background-color: #f5f5f5;
+}
+
+
+/* Custom page CSS
+-------------------------------------------------- */
+.container .text-muted {
+  margin: 20px 0;
+}
+
+#footer > .container {
+  padding-right: 15px;
+  padding-left: 15px;
+}
+
+code {
+  font-size: 80%;
+}

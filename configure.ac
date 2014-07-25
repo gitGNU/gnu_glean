@@ -5,18 +5,18 @@ dnl Require at least autoconf version...
 AC_PREREQ([2.69])
 
 dnl      Official Name Version    Bug-address                   Tarball Name     Website
-AC_INIT([Guilecraft],
+AC_INIT([Glean],
         [0.1],
         [alex.sassmannshausen@gmail.com],
-        [guilecraft],
-        [www.guilecraft.org])
+        [glean],
+        [www.glean.org])
 dnl Initiate automake, display all warnings
 AM_INIT_AUTOMAKE([-Wall])
 dnl Not sure about this one.
 AC_REVISION([$Revision: 0.1 $])
-dnl Verify guilecraft exists in the directory
+dnl Verify glean exists in the directory
 dnl that autoconf was pointetd to.
-AC_CONFIG_SRCDIR([guilecraft.scm])
+AC_CONFIG_SRCDIR([glean.scm])
 
 dnl Where to find guile modules.
 guilemoduledir="${datarootdir}/guile/site/2.0"
@@ -34,9 +34,9 @@ dnl Make sure we have a full-fledged Guile.
 GUIX_ASSERT_GUILE_FEATURES([regex posix socket net-db threads])
 
 dnl Check whether Artanis is installed; install otherwise.
-dnl GUILECRAFT_CHECK_ARTANIS
+dnl GLEAN_CHECK_ARTANIS
 dnl AM_CONDITIONAL([INSTALL_ARTANIS],
-dnl                [test "x$ac_cv_guilecraft_artanis_installed" = xno])
+dnl                [test "x$ac_cv_glean_artanis_installed" = xno])
 dnl For now simply check whether it's already installed.
 GUILE_MODULE_REQUIRED([artanis artanis])
 
@@ -71,7 +71,7 @@ dnl From Manual: "Automake uses these
 dnl to determine which files to create"
 AC_CONFIG_FILES([
   Makefile
-  guilecraft/config.scm
+  glean/config.scm
 ])
 
 dnl These ones will be relevant later on: once set up.

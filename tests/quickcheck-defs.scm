@@ -1,16 +1,16 @@
-;;; guilecraft --- Fast learning tool.         -*- coding: utf-8 -*-
+;;; glean --- Fast learning tool.         -*- coding: utf-8 -*-
 
-;;;; Guilecraft Quickcheck Definitions
+;;;; Glean Quickcheck Definitions
 
 ;;; copyright etc. & license.
 
 ;;; Commentary:
 
 ;;; Quickcheck is a property testing framework originally developed
-;;; for Haskell. Guilecraft uses the portable scheme implementation of
+;;; for Haskell. Glean uses the portable scheme implementation of
 ;;; Quickcheck created by IJP.
 ;;;
-;;; This library defines generators specific to guilecraft data-types
+;;; This library defines generators specific to glean data-types
 ;;; for use by quickcheck tests.
 
 ;;;; Documentation
@@ -25,13 +25,13 @@
   #:use-module (ice-9 format)
   #:use-module (srfi srfi-1)
   #:use-module (srfi srfi-27)
-  #:use-module (guilecraft comtools)
-  #:use-module (guilecraft data-types gprofiles)
-  #:use-module (guilecraft data-types sets)
-  #:use-module (guilecraft data-types scorecards)
-  #:use-module (guilecraft data-types base-requests)
-  #:use-module (guilecraft data-types module-requests)
-  #:use-module (guilecraft data-types profile-requests)
+  #:use-module (glean comtools)
+  #:use-module (glean data-types gprofiles)
+  #:use-module (glean data-types sets)
+  #:use-module (glean data-types scorecards)
+  #:use-module (glean data-types base-requests)
+  #:use-module (glean data-types module-requests)
+  #:use-module (glean data-types profile-requests)
   #:export (
 	    $mk-rootset
             $mk-set
@@ -112,7 +112,7 @@ child-sets with each BASE_NUM of children."
 (define* ($mk-hashtree #:optional (input $mk-set))
   "Return a randomised hashtree built of INPUT (should be $mk-set or
 $mk-rootset)."
-  ((@@ (guilecraft library-store) make-hashtree) (input)))
+  ((@@ (glean library-store) make-hashtree) (input)))
 
 (define* ($mk-hashmap #:optional (num-trees 1) (input $mk-set))
   (($short-list (lambda () ($mk-hashtree input)) num-trees)))

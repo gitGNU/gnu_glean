@@ -1,0 +1,209 @@
+;;; glean --- fast learning tool.         -*- coding: utf-8 -*-
+
+;; Copyright (C) 2008, 2010, 2012 Alex Sassmannshausen
+
+;; This program is free software; you can redistribute it and/or
+;; modify it under the terms of the GNU General Public License as
+;; published by the Free Software Foundation; either version 3 of
+;; the License, or (at your option) any later version.
+;;
+;; This program is distributed in the hope that it will be useful,
+;; but WITHOUT ANY WARRANTY; without even the implied warranty of
+;; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+;; GNU General Public License for more details.
+;;
+;; You should have received a copy of the GNU General Public License
+;; along with this program; if not, contact:
+;;
+;; Free Software Foundation           Voice:  +1-617-542-5942
+;; 59 Temple Place - Suite 330        Fax:    +1-617-542-2652
+;; Boston, MA  02111-1307,  USA       gnu@gnu.org
+
+;;; Commentary:
+;;
+;; Set general configuration options to be used by most other files in
+;; the project.
+;;
+;;; Code:
+
+(define-module (glean config)
+  #:use-module (srfi srfi-9)
+  #:use-module (glean config-utils)
+  #:export (
+            ;; Package Definition
+            %glean-package-name%
+            %glean-version%
+            %glean-bug-report-address%
+            %glean-home-page-url%
+            ;; General configuration
+            %user-dir%
+            %log-dir%
+            %log-file%
+            %log-level%
+	    %socket-dir%
+            %glean-dir%  ; glean libs location
+	    %debug%           ; obsolete (%log-level)
+            ;; Client configuration
+            %client-dir%
+            %client-config%
+            %client-log%
+            %default-library%
+            %default-lounge%
+            %default-client%
+            %client.conf%
+            ;; Library configuration
+            %ignore-keywords%
+            %library-config%
+            %library-log%
+            %library-dir%
+            %wip-library-dir%
+            %bak-library-dir%
+            %library-port%
+	    %module-directory%          ; obsolete (%library-dir)
+	    %wip-module-directory%      ; obsolete (%wip-library-dir)
+            %library.conf%
+            ;; Lounge configuration
+            %lounge-persist%
+            %lounge-config%
+            %lounge-log%
+            %lounge-dir%
+            %lounge-port%
+            %lounge.conf%
+ 	    %profile-directory%         ; obsolete (%lounge-dir)
+            ;; External libraries
+            %libgcrypt
+            ))
+
+;;;; Package Definition
+(define %glean-package-name%  "@PACKAGE_NAME@")
+(define %glean-version%       "@PACKAGE_VERSION@")
+(define %glean-bug-report-address%
+  "@PACKAGE_BUGREPORT@")
+(define %glean-home-page-url% "@PACKAGE_URL@")
+
+;;;; General configuration
+(define user-homedir      (getenv "HOME"))
+(define %log-level%       'critical)
+(define %user-dir%        (string-append user-homedir "/.glean"))
+(define %socket-dir%      (string-append %user-dir%    "/run"))
+(define %log-dir%         (string-append %user-dir%    "/log"))
+(define %log-file%        #t)           ; Set by individual components
+(define %glean-dir%  (or (and=> (getenv "GLEAN_DIR")
+                                     canonicalize-path)
+                              %user-dir%))
+
+;;;;; DEPRECATED
+;; Int. 0 ignores all debugging messages; 1 only shows high etc.
+;; > 10: monads log.
+(define %debug% 8)
+(define (data-dir postfix)
+  (string-append
+   (dirname
+    (dirname
+     (search-path %load-path "glean/config.scm")))
+   postfix))
+
+
+;;;; Library Configuration
+(define %ignore-keywords% '("test"))
+(define %library-root-dir% (string-append %user-dir%   "/library"))
+(define %library-dir%      (string-append %library-root-dir% "/store"))
+(define %bak-library-dir%  (string-append %library-root-dir% "/store-bak"))
+(define %wip-library-dir%  (string-append %library-root-dir% "/store-wip"))
+(define %library.conf%     (string-append %library-root-dir% "/library.conf"))
+(define %library-port%     (string-append %socket-dir% "/library.sock"))
+(define %library-log%      (string-append %log-dir%    "/library.log"))
+
+;;;;; Deprecated
+(define %module-directory%
+  ;; Absolute path of the glean modules root.
+  (data-dir "/modules"))
+(define %wip-module-directory%
+  ;; Absolute path of the glean wip-module root.
+  (data-dir "/wip-modules"))
+
+
+;;;; Lounge Configuration
+(define %lounge-root-dir% (string-append %user-dir%   "/lounge"))
+(define %lounge-dir%      (string-append %lounge-root-dir% "/lounge"))
+(define %lounge.conf%     (string-append %lounge-root-dir% "/lounge.conf"))
+(define %lounge-port%     (string-append %socket-dir% "/lounge.sock"))
+(define %lounge-log%      (string-append %log-dir%    "/lounge.log"))
+(define %lounge-persist% #f)
+
+;;;;; Deprecated
+(define %profile-directory%
+  ;; Absolute path of the glean profiles root.
+  (data-dir "/profiles"))
+
+
+;;;; Client configuration
+(define %client-dir%      (string-append %user-dir% "/clients"))
+(define %client.conf%     (string-append %client-dir% "/client.conf"))
+(define %default-library% %library-port%)
+(define %default-lounge%  %lounge-port%)
+(define %default-client%  'repl)
+(define %client-log%      (string-append %log-dir%  "/client.log"))
+
+;;;;; Deprecated
+;; Socket for the modules server
+(define %module-socket-file%
+  (string-append %socket-dir% "/library.sock"))
+;; Socket for the profiles server
+(define %profile-socket-file%
+  (string-append %socket-dir% "/lounge.sock"))
+
+;;;; External libraries
+(define %libgcrypt
+  "@LIBGCRYPT@")
+
+
+(define log-setting
+  (make-setting "%log-level%" 'inform
+                (string-append
+                 "Log verbosity: choose from 'critical, 'important,"
+                 " 'warning, 'inform or 'debug")))
+
+;;;; Specific Configurations
+;;;;; Client Configurations
+(define %client-config%
+  (make-config "Client" %client.conf%
+               `(,log-setting
+                 ,(make-setting "%log-file%" %client-log%
+                                "Client log file")
+                 ,(make-setting "%default-client%" %default-client%
+                                "Default client to use.")
+                 ,(make-setting "%default-lounge%" %default-lounge%
+                                "Default Lounge server to use.")
+                 ,(make-setting "%default-library%" %default-library%
+                                "Default Library server to use."))))
+
+;;;;; Lounge Configuration
+(define %lounge-config%
+  (make-config "Lounge" %lounge.conf%
+               `(,log-setting
+                 ,(make-setting "%log-file%" %lounge-log%
+                                "Lounge log file")
+                 ,(make-setting "%lounge-port%" %lounge-port%
+                                "Port on which we should listen.")
+                 ,(make-setting "%lounge-persist%" #f
+                                (string-append
+                                 "Should the lounge store its data to"
+                                 " disk and/or attempt to resume from"
+                                 " it? (Disabled for now as it is"
+                                 "  work in progress)")))))
+
+;;;;; Library Configuration
+(define %library-config%
+  (make-config "Library" %library.conf%
+               `(,log-setting
+                 ,(make-setting "%log-file%" %library-log%
+                                "Library log file")
+                 ,(make-setting "%library-port%" %library-port%
+                                "Port on which we should listen.")
+                 ,(make-setting "%ignore-keywords%" '("test")
+                                (string-append
+                                 "Modules containing these keywords"
+                                 " will not be advertised.")))))
+
+;;; config.scm ends here

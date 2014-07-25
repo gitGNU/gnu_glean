@@ -1,15 +1,15 @@
-# guilecraft --- fast learning tool.         -*- coding: utf-8 -*-
+# glean --- fast learning tool.         -*- coding: utf-8 -*-
 #
 # Copyright © 2014 Alex Sassmannshausen <alex.sassmannshausen@gmail.com>
 #
-# This file is part of Guilecraft.
+# This file is part of Glean.
 #
-# Guilecraft is free software; you can redistribute it and/or modify it
+# Glean is free software; you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
 # Free Software Foundation; either version 3 of the License, or (at your
 # option) any later version.
 #
-# Guilecraft is distributed in the hope that it will be useful,
+# Glean is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
@@ -29,39 +29,39 @@ nodist_noinst_SCRIPTS =				\
   pre-inst-env
 
 MODULES =					\
-  guilecraft/base32.scm				\
-  guilecraft/base-server.scm			\
-  guilecraft/boot.scm				\
-  guilecraft/clients/cli.scm			\
-  guilecraft/clients/monadic-min.scm		\
-  guilecraft/clients/repl-client-core.scm	\
-  guilecraft/clients/web/web-client-core.scm	\
-  guilecraft/clients/web/bootstrap.scm		\
-  guilecraft/comtools.scm			\
-  guilecraft/core-templates.scm			\
-  guilecraft/data-manager.scm			\
-  guilecraft/data-types/base-requests.scm	\
-  guilecraft/data-types/gprofiles.scm		\
-  guilecraft/data-types/module-requests.scm	\
-  guilecraft/data-types/profile-requests.scm	\
-  guilecraft/data-types/scorecards.scm		\
-  guilecraft/data-types/sets.scm		\
-  guilecraft/hash.scm				\
-  guilecraft/known-rtd-manager.scm		\
-  guilecraft/library-store.scm			\
-  guilecraft/lounge-filesystem.scm		\
-  guilecraft/lounge-store.scm			\
-  guilecraft/module-server.scm			\
-  guilecraft/monads.scm				\
-  guilecraft/profile-server.scm			\
-  guilecraft/record-index.scm			\
-  guilecraft/utils.scm				\
-  guilecraft.scm
+  glean/base32.scm				\
+  glean/base-server.scm			\
+  glean/boot.scm				\
+  glean/clients/cli.scm			\
+  glean/clients/monadic-min.scm		\
+  glean/clients/repl-client-core.scm	\
+  glean/clients/web/web-client-core.scm	\
+  glean/clients/web/bootstrap.scm		\
+  glean/comtools.scm			\
+  glean/core-templates.scm			\
+  glean/data-manager.scm			\
+  glean/data-types/base-requests.scm	\
+  glean/data-types/gprofiles.scm		\
+  glean/data-types/module-requests.scm	\
+  glean/data-types/profile-requests.scm	\
+  glean/data-types/scorecards.scm		\
+  glean/data-types/sets.scm		\
+  glean/hash.scm				\
+  glean/known-rtd-manager.scm		\
+  glean/library-store.scm			\
+  glean/lounge-filesystem.scm		\
+  glean/lounge-store.scm			\
+  glean/module-server.scm			\
+  glean/monads.scm				\
+  glean/profile-server.scm			\
+  glean/record-index.scm			\
+  glean/utils.scm				\
+  glean.scm
 
-GOBJECTS = $(MODULES:%.scm=%.go) guilecraft/config.go
+GOBJECTS = $(MODULES:%.scm=%.go) glean/config.go
 
 nobase_dist_guilemodule_DATA = $(MODULES)
-nobase_nodist_guilemodule_DATA = $(GOBJECTS) guilecraft/config.scm
+nobase_nodist_guilemodule_DATA = $(GOBJECTS) glean/config.scm
 
 # Handy way to remove the .go files without removing all the rest.
 clean-go:

@@ -1,25 +1,25 @@
-# guilecraft --- fast learning tool.         -*- coding: utf-8 -*-
+# glean --- fast learning tool.         -*- coding: utf-8 -*-
 #
 # Copyright © 2014 Alex Sassmannshausen <alex.sassmannshausen@gmail.com>
 #
-# This file is part of Guilecraft.
+# This file is part of Glean.
 #
-# Guilecraft is free software; you can redistribute it and/or modify it
+# Glean is free software; you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
 # Free Software Foundation; either version 3 of the License, or (at your
 # option) any later version.
 #
-# Guilecraft is distributed in the hope that it will be useful,
+# Glean is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
 #
 # You should have received a copy of the GNU General Public License
-# along with Guilecraft; if not, contact:
+# along with Glean; if not, contact:
 #
 # Free Software Foundation           Voice:  +1-617-542-5942
 # 59 Temple Place - Suite 330        Fax:    +1-617-542-2652
 # Boston, MA  02111-1307,  USA       gnu@gnu.org
 
-info_TEXINFOS = doc/guilecraft.texi
+info_TEXINFOS = doc/glean.texi
 EXTRA_DIST += doc/fdl-1.3.texi

@@ -1,7 +1,7 @@
-;;; guilecraft --- learning the world using Guile.         -*- coding: utf-8 -*-
+;;; glean --- learning the world using Guile.         -*- coding: utf-8 -*-
 
 (define-module (store test)
-  #:use-module (guilecraft core-templates)
+  #:use-module (glean core-templates)
   #:export (test-module))
 
 (define test-module
@@ -21,7 +21,7 @@ b) provides a module with fields to be used by the unit tests."
     #:resources
     (list
      (media #:text "But if you want to find out more, try:"
-	    #:books (list "The Guilecraft Manual")))
+	    #:books (list "The Glean Manual")))
     #:contents
     (list (set 'intro
 	       #:contents

@@ -1,4 +1,4 @@
-;;; guilecraft --- fast learning tool.         -*- coding: utf-8 -*-
+;;; glean --- fast learning tool.         -*- coding: utf-8 -*-
 
 ;; Copyright (C) 2008, 2010, 2012 Alex Sassmannshausen
 
@@ -26,7 +26,7 @@
 ;;; Code:
 
 (define-module (tests test-suite)
-  #:use-module (guilecraft config)
+  #:use-module (glean config)
   #:export (run-test-suite)
   #:export (run-server-tests))
 

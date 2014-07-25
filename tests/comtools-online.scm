@@ -1,4 +1,4 @@
-;;; guilecraft --- fast learning tool.         -*- coding: utf-8 -*-
+;;; glean --- fast learning tool.         -*- coding: utf-8 -*-
 
 ;; Copyright (C) 2008, 2010, 2012 Alex Sassmannshausen
 
@@ -21,8 +21,8 @@
 
 (define-module (tests comtools-online)
   #:use-module (srfi srfi-64)		; Provide test suite
-  #:use-module (guilecraft config)
-  #:use-module (guilecraft comtools)) ; Provide functions to be
+  #:use-module (glean config)
+  #:use-module (glean comtools)) ; Provide functions to be
 				      ; tested.
 
 (test-begin "comms-tests")

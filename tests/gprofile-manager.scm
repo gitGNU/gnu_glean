@@ -1,4 +1,4 @@
-;;; guilecraft --- fast learning tool.         -*- coding: utf-8 -*-
+;;; glean --- fast learning tool.         -*- coding: utf-8 -*-
 
 ;; Copyright (C) 2008, 2010, 2012 Alex Sassmannshausen
 
@@ -23,10 +23,10 @@
   #:use-module (srfi srfi-1)       ; Provide map and reduce
   #:use-module (srfi srfi-64)      ; Provide test suite
   #:use-module (tests test-utils)  ; Provide test-profiles, etc.
-  #:use-module (guilecraft data-types gprofiles) ; Provide gprof
+  #:use-module (glean data-types gprofiles) ; Provide gprof
 					; introspection 
 
-  #:use-module (guilecraft gprofile-manager)) ; interface to be tested
+  #:use-module (glean gprofile-manager)) ; interface to be tested
 
 (test-begin "gprofile-selector")
 ;; Test the high level server interface for retrieving available gprofiles from
@@ -38,7 +38,7 @@
 		  (add-gprofile test-gprofile-2)))
 
 ;; list-gprofiles is to return a list consisting of gprofile names and
-;; gprofile IDs for all gprofiles known to the guilecraft server. It is
+;; gprofile IDs for all gprofiles known to the glean server. It is
 ;; then down to the UI to provide means for the user to meaningfully
 ;; select from those gprofiles.
 (test-assert "List known gprofiles"

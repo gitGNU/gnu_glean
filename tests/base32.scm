@@ -1,4 +1,4 @@
-;;; guilecraft --- fast learning tool.         -*- coding: utf-8 -*-
+;;; glean --- fast learning tool.         -*- coding: utf-8 -*-
 
 ;;; Copyright © 2012, 2013, 2014 Ludovic Courtès <ludo@gnu.org>,
 ;;; Alex Sassmannshausen <alex.sassmannshausen@gmail.com>
@@ -21,13 +21,13 @@
 ;; Boston, MA  02111-1307,  USA       gnu@gnu.org
 
 (define-module (tests base32)
-  #:use-module (guilecraft base32)
+  #:use-module (glean base32)
   #:use-module (srfi srfi-1)
   #:use-module (srfi srfi-64)
   #:use-module (rnrs bytevectors)
   )
 
-;; Test the (guilecraft base32) module.
+;; Test the (glean base32) module.
 
 (test-begin "base32")
 
