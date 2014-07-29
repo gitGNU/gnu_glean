@@ -70,7 +70,7 @@
             %lounge.conf%
  	    %profile-directory%         ; obsolete (%lounge-dir)
             ;; External libraries
-            %libgcrypt
+            %libgcrypt%
             ))
 
 ;;;; Package Definition
@@ -87,9 +87,8 @@
 (define %socket-dir%      (string-append %user-dir%    "/run"))
 (define %log-dir%         (string-append %user-dir%    "/log"))
 (define %log-file%        #t)           ; Set by individual components
-(define %glean-dir%  (or (and=> (getenv "GLEAN_DIR")
-                                     canonicalize-path)
-                              %user-dir%))
+;; set by pre-inst-env, or glean launcher
+(define %glean-dir%       (getenv "CORE_ROOT"))
 
 ;;;;; DEPRECATED
 ;; Int. 0 ignores all debugging messages; 1 only shows high etc.
@@ -153,8 +152,7 @@
   (string-append %socket-dir% "/lounge.sock"))
 
 ;;;; External libraries
-(define %libgcrypt
-  "@LIBGCRYPT@")
+(define %libgcrypt% "@LIBGCRYPT@")
 
 
 (define log-setting

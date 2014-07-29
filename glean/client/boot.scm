@@ -102,10 +102,7 @@ actions requested."
            (ensure-config    %client-config%)
            (load-config      %client.conf%)
            ;; Simply apply the thunk returned by client.
-           ;; FIXME: core_root Should be derived from config: either
-           ;; env or result of ./configure. For now only from env.
-           ((get-client (getenv "CORE_ROOT")
-                        %glean-dir%
+           ((get-client %glean-dir% %user-dir%
                         (if (option-ref opts 'client #f)
                             (option-ref opts 'client #f)
                             %default-client%)))))))

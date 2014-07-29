@@ -67,6 +67,7 @@
 
   (define (maybe-augment-load-paths!)
     (unless (getenv "GLEAN_UNINSTALLED")
+      (setenv "CORE_ROOT" (config-lookup "guilemoduledir"))
       (let ((module-dir (config-lookup "guilemoduledir")))
         (push! module-dir %load-path)
         (push! module-dir %load-compiled-path))))

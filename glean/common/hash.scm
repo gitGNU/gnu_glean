@@ -54,7 +54,7 @@
 (define sha256
   (let ((hash (pointer->procedure void
                                   (dynamic-func "gcry_md_hash_buffer"
-                                                (dynamic-link %libgcrypt))
+                                                (dynamic-link %libgcrypt%))
                                   `(,int * * ,size_t))))
     (lambda (bv)
       "Return the SHA256 of BV as a bytevector."
@@ -66,7 +66,7 @@
 (define open-sha256-md
   (let ((open (pointer->procedure int
                                   (dynamic-func "gcry_md_open"
-                                                (dynamic-link %libgcrypt))
+                                                (dynamic-link %libgcrypt% ))
                                   `(* ,int ,unsigned-int))))
     (lambda ()
       (let* ((md  (bytevector->pointer (make-bytevector (sizeof '*))))
@@ -78,19 +78,19 @@
 (define md-write
   (pointer->procedure void
                       (dynamic-func "gcry_md_write"
-                                    (dynamic-link %libgcrypt))
+                                    (dynamic-link %libgcrypt% ))
                       `(* * ,size_t)))
 
 (define md-read
   (pointer->procedure '*
                       (dynamic-func "gcry_md_read"
-                                    (dynamic-link %libgcrypt))
+                                    (dynamic-link %libgcrypt% ))
                       `(* ,int)))
 
 (define md-close
   (pointer->procedure void
                       (dynamic-func "gcry_md_close"
-                                    (dynamic-link %libgcrypt))
+                                    (dynamic-link %libgcrypt% ))
                       '(*)))
 
 
