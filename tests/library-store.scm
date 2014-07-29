@@ -21,16 +21,16 @@
 
 (define-module (tests library-store)
   #:use-module (srfi srfi-64)      ; Provide test suite
-  #:use-module (glean data-types base-requests)
-  #:use-module (glean data-types module-requests)
-  #:use-module (glean library-store)
-  #:use-module (glean module-server)
+  #:use-module (glean common base-requests)
+  #:use-module (glean common module-requests)
+  #:use-module (glean library library-store)
+  #:use-module (glean library server)
   #:use-module (ice-9 match)
   #:use-module (tests quickcheck-defs)
   #:use-module (quickcheck quickcheck))
 
 (define (server-dispatcher rq)
-  ((@@  (glean module-server) server-dispatcher) rq))
+  ((@@  (glean library server) server-dispatcher) rq))
 
 (test-begin "library-store")
 

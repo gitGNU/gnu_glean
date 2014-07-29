@@ -25,13 +25,13 @@
   #:use-module (ice-9 format)
   #:use-module (srfi srfi-1)
   #:use-module (srfi srfi-27)
-  #:use-module (glean comtools)
-  #:use-module (glean data-types gprofiles)
-  #:use-module (glean data-types sets)
-  #:use-module (glean data-types scorecards)
-  #:use-module (glean data-types base-requests)
-  #:use-module (glean data-types module-requests)
-  #:use-module (glean data-types profile-requests)
+  #:use-module (glean common comtools)
+  #:use-module (glean lounge gprofiles)
+  #:use-module (glean library sets)
+  #:use-module (glean lounge scorecards)
+  #:use-module (glean common base-requests)
+  #:use-module (glean common module-requests)
+  #:use-module (glean common profile-requests)
   #:export (
 	    $mk-rootset
             $mk-set
@@ -112,7 +112,7 @@ child-sets with each BASE_NUM of children."
 (define* ($mk-hashtree #:optional (input $mk-set))
   "Return a randomised hashtree built of INPUT (should be $mk-set or
 $mk-rootset)."
-  ((@@ (glean library-store) make-hashtree) (input)))
+  ((@@ (glean library library-store) make-hashtree) (input)))
 
 (define* ($mk-hashmap #:optional (num-trees 1) (input $mk-set))
   (($short-list (lambda () ($mk-hashtree input)) num-trees)))

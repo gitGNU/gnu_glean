@@ -34,11 +34,11 @@
 ;;; Code:
 
 (define-module (glean lounge boot)    
-  #:use-module (ice-9 getopt-long)
   #:use-module (glean config)
-  #:use-module (glean config-utils)
-  #:use-module (glean profile-server)
-  #:use-module (glean utils)
+  #:use-module (glean common config-utils)
+  #:use-module (glean common utils)
+  #:use-module (glean lounge server)
+  #:use-module (ice-9 getopt-long)
   #:export (lounge-boot))
 
 
@@ -95,6 +95,6 @@ with user accounts and profiles.
            (ensure-user-dirs %lounge-dir%)
            (ensure-config %lounge-config%)
            (load-config %lounge.conf%)
-           (profile-server %lounge-port%)))))
+           (lounge-server %lounge-port%)))))
 
 ;;; boot.scm ends here

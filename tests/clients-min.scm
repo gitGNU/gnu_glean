@@ -22,11 +22,11 @@
 (define-module (tests clients-min)
   #:use-module (srfi srfi-64)      ; Provide test suite
   #:use-module (glean config)
-  #:use-module (glean monads)
-  #:use-module (glean data-types base-requests)
-  #:use-module (glean data-types profile-requests)
-  #:use-module (glean data-types module-requests)
-  #:use-module (glean clients monadic-min))
+  #:use-module (glean common monads)
+  #:use-module (glean common base-requests)
+  #:use-module (glean common profile-requests)
+  #:use-module (glean common module-requests)
+  #:use-module (glean client monadic-min))
 
 (test-begin "clients-min-tests")
 

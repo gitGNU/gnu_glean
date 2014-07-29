@@ -1,7 +1,7 @@
 ;;; glean --- learning the world using Guile.         -*- coding: utf-8 -*-
 
 (define-module (store test)
-  #:use-module (glean core-templates)
+  #:use-module (glean library core-templates)
   #:export (test-module))
 
 (define test-module

@@ -26,17 +26,17 @@
   #:use-module (quickcheck quickcheck)
   #:use-module (tests quickcheck-defs)
 
-  #:use-module (glean utils)
-  #:use-module (glean data-types scorecards))
+  #:use-module (glean common utils)
+  #:use-module (glean lounge scorecards))
 
 (define number-of-child-blobs
-  (@@ (glean data-types scorecards) number-of-child-blobs))
+  (@@ (glean lounge scorecards) number-of-child-blobs))
 (define hashmap->blobs
-  (@@ (glean lounge-store) hashmap->blobs))
+  (@@ (glean lounge lounge-store) hashmap->blobs))
 (define make-hashtree
-  (@@ (glean library-store) make-hashtree))
+  (@@ (glean library library-store) make-hashtree))
 (define hashtree-map
-  (@@ (glean lounge-store) hashtree-map))
+  (@@ (glean lounge lounge-store) hashtree-map))
 
 (define (exp-growth num depth)
   (define (helper num depth total)
@@ -87,7 +87,7 @@ INPUT."
               50 (lambda () (lambda () ($mk-set 2 2)))))
 
 (define modify-score
-  (@@ (glean data-types scorecards) modify-score))
+  (@@ (glean lounge scorecards) modify-score))
 
 (define (mod-score-tester generator assess)
   "Check that scorecard updates match individual score-modify results for

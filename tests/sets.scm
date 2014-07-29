@@ -23,8 +23,8 @@
   #:use-module (srfi srfi-64)      ; Provide test suite
   #:use-module (quickcheck quickcheck)
   #:use-module (tests quickcheck-defs)
-  #:use-module (glean core-templates)
-  #:use-module (glean data-types sets))
+  #:use-module (glean library core-templates)
+  #:use-module (glean library sets))
 
 (define ($module)
   (module 

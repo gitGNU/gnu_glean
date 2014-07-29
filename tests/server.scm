@@ -22,7 +22,7 @@
 (define-module (tests server)
   #:use-module (srfi srfi-64)      ; Provide test suite
   #:use-module (glean config)
-  #:use-module (glean comtools)
+  #:use-module (glean common comtools)
   ) ; Provide functions to be tested.
 
 (test-begin "server-tests")

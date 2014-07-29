@@ -34,12 +34,9 @@
 ;;; Code:
 
 (define-module (glean boot)    
-  #:use-module (glean client boot)
-  #:use-module (glean lounge boot)
-  #:use-module (glean library boot)
   #:use-module (glean config)
-  #:use-module (glean config-utils)
-  #:use-module (glean utils)
+  #:use-module (glean common config-utils)
+  #:use-module (glean common utils)
   #:use-module (ice-9 getopt-long)
   #:use-module (ice-9 match)
   #:export (boot))
@@ -96,11 +93,11 @@ or client) you can run that command followed by the `--help' option."))
 
   (match args
     ((path (? client?) . rest)                   ; launch client
-     (client-boot (cons path rest)))
+     ((@ (glean client boot) client-boot) (cons path rest)))
     ((path (? lounge?) . rest)                   ; launch lounge
-     (lounge-boot (cons path rest)))
+     ((@ (glean lounge boot) lounge-boot) (cons path rest)))
     ((path (? library?) . rest)                  ; launge library
-     (library-boot (cons path rest)))
+     ((@ (glean library boot) library-boot) (cons path rest)))
     (_
      (let ((opts (getopt-long args *option-grammar*)))
        (cond ((option-ref opts 'version #f)      ; --version

@@ -19,34 +19,13 @@
 ;; 59 Temple Place - Suite 330        Fax:    +1-617-542-2652
 ;; Boston, MA  02111-1307,  USA       gnu@gnu.org
 
-(define-module (tests lounge-store)
-  #:use-module (srfi srfi-64)      ; Provide test suite
+;;;; Commentary:
+;;;
+;;; Provide a command line client for Glean.
+;;;
+;;;; Code:
+
+(define-module (glean client components cli)
   #:use-module (glean config)
-  #:use-module (glean lounge scorecards)
-  #:use-module (glean lounge lounge-store)
-  #:use-module (quickcheck quickcheck)
-  #:use-module (tests quickcheck-defs)
-  #:use-module (ice-9 match)
-  #:use-module (ice-9 vlist))
-
-(define hashtree->blobs
-  (@@ (glean lounge lounge-store) hashtree->blobs))
-(define hashmap->blobs
-  (@@ (glean lounge lounge-store) hashmap->blobs))
-
-(test-begin "lounge-store")
-
-(test-assert "hashtree->blobs"
-  (quickcheck (lambda (_)
-                (match (hashtree->blobs _)
-                  (((? blob?) ...) #t)
-                  (_ #f)))
-              50 $mk-hashtree))
-(test-assert "hashmap->blobs"
-  (quickcheck (lambda (_) 
-                (match (hashmap->blobs _)
-                  (((? blob?) ...) #t)
-                  (_ #f)))
-              50 ($short-list $mk-hashtree)))
-
-(test-end "lounge-store")
+  #:use-module (glean client monadic-min)
+  #:export (cli-client))

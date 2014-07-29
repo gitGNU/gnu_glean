@@ -35,10 +35,10 @@
 
 (define-module (glean client boot)    
   #:use-module (ice-9 getopt-long)
-  #:use-module (glean components)
   #:use-module (glean config)
-  #:use-module (glean config-utils)
-  #:use-module (glean utils)
+  #:use-module (glean common components)
+  #:use-module (glean common config-utils)
+  #:use-module (glean common utils)
   #:export (client-boot))
 
 
@@ -114,7 +114,7 @@ actions requested."
   "Return the procedure defined by client that specified by DEFAULT after
 loading pre-loading all clients at CORE-ROOT and EXTENSIONS-ROOT."
   ((component-node core-root
-                   (string-append core-root "/glean/clients")
+                   (string-append core-root "/glean/client/components")
                    extensions-root
                    (string-append extensions-root "/clients")
                    default)

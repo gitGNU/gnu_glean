@@ -28,38 +28,38 @@ nodist_noinst_SCRIPTS =					\
   pre-inst-env
 
 MODULES =						\
-  glean/base32.scm				     	\
-  glean/base-server.scm					\
   glean/boot.scm					\
   glean/client/boot.scm					\
-  glean/clients/cli.scm					\
-  glean/clients/monadic-min.scm				\
-  glean/clients/repl-client-core.scm	     		\
-  glean/clients/web/web-client-core.scm			\
-  glean/clients/web/bootstrap.scm		  	\
-  glean/components.scm				   	\
-  glean/comtools.scm				   	\
-  glean/config-utils.scm			   	\
-  glean/core-templates.scm			   	\
-  glean/data-manager.scm			     	\
-  glean/data-types/base-requests.scm	     		\
-  glean/data-types/gprofiles.scm		   	\
-  glean/data-types/module-requests.scm	   		\
-  glean/data-types/profile-requests.scm			\
-  glean/data-types/scorecards.scm		  	\
-  glean/data-types/sets.scm			  	\
-  glean/hash.scm					\
-  glean/known-rtd-manager.scm				\
+  glean/client/components/cli.scm			\
+  glean/client/monadic-min.scm				\
+  glean/client/components/repl-client-core.scm	     	\
+  glean/client/components/web/web-client-core.scm	\
+  glean/client/components/web/bootstrap.scm		\
+  glean/common/base32.scm			     	\
+  glean/common/base-server.scm				\
+  glean/common/components.scm			   	\
+  glean/common/comtools.scm				\
+  glean/common/config-utils.scm				\
+  glean/common/base-requests.scm	     		\
+  glean/common/module-requests.scm	   		\
+  glean/common/profile-requests.scm			\
+  glean/common/hash.scm					\
+  glean/common/known-rtd-manager.scm			\
+  glean/common/monads.scm				\
+  glean/common/record-index.scm				\
+  glean/common/utils.scm				\
+  glean/library/core-templates.scm			\
+  glean/library/sets.scm			  	\
   glean/library/boot.scm			     	\
-  glean/library-store.scm				\
+  glean/library/library-store.scm			\
+  glean/library/server.scm			    	\
+  glean/lounge/data-manager.scm				\
+  glean/lounge/gprofiles.scm		   		\
+  glean/lounge/scorecards.scm		  		\
   glean/lounge/boot.scm					\
-  glean/lounge-filesystem.scm				\
-  glean/lounge-store.scm			     	\
-  glean/module-server.scm			    	\
-  glean/monads.scm				     	\
-  glean/profile-server.scm			   	\
-  glean/record-index.scm			     	\
-  glean/utils.scm
+  glean/lounge/lounge-filesystem.scm			\
+  glean/lounge/lounge-store.scm				\
+  glean/lounge/server.scm
 
 GOBJECTS = $(MODULES:%.scm=%.go) glean/config.go
 
@@ -134,8 +134,8 @@ SUFFIXES = .go
 # files.  See
 # <http://lists.gnu.org/archive/html/guile-devel/2010-07/msg00125.html>
 # for details.
-guix_install_go_files = install-nobase_nodist_guilemoduleDATA
-$(guix_install_go_files): install-nobase_dist_guilemoduleDATA
+glean_install_go_files = install-nobase_nodist_guilemoduleDATA
+$(glean_install_go_files): install-nobase_dist_guilemoduleDATA
 
 #SUBDIRS = po
 

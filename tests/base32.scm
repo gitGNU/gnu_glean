@@ -21,7 +21,7 @@
 ;; Boston, MA  02111-1307,  USA       gnu@gnu.org
 
 (define-module (tests base32)
-  #:use-module (glean base32)
+  #:use-module (glean common base32)
   #:use-module (srfi srfi-1)
   #:use-module (srfi srfi-64)
   #:use-module (rnrs bytevectors)

@@ -21,9 +21,9 @@
 
 (define-module (tests test-utils)
   #:use-module (glean config)
-  #:use-module (glean data-types sets)
-  #:use-module (glean data-types gprofiles)
-  #:use-module (glean data-types scorecards)
+  #:use-module (glean library sets)
+  #:use-module (glean lounge gprofiles)
+  #:use-module (glean lounge scorecards)
 
   #:export (test-gmodule
             test-gprofile

@@ -33,12 +33,12 @@
 ;;
 ;;; Code:
 
-(define-module (glean library boot)    
-  #:use-module (ice-9 getopt-long)
+(define-module (glean library boot)
   #:use-module (glean config)
-  #:use-module (glean config-utils)
-  #:use-module (glean module-server)
-  #:use-module (glean utils)
+  #:use-module (glean common config-utils)
+  #:use-module (glean common utils)
+  #:use-module (glean library server)
+  #:use-module (ice-9 getopt-long)
   #:export (library-boot))
 
 
@@ -96,6 +96,6 @@ exercises and disciplines for study.
                              %wip-library-dir%)
            (ensure-config %library-config%)
            (load-config %library.conf%)
-           (module-server %library-port%)))))
+           (library-server %library-port%)))))
 
 ;;; boot.scm ends here

@@ -27,7 +27,7 @@
 ;;; Code:
 
 (define-module (glean config)
-  #:use-module (glean config-utils)
+  #:use-module (glean common config-utils)
   #:export (
             ;; Package Definition
             %glean-package-name%

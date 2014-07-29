@@ -22,13 +22,13 @@
 (define-module (tests comtools-offline)
   #:use-module (srfi srfi-64)		; Provide test suite
   #:use-module (tests test-utils)	; Provide test-profiles, etc.
-  #:use-module (glean data-types sets)
-  #:use-module (glean data-types scorecards)
+  #:use-module (glean library sets)
+  #:use-module (glean lounge scorecards)
   #:use-module (quickcheck quickcheck)
   #:use-module (tests quickcheck-defs)
   #:use-module (rnrs)
-  #:use-module (glean comtools)) ; Provide functions to be
-				      ; tested.
+  #:use-module (glean common comtools)) ; Provide functions to be
+                                        ; tested.
 
 (test-begin "comtools-offline")
 

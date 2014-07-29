@@ -23,9 +23,9 @@
   #:use-module (srfi srfi-1)      ; Provide fold
   #:use-module (srfi srfi-64)      ; Provide test suite
   #:use-module (glean config)
-  #:use-module (glean comtools)
-  #:use-module (glean data-types base-requests)
-  #:use-module (glean data-types module-requests)
+  #:use-module (glean common comtools)
+  #:use-module (glean common base-requests)
+  #:use-module (glean common module-requests)
   #:use-module (quickcheck quickcheck)
   #:use-module (tests quickcheck-defs)
   #:use-module (tests test-utils))

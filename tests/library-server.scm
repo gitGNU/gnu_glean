@@ -21,13 +21,13 @@
 
 (define-module (tests library-server)
   #:use-module (srfi srfi-64)      ; Provide test suite
-  #:use-module (glean data-types base-requests)
-  #:use-module (glean data-types module-requests)
-  #:use-module (glean library-store)
-  #:use-module (glean module-server))
+  #:use-module (glean common base-requests)
+  #:use-module (glean common module-requests)
+  #:use-module (glean library library-store)
+  #:use-module (glean library server))
 
 (define (server-dispatcher rq)
-  ((@@  (glean module-server) server-dispatcher) rq))
+  ((@@  (glean library server) server-dispatcher) rq))
 
 (test-begin "library-server")
 

@@ -22,8 +22,8 @@
 (define-module (tests comtools-online)
   #:use-module (srfi srfi-64)		; Provide test suite
   #:use-module (glean config)
-  #:use-module (glean comtools)) ; Provide functions to be
-				      ; tested.
+  #:use-module (glean common comtools)) ; Provide functions to be
+                                        ; tested.
 
 (test-begin "comms-tests")
 
