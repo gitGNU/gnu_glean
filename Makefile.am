@@ -59,8 +59,7 @@ MODULES =						\
   glean/monads.scm				     	\
   glean/profile-server.scm			   	\
   glean/record-index.scm			     	\
-  glean/utils.scm					\
-  glean.scm
+  glean/utils.scm
 
 GOBJECTS = $(MODULES:%.scm=%.go) glean/config.go
 

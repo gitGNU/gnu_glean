@@ -16,7 +16,7 @@ dnl Not sure about this one.
 AC_REVISION([$Revision: 0.1 $])
 dnl Verify glean exists in the directory
 dnl that autoconf was pointetd to.
-AC_CONFIG_SRCDIR([glean.scm])
+AC_CONFIG_SRCDIR([scripts/glean.in])
 
 dnl Where to find guile modules.
 guilemoduledir="${datarootdir}/guile/site/2.0"

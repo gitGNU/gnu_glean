@@ -27,8 +27,8 @@
 #
 # Usage: ./pre-inst-env COMMAND ARG...
 #
-# Run COMMAND in a pre-installation environment.  Typical use is
-# "./pre-inst-env glean.scm -t".
+# Run COMMAND in a pre-installation environment.  Typical use is, e.g.,
+# "./pre-inst-env scripts/glean -h".
 #
 # This file is a (stripped down, but otherwise largely unmodified)
 # version of the one contained in the GNU Guix project, authored by
@@ -47,8 +47,7 @@ GUILE_LOAD_COMPILED_PATH="$abs_top_builddir${GUILE_LOAD_COMPILED_PATH:+:}$GUILE_
 GUILE_LOAD_PATH="$abs_top_builddir:$abs_top_srcdir${GUILE_LOAD_PATH:+:}:$GUILE_LOAD_PATH"
 export GUILE_LOAD_COMPILED_PATH GUILE_LOAD_PATH
 
-# Define $PATH so that `glean.scm' and friends are easily found.
-# scripts does not exist yet, but may well soon exist.
+# Define $PATH so that `scripts/glean' and friends are easily found.
 PATH="$abs_top_builddir/scripts:$abs_top_builddir:$PATH"
 export PATH
 
