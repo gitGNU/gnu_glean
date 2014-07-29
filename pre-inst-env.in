@@ -55,10 +55,9 @@ export PATH
 CORE_ROOT=${abs_top_builddir}
 export CORE_ROOT
 
-# FIXME: Perhaps need to use something similar later?
-# Define $GLEAN_UNINSTALLED to prevent `Glean' from
-# prepending @guilemoduledir@ to the Guile load paths.
-#GLEAN_UNINSTALLED=1
-#export GLEAN_UNINSTALLED
+# Define $GLEAN_UNINSTALLED to prevent `Glean' from prepending
+# @guilemoduledir@ to the Guile load paths when glean is not yet installed.
+GLEAN_UNINSTALLED=1
+export GLEAN_UNINSTALLED
 
 exec "$@"

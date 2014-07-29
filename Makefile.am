@@ -21,41 +21,45 @@
 # 59 Temple Place - Suite 330        Fax:    +1-617-542-2652
 # Boston, MA  02111-1307,  USA       gnu@gnu.org
 
-# FIXME: will be used once I'm using diverse launcher scripts.
-# bin_SCRIPTS =					\
-#   scripts/guix
+bin_SCRIPTS =						\
+  scripts/glean
 
-nodist_noinst_SCRIPTS =				\
+nodist_noinst_SCRIPTS =					\
   pre-inst-env
 
-MODULES =					\
-  glean/base32.scm				\
-  glean/base-server.scm			\
-  glean/boot.scm				\
-  glean/clients/cli.scm			\
-  glean/clients/monadic-min.scm		\
-  glean/clients/repl-client-core.scm	\
-  glean/clients/web/web-client-core.scm	\
-  glean/clients/web/bootstrap.scm		\
-  glean/comtools.scm			\
-  glean/core-templates.scm			\
-  glean/data-manager.scm			\
-  glean/data-types/base-requests.scm	\
-  glean/data-types/gprofiles.scm		\
-  glean/data-types/module-requests.scm	\
-  glean/data-types/profile-requests.scm	\
-  glean/data-types/scorecards.scm		\
-  glean/data-types/sets.scm		\
-  glean/hash.scm				\
-  glean/known-rtd-manager.scm		\
-  glean/library-store.scm			\
-  glean/lounge-filesystem.scm		\
-  glean/lounge-store.scm			\
-  glean/module-server.scm			\
-  glean/monads.scm				\
-  glean/profile-server.scm			\
-  glean/record-index.scm			\
-  glean/utils.scm				\
+MODULES =						\
+  glean/base32.scm				     	\
+  glean/base-server.scm					\
+  glean/boot.scm					\
+  glean/client/boot.scm					\
+  glean/clients/cli.scm					\
+  glean/clients/monadic-min.scm				\
+  glean/clients/repl-client-core.scm	     		\
+  glean/clients/web/web-client-core.scm			\
+  glean/clients/web/bootstrap.scm		  	\
+  glean/components.scm				   	\
+  glean/comtools.scm				   	\
+  glean/config-utils.scm			   	\
+  glean/core-templates.scm			   	\
+  glean/data-manager.scm			     	\
+  glean/data-types/base-requests.scm	     		\
+  glean/data-types/gprofiles.scm		   	\
+  glean/data-types/module-requests.scm	   		\
+  glean/data-types/profile-requests.scm			\
+  glean/data-types/scorecards.scm		  	\
+  glean/data-types/sets.scm			  	\
+  glean/hash.scm					\
+  glean/known-rtd-manager.scm				\
+  glean/library/boot.scm			     	\
+  glean/library-store.scm				\
+  glean/lounge/boot.scm					\
+  glean/lounge-filesystem.scm				\
+  glean/lounge-store.scm			     	\
+  glean/module-server.scm			    	\
+  glean/monads.scm				     	\
+  glean/profile-server.scm			   	\
+  glean/record-index.scm			     	\
+  glean/utils.scm					\
   glean.scm
 
 GOBJECTS = $(MODULES:%.scm=%.go) glean/config.go
@@ -67,19 +71,16 @@ nobase_nodist_guilemodule_DATA = $(GOBJECTS) glean/config.scm
 clean-go:
 	-$(RM) -f $(GOBJECTS)
 
-SCM_TESTS =					\
-  tests/sets.scm				\
-  tests/scorecards.scm				\
-  tests/base32.scm				\
-  tests/hash.scm				\
-  tests/lounge-store.scm			\
-  tests/lounge-server.scm			\
-  tests/library-store.scm			\
-  tests/library-server.scm			\
+SCM_TESTS =						\
+  tests/sets.scm					\
+  tests/scorecards.scm				 	\
+  tests/base32.scm				     	\
+  tests/hash.scm					\
+  tests/lounge-store.scm			     	\
+  tests/lounge-server.scm			    	\
+  tests/library-store.scm			    	\
+  tests/library-server.scm			   	\
   tests/comtools-offline.scm
-
-# SH_TESTS =					\
-#   tests/guix-build.sh
 
 TESTS = $(SCM_TESTS)
 
@@ -93,25 +94,24 @@ AM_SCM_LOG_FLAGS = --no-auto-compile -L "$(top_srcdir)"
 SH_LOG_COMPILER = $(top_builddir)/test-env $(SHELL)
 AM_SH_LOG_FLAGS = -x -e
 
-EXTRA_DIST =					\
-  artanis					\
-  www						\
-  modules					\
-  HACKING					\
-  ROADMAP					\
-  TODO						\
-  .dir-locals.el				\
-  srfi/srfi-64.scm				\
-  srfi/srfi-64.upstream.scm			\
-  quickcheck/quickcheck.scm			\
-  quickcheck/quickcheck.sls			\
-  tests/quickcheck-defs.scm			\
-  tests/test-utils.scm				\
-  tests/test-suite.scm				\
+EXTRA_DIST =					     	\
+  artanis						\
+  www							\
+  modules						\
+  HACKING						\
+  ROADMAP						\
+  TODO						     	\
+  .dir-locals.el					\
+  srfi/srfi-64.scm				     	\
+  srfi/srfi-64.upstream.scm			  	\
+  quickcheck/quickcheck.scm			  	\
+  tests/quickcheck-defs.scm			  	\
+  tests/test-utils.scm				 	\
+  tests/test-suite.scm				 	\
   $(TESTS)
 
-CLEANFILES =					\
-  $(GOBJECTS)					\
+CLEANFILES =						\
+  $(GOBJECTS)						\
   $(SCM_TESTS:tests/%.scm=%.log)
 
 AM_V_GUILEC = $(AM_V_GUILEC_$(V))
@@ -143,17 +143,17 @@ $(guix_install_go_files): install-nobase_dist_guilemoduleDATA
 include doc.am
 
 ACLOCAL_AMFLAGS = -I m4
-AM_DISTCHECK_CONFIGURE_FLAGS =			\
+AM_DISTCHECK_CONFIGURE_FLAGS =						\
   --with-libgcrypt-prefix="$(LIBGCRYPT_PREFIX)"
 
 dist-hook: gen-ChangeLog
 
 gen-ChangeLog:
-	if test -d .git; then				\
-	  $(top_srcdir)/build-aux/gitlog-to-changelog	\
-	    > $(distdir)/cl-t;				\
-	  rm -f $(distdir)/ChangeLog;			\
-	  mv $(distdir)/cl-t $(distdir)/ChangeLog;	\
+	if test -d .git; then						\
+	  $(top_srcdir)/build-aux/gitlog-to-changelog			\
+	    > $(distdir)/cl-t;						\
+	  rm -f $(distdir)/ChangeLog;					\
+	  mv $(distdir)/cl-t $(distdir)/ChangeLog;			\
 	fi
 
 .PHONY: gen-ChangeLog clean-go

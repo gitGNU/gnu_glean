@@ -74,9 +74,7 @@ AC_CONFIG_FILES([
   glean/config.scm
 ])
 
-dnl These ones will be relevant later on: once set up.
-dnl AC_CONFIG_FILES([scripts/guix], [chmod +x scripts/guix])
-
+AC_CONFIG_FILES([scripts/glean], [chmod +x scripts/glean])
 AC_CONFIG_FILES([pre-inst-env], [chmod +x pre-inst-env])
 AC_CONFIG_FILES([test-env],     [chmod +x test-env])
 

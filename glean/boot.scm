@@ -42,7 +42,6 @@
   #:use-module (glean utils)
   #:use-module (ice-9 getopt-long)
   #:use-module (ice-9 match)
-  #:use-module (tests test-suite)
   #:export (boot))
 
 
@@ -72,15 +71,13 @@ or client) you can run that command followed by the `--help' option."))
 (define *option-grammar*
   '((help       (single-char #\h) (value #f))
     (usage      (single-char #\u) (value #f))
-    (version    (single-char #\v) (value #f))
-    (test-suite (single-char #\t) (value #f))))
+    (version    (single-char #\v) (value #f))))
 
 (define *messages*
   `("Show this help message and exit."
     "Show this help message and exit."
     ,(string-append "Show the version of " %glean-package-name%
-                    " you are using and exit." )
-    "Run the test suite."))
+                    " you are using and exit." )))
 
 
 ;;;; Logic
@@ -106,9 +103,7 @@ or client) you can run that command followed by the `--help' option."))
      (library-boot (cons path rest)))
     (_
      (let ((opts (getopt-long args *option-grammar*)))
-       (cond ((option-ref opts 'test-suite #f)   ; --test-suite
-              (run-test-suite))
-             ((option-ref opts 'version #f)      ; --version
+       (cond ((option-ref opts 'version #f)      ; --version
               (emit-version %glean-package-name%
                             %glean-version%))
              (else
