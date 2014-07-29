@@ -5,6 +5,8 @@
 profiles/*
 *.log
 glean/config.scm
+scripts/glean
+*.tar.gz
 *.org
 *.ede
 *.sls
