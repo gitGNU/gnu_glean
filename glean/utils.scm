@@ -23,9 +23,8 @@
 ;; Boston, MA  02111-1307,  USA       gnu@gnu.org
 
 (define-module (glean utils)
-  #:use-module (glean config)
-  #:use-module (rnrs)
   #:use-module (ice-9 match)
+  #:use-module (rnrs records inspection)
   #:export (
             seq
             flatten
@@ -36,6 +35,8 @@
             rprinter
             relevant?
             display=>
+            emit-usage
+            emit-version
             ))
 
 (define (display=> x) (format #t "~a\n" x) x)
@@ -97,9 +98,7 @@ prints RECORD and its fields as a side-effect if #t."
       (let* ((rtd (record-rtd record))
              (fields (vector->list (record-type-field-names rtd)))
              (length (length fields))
-             (port (if (string? %log-file%)
-                       (open-file %log-file% "a")
-                       (current-output-port))))
+             (port (current-output-port)))
 
         (define (print-fields remaining index)
           (cond ((null? remaining)
@@ -124,35 +123,32 @@ prints RECORD and its fields as a side-effect if #t."
 
         (format port "record: ~a\n" (record-type-name rtd))
         (print-fields fields 0)
-        (format port ":end:\n")
-        (if (string? %log-file%) (close-output-port port)))
+        (format port ":end:\n"))
       #f))
 
 (define* (gmsg #:key (priority 10) . args)
   "Provide a simple debugging message system. Prints ARGS with Format
 if PRIORITY is lower than %DEBUG% set in config.scm."
-  (define (indent length)
-    (define (i l s)
-      (if (zero? l)
-          s
-          (i (1- l) (string-append " " s))))
-    
-    (if (zero? length)
-        ""
-        (i (1- length) " ")))
-  (define (gm args format-string)
-    (cond ((null? args) format-string)
-          (else (gm (cdr args) (string-append format-string " ~S")))))
-  (if (< priority %debug%)
-      (let ((port (if (string? %log-file%)
-                      (open-file %log-file% "a")
-                      (current-output-port))))
-        (format port "~a* Debug:" (indent (1- priority)))
-        (apply format port (gm args " ") args)
-        (newline port)
-        (if (string? %log-file%) (close-output-port port)))))
+  (let ((%debug% 10))
+    (define (indent length)
+      (define (i l s)
+        (if (zero? l)
+            s
+            (i (1- l) (string-append " " s))))
+      
+      (if (zero? length)
+          ""
+          (i (1- length) " ")))
+    (define (gm args format-string)
+      (cond ((null? args) format-string)
+            (else (gm (cdr args) (string-append format-string " ~S")))))
+    (if (< priority %debug%)
+        (let ((port (current-output-port)))
+          (format port "~a* Debug:" (indent (1- priority)))
+          (apply format port (gm args " ") args)
+          (newline port)))))
 
-(define (relevant? priority)
+(define* (relevant? priority #:key (%log-level% 'debug))
   (define (weigh rating)
     (cond ((eqv? rating 'critical)  0)
           ((eqv? rating 'important) 1)
@@ -162,3 +158,63 @@ if PRIORITY is lower than %DEBUG% set in config.scm."
   (let ((urgency (weigh priority))
         (filter  (weigh %log-level%)))
     (<= urgency filter)))
+
+(define (emit-version package-name version)
+  "Output a version message and exit."
+  (format #t
+          "~a ~a
+Copyright (C) 2014 Alex Sassmannshausen.
+~a comes with ABSOLUTELY NO WARRANTY.
+License: GNU AGPL version 3 or later <http://gnu.org/licenses/agpl.html>.
+This is Free Software: you are free to change and redistribute it under the
+terms of the above license.
+
+For more information about these matters, see the file named COPYING.
+"
+          package-name version package-name))
+
+(define (emit-usage command synopsis description options messages)
+  "Return a usage message formatted in the following fashion:
+Usage: COMMAND [--LONG-OPT | -SHORT-OPT]
+               ...
+  LONG-OPT:   MESSAGE
+"
+  (define (name-char-pair option)
+    (match option
+      ((name ('single-char char) value)
+       (cons (symbol->string name) (make-string 1 char)))
+      ((name . _)
+       (list (symbol->string name)))
+      (_ (error "USAGE -- Unexpected option:" option))))
+  (define (info-line pair)
+    (match pair
+      ((name . ()) (string-append "[--" name "]"))
+      ((name . char) (string-append "[--" name " | -" char "]"))
+      (_ (error "USAGE -- Should be impossible:" pair))))
+  (define (spaces length)
+    (if (negative? length)
+        (error "USAGE -- option name is too long!")
+        (make-string length #\ )))
+  
+  (let ((pairs (map name-char-pair options)))
+    (match (map info-line pairs)
+      ((first . rest)
+       (format #t "Usage:     ~a ~a\n" command first)
+       (for-each (lambda (info)
+                   (format #t "           ~a ~a\n"
+                           (spaces (string-length command)) info))
+                 rest)))
+    (newline)
+    (format #t "~a" synopsis)
+    (newline)
+    (for-each (lambda (pair message)
+                (match pair
+                  ((name . char)
+                   (format #t "      ~a:~a~a\n"
+                           name
+                           (spaces (- 15 (string-length name)))
+                           message))))
+              pairs messages)
+    (newline)
+    (format #t "~a" description)
+    (newline)))

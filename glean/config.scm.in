@@ -27,7 +27,6 @@
 ;;; Code:
 
 (define-module (glean config)
-  #:use-module (srfi srfi-9)
   #:use-module (glean config-utils)
   #:export (
             ;; Package Definition
