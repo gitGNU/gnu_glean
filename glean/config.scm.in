@@ -112,14 +112,6 @@
 (define %library-port%     (string-append %socket-dir% "/library.sock"))
 (define %library-log%      (string-append %log-dir%    "/library.log"))
 
-;;;;; Deprecated
-(define %module-directory%
-  ;; Absolute path of the glean modules root.
-  (data-dir "/modules"))
-(define %wip-module-directory%
-  ;; Absolute path of the glean wip-module root.
-  (data-dir "/wip-modules"))
-
 
 ;;;; Lounge Configuration
 (define %lounge-root-dir% (string-append %user-dir%   "/lounge"))

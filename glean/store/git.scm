@@ -1,6 +1,6 @@
 ;;; glean --- learning the world using Guile.         -*- coding: utf-8 -*-
 
-(define-module (store git)
+(define-module (glean store git)
   #:use-module (glean library core-templates)
   #:export (git-module))
 

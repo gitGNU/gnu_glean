@@ -59,7 +59,14 @@ MODULES =						\
   glean/lounge/boot.scm					\
   glean/lounge/lounge-filesystem.scm			\
   glean/lounge/lounge-store.scm				\
-  glean/lounge/server.scm
+  glean/lounge/server.scm                               \
+  glean/store/birds.scm                                 \
+  glean/store/git.scm                                   \
+  glean/store/glean.scm                                 \
+  glean/store/gov-uk.scm                                \
+  glean/store/koha.scm                                  \
+  glean/store/meta.scm                                  \
+  glean/store/test.scm
 
 GOBJECTS = $(MODULES:%.scm=%.go) glean/config.go
 
@@ -96,7 +103,6 @@ AM_SH_LOG_FLAGS = -x -e
 EXTRA_DIST =					     	\
   artanis						\
   www							\
-  modules						\
   HACKING						\
   ROADMAP						\
   TODO						     	\

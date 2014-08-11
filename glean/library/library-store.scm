@@ -189,58 +189,70 @@ applying MVALUE to MPROC."
 ;;     b) (crown)set-record (new field: upgrade-map)
 ;; 2b) Load every module into a vhash with key: min-hash
 ;;     a) full-hashes
+;; The current implementation will return modules for core-dir and user-dir,
+;; but will only recompile the lounge on the basis of changes to user-dir (see
+;; library-hash implementation and library-modules implementation as well as
+;; this one, compile-library).
 (define compile-library
-  (let ((hash           (make-bytevector 0))
+  (let ((cached-hash    (make-bytevector 0))
         (cached-library (empty-library)))
     (lambda (library-hash-pair)
       "Return library (a vhash) corresponding to the file-system state
-represented by LIBRARY-HASH-PAIR."
-      (let ((library-dir  (car library-hash-pair))
-            (library-hash (cdr library-hash-pair)))
+represented by LIBRARY-HASH-PAIR.  If the hash in LIBRARY-HASH-PAIR was passed
+to us before, return the previously computed library.  Else, re-compute.
 
-        (define (compile library-dir)
-          "Return the library vhash from the sets in LIBRARY-MODULES."
-          (define (sets-from-module module)
-            "Return all sets defined in MODULE."
-            (filter (lambda (set)
-                      (if (module? set)
-                          set
-                          (begin
-                            (format #t "~a: not a module, eliminating."
-                                    (cond ((set? set) (set-name set))
-                                          ((nothing? set) 'nothing)
-                                          (else set)))
-                            #f)))
-                    (module-map
-                     (lambda (name value)
-                       (format #t "Loading ~a..." name)
-                       (let ((maybe (resolve-set (variable-ref value))))
-                         (if (set? maybe)
-                             (format #t "[success]\n")
-                             (format #t "[failure]\n"))
-                         maybe))
-                     (module-public-interface module))))
+From now on library-dir in library-hash-pair is a list of library dirs to load
+from."
+      (define (sets-from-module module)
+        "Return all sets defined in MODULE."
+        (let ((mod (module-public-interface module)))
+          (if mod
+              (filter (lambda (set)
+                        (if (module? set)
+                            set
+                            (begin
+                              (format #t "~a: not a module, eliminating."
+                                      (cond ((set? set) (set-name set))
+                                            ((nothing? set) 'nothing)
+                                            (else set)))
+                              #f)))
+                      (module-map
+                       (lambda (name value)
+                         (format #t "Loading ~a..." name)
+                         (let ((maybe (resolve-set (variable-ref value))))
+                           (if (set? maybe)
+                               (format #t "[success]\n")
+                               (format #t "[failure]\n"))
+                           maybe))
+                       mod))
+              (error "SETS-FROM-MODULE -- module did not resolve:" module))))
 
-          (fold (lambda (module library)
-                  (fold library-cons
-                        library                     ; library thus far
-                        (sets-from-module module))) ; these sets
-                (empty-library)                     ; new library
-                ;; If cached-library is not empty then we must force a reload
-                ;; of modules to be loaded as glean will be using cached
-                ;; modules otherwise.
-                (if (empty-library? cached-library) ; set module objects
-                    (library-modules library-dir)
-                    (filter-map (lambda (module)
-                                  (false-if-exception (reload-module module)))
-                                (library-modules library-dir)))))
+      (match library-hash-pair
+        ((library-dir . library-hash)
+         (define (compile)
+           "Return the library vhash from the sets in LIBRARY-MODULES."
+           (fold (lambda (module library)
+                   (fold library-cons
+                         library                     ; library thus far
+                         (sets-from-module module))) ; these sets
+                 (empty-library)                     ; new library
+                 ;; If cached-library is not empty then we must force a reload
+                 ;; of modules to be loaded as glean will be using cached
+                 ;; modules otherwise.
+                 ;; (This will be executed if the library store has changed
+                 ;; since the last time it was checked.)
+                 (if (empty-library? cached-library)
+                     (library-modules library-dir) ; plain load
+                     (filter-map (lambda (module)  ; force reload
+                                   (false-if-exception (reload-module module)))
+                                 (library-modules library-dir)))))
 
-        ;; If LIBRARY-HASH has not changed, return cached library.
-        (if (bytevector=? library-hash hash)
-            cached-library
-            (begin (set! hash           library-hash)
-                   (set! cached-library (compile library-dir))
-                   cached-library))))))
+         ;; If LIBRARY-HASH has not changed, return cached library.
+         (if (bytevector=? library-hash cached-hash)
+             cached-library
+             (begin (set! cached-hash    library-hash)
+                    (set! cached-library (compile))
+                    cached-library)))))))
 
 (define (library-cons set lib)
   "Return a new library consisting of LIBRARY augmented by SET."
@@ -495,31 +507,84 @@ it is known in LIBRARY-PAIR."
                                  name)))))))
 
 ;;;;; Helpers
+
+(define (string-format msg . args)
+  "Return a string composed of MSG and ARGS, by constructing it using format."
+  (with-output-to-string
+    (lambda () (apply format #t msg args))))
+
 (define (test-file filename)
+  "Return #t if FILENAME identifies a regular file that we have access to, #f
+otherwise."
   (catch 'system-error
     (lambda () (eqv? (stat:type (stat filename)) 'regular))
     (lambda (key . args) #f)))
 
-(define (libv-cons key value vhash)
-  (vhash-cons key value vhash))
-(define (libv-assoc key vhash)
-  (vhash-assoc key vhash))
-(define (libv-delete key vhash)
-  (vhash-delete key vhash))
-(define (libv-fold proc init vhash)
-  (vhash-fold proc init vhash))
+(define (libv-cons hash value component)
+  "Return a new library component based on COMPONENT where KEY is ASSOCIATED
+with VALUE."
+  (vhash-cons hash value component))
+(define (libv-assoc hash component)
+  "Return the first hash/value pair from the library component COMPONENT whose
+hash is equal to HASH."
+  (vhash-assoc hash component))
+(define (libv-delete hash component)
+  "Remove all associations from the library component COMPONENT with HASH."
+  (vhash-delete hash component))
+(define (libv-fold proc init component)
+  "Fold over the hash/value elements of the library component COMPONENT from
+left to right, with each call to PROC having the form ‘(PROC hash value
+result)’, where RESULT is the result of the previous call to PROC and INIT the
+value of RESULT for the first call to PROC."
+  (vhash-fold proc init component))
 
-(define (library-modules library-dir)
-  "Return the list of modules that provide content for the library."
+(define (sets-from-module module)
+  "Return a list containing each exported set in MODULE.  Ignore all exported
+bindings which are not sets.
+
+Should module not export any bindings, raise an error."
+  (or (and=> (module-public-interface module)
+             (lambda (mod-interface)
+               (filter (lambda (set)
+                         (if (module? set)
+                             set
+                             (begin
+                               (format #t "~a: not a module, eliminating."
+                                       (cond ((set? set) (set-name set))
+                                             ((nothing? set) 'nothing)
+                                             (else set)))
+                               #f)))
+                       (module-map
+                        (lambda (name value)
+                          (format #t "Loading ~a..." name)
+                          (let ((maybe (resolve-set (variable-ref value))))
+                            (if (set? maybe)
+                                (format #t "[success]\n")
+                                (format #t "[failure]\n"))
+                            maybe))
+                        mod-interface))))
+      (error "SETS-FROM-MODULE -- module did not resolve:" module)))
+
+(define (library-modules store-dir)
+  "Return the list of Guile modules, derived from the files in STORE-DIR, that
+provide content for the library. These modules are then parsed using
+`sets-from-module' to retrieve the Glean modules contained therein."
+  ;; core-dir contains glean distributed modules
+  (define core-dir
+    (dirname (search-path %load-path
+                          "glean/store/glean.scm")))
   (define not-slash
     (char-set-complement (char-set #\/)))
-  (define (data-files library-dir)
-    "Return the list of files that implement glean modules."
+  (define* (data-files store-dir #:optional core?)
+    "Return the list of files that implement glean modules.  If core is #t,
+resolve modules with a base of `glean library store', else with a base of
+`store'."
     (define prefix-len
-      (string-length
-       (dirname library-dir)))
+      (if core?
+          (string-length (dirname (dirname store-dir)))
+          (string-length (dirname store-dir))))
 
-    (file-system-fold (const #t)               ; enter?
+    (file-system-fold (const #t)                 ; enter?
                       (lambda (path stat result) ; leaf
                         (if (string-suffix? ".scm" path)
                             (cons (substring path prefix-len) result)
@@ -536,15 +601,16 @@ it is known in LIBRARY-PAIR."
                       '()
                       library-dir
                       stat))
+  (define (data-files->modules path)
+    (let ((name (map string->symbol
+                     (string-tokenize (string-drop-right path 4)
+                                      not-slash))))
+      (false-if-exception (resolve-module name))))
 
-  (filter-map (lambda (path)
-                (let ((name (map string->symbol
-                                 (string-tokenize (string-drop-right path 4)
-                                                  not-slash))))
-                  (if (not (member (dirname library-dir) %load-path))
-                      (add-to-load-path (dirname library-dir)))
-                  (false-if-exception (resolve-module name))))
-              (data-files library-dir)))
+  (if (not (member (dirname library-dir) %load-path))
+      (add-to-load-path (dirname library-dir)))
+  (append (filter-map data-files->modules (data-files core-dir #t))
+          (filter-map data-files->modules (data-files library-dir))))
 
 
 ;;;;; Procedures for inclusion in Set

@@ -1,12 +1,12 @@
 ;;; glean --- learning the world using Guile.         -*- coding: utf-8 -*-
 
-(define-module (store meta)
+(define-module (glean store meta)
   #:use-module (glean library core-templates)
-  #:use-module (store git)
-  #:use-module (store test)
-  #:export (meta-gmodule))
+  #:use-module (glean store git)
+  #:use-module (glean store test)
+  #:export (meta-module))
 
-(define meta-gmodule
+(define meta-module
   (module
     'meta
     #:name "Meta: Git and Test combined"

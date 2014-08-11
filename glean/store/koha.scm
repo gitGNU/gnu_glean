@@ -1,6 +1,6 @@
 ;;; glean --- learning the world using Guile.         -*- coding: utf-8 -*-
 
-(define-module (store koha)
+(define-module (glean store koha)
   #:use-module (glean library core-templates)
   #:export (koha-module))
 
