@@ -55,7 +55,7 @@
             export-module
             remove-module
             compile-library
-            library-hash
+            store-hash
 
             fetch-set
             set-fullhash
@@ -67,10 +67,21 @@
             make-hashtree
             ))
 
-;; A library is a database of all known sets indexed by their
-;; fullhashes. A secondary index is stored in reference: minhash to
-;; fullhash. The latter can be used to ensure continuity even after
-;; set upgrades.
+;; A library is a database of two tables:
+;; 1) All known modules are indexed by their fullhashes.
+;; 2) A secondary reference from minhash to fullhash.  The latter can contain
+;;    one to many mappings and can be used to ensure continuity even after
+;;    module upgrades.
+;;
+;; A fullhash is a hash of a module's meta-data as well as its contents.
+;;
+;; A minhash is a hash of a module's author and id data.  Normally modules are
+;; identified using fullhashes only, but these will change when any changes to
+;; the module are made (e.g. version bumps).
+
+;; To allow mapping of hashes supplied by the lounge server from before the
+;; version bump, the minhash will be used instead of the fullhash.
+
 (define-record-type <library>
   (library catalogue reference)
   library?
@@ -78,14 +89,17 @@
   (reference library-ref))
 
 (define (empty-library)
+  "Return an empty library."
   (library vlist-null vlist-null))
 
 (define (empty-library? obj)
+  "Return #t if OBJ is an empty library."
   (and (library? obj)
        (vlist-null? (library-cat obj))
        (vlist-null? (library-ref obj))))
 
 (define (pretty-print-library lib)
+  "Print the library LIB to stdout."
   (define (comp-string vlist . set?)
     (vlist-map (lambda (cat-entry)
                  (if (null? set?)
@@ -97,7 +111,8 @@
                                     (cdr cat-entry)
                                     (set-id (cdr cat-entry)))))
                vlist))
-(format #t "~a\n*Catalogue*:\n~a\n*Catalogue End*\n*Reference*:\n~a\n*Reference End*\n"
+  (format #t "~a\n*Catalogue*:\n~a\n*Catalogue End*
+*Reference*:\n~a\n*Reference End*\n"
         lib
         (string-join (vlist->list (comp-string (library-cat lib) #t))
                      "\n")
@@ -108,6 +123,8 @@
 ;; interrogate its contents (value) or it provides a custom
 ;; informative message. Occasionally a programmer may not wish a shill
 ;; to “Spill the beans” — it won't if beans is #f.
+;;
+;; FIXME: intermediate monadic logging experiment. Will be phased out.
 (define-record-type <shill>
   (mecha-shill value source urgency beans)
   shill?
@@ -139,11 +156,7 @@
                   urgency msg source)
           (if (string? %log-file%) (close-output-port port))))))
 
-(define (string-format msg . args)
-  (with-output-to-string
-    (lambda () (apply format #t msg args))))
-
-;;;; Store Monad
+;;;;; Store Monad
 ;; A specialised monad providing logging, exception (FIXME: and file
 ;; locking) management.
 
@@ -167,68 +180,35 @@ applying MVALUE to MPROC."
   (bind   store-bind)
   (return store-return))
 
-;;;; Store API
-;; Any compiled-store dependent procedure (virtually all in the
-;; library) require first a call to the "compile-library"
-;; procedure. This is a lazy procedure that, given a store hash,
-;; returns either a memoized store or compiles a store a-fresh when
-;; the value is required.
+;;;;; Store API
+;;
+;; Any compiled-library dependent procedure (virtually all in the library)
+;; require first a call to the "compile-library" procedure. This is a lazy
+;; procedure that, given a store hash, returns either a memoized library or
+;; compiles the store a-fresh into a new library when the value is required.
 
-(define (library-hash library-dir)
-  "Return a hash, representing the state of LIBRARY-DIR."
-  (cons library-dir
+(define (store-hash store-dir)
+  "Return a hash, representing the state of STORE-DIR."
+  (cons store-dir
         (call-with-values open-sha256-port
           (lambda (port reader)
-            (write (file-system-tree library-dir) port)
+            (write (file-system-tree store-dir) port)
             (close-port port)
             (reader)))))
 
-;; 1) Determine all module names in module dir
-;; 2a) Load every module into a vhash with key: full-hash (crown-hash):
-;;     a) min-hash
-;;     b) (crown)set-record (new field: upgrade-map)
-;; 2b) Load every module into a vhash with key: min-hash
-;;     a) full-hashes
-;; The current implementation will return modules for core-dir and user-dir,
-;; but will only recompile the lounge on the basis of changes to user-dir (see
-;; library-hash implementation and library-modules implementation as well as
-;; this one, compile-library).
+;; The current implementation of compile-library will return modules for
+;; core-dir and user-dir, but will only recompile the lounge on the basis of
+;; changes to user-dir (see store-hash implementation and library-modules
+;; implementation as well as this one, compile-library).
 (define compile-library
   (let ((cached-hash    (make-bytevector 0))
         (cached-library (empty-library)))
-    (lambda (library-hash-pair)
+    (lambda (store-hash-pair)
       "Return library (a vhash) corresponding to the file-system state
-represented by LIBRARY-HASH-PAIR.  If the hash in LIBRARY-HASH-PAIR was passed
-to us before, return the previously computed library.  Else, re-compute.
-
-From now on library-dir in library-hash-pair is a list of library dirs to load
-from."
-      (define (sets-from-module module)
-        "Return all sets defined in MODULE."
-        (let ((mod (module-public-interface module)))
-          (if mod
-              (filter (lambda (set)
-                        (if (module? set)
-                            set
-                            (begin
-                              (format #t "~a: not a module, eliminating."
-                                      (cond ((set? set) (set-name set))
-                                            ((nothing? set) 'nothing)
-                                            (else set)))
-                              #f)))
-                      (module-map
-                       (lambda (name value)
-                         (format #t "Loading ~a..." name)
-                         (let ((maybe (resolve-set (variable-ref value))))
-                           (if (set? maybe)
-                               (format #t "[success]\n")
-                               (format #t "[failure]\n"))
-                           maybe))
-                       mod))
-              (error "SETS-FROM-MODULE -- module did not resolve:" module))))
-
-      (match library-hash-pair
-        ((library-dir . library-hash)
+represented by STORE-HASH-PAIR.  If the hash in STORE-HASH-PAIR was passed
+to us before, return the previously computed library.  Else, re-compute."
+      (match store-hash-pair
+        ((store-dir . store-hash)
          (define (compile)
            "Return the library vhash from the sets in LIBRARY-MODULES."
            (fold (lambda (module library)
@@ -242,15 +222,15 @@ from."
                  ;; (This will be executed if the library store has changed
                  ;; since the last time it was checked.)
                  (if (empty-library? cached-library)
-                     (library-modules library-dir) ; plain load
+                     (library-modules store-dir) ; plain load
                      (filter-map (lambda (module)  ; force reload
                                    (false-if-exception (reload-module module)))
-                                 (library-modules library-dir)))))
+                                 (library-modules store-dir)))))
 
-         ;; If LIBRARY-HASH has not changed, return cached library.
-         (if (bytevector=? library-hash cached-hash)
+         ;; If STORE-HASH has not changed, return cached library.
+         (if (bytevector=? store-hash cached-hash)
              cached-library
-             (begin (set! cached-hash    library-hash)
+             (begin (set! cached-hash    store-hash)
                     (set! cached-library (compile))
                     cached-library)))))))
 
@@ -381,7 +361,16 @@ it is known in LIBRARY-PAIR."
        fullhashes))
 
 ;;;;; Composite Transactions
+;;
+;; A first draft of high-level procedures for manipulating the user store
+;; directories.
+;;
+;; FIXME: These procedures probably do not work at present due to the
+;; significant changes to the underlying library/store architecture.
+
 (define (import-module filename)
+    "Install the Glean module identified by FILENAME in the user store,
+reporting the result of the procedure, or the failure."
   (define (import)
     ((mlet* store-monad
             ((path         (get-path filename))
@@ -392,6 +381,9 @@ it is known in LIBRARY-PAIR."
   (not (nothing? (shill-value (import)))))
 
 (define (remove-module filename)
+  "Remove the Glean module identified by FILENAME from the user store,
+reporting the result of the procedure, or the failure.  The module should be
+backed up in the user store backup directory."
   (define (remove)
     ((mlet store-monad
            ((result (move filename #t)))
@@ -400,6 +392,11 @@ it is known in LIBRARY-PAIR."
 
 (define* (export-module filename
                         #:optional (target %wip-library-dir%))
+  "Export the Glean module identified by FILENAME from the user store,
+reporting the result of the procedure, or the failure.
+
+The module will be exported to the user wip store directory by default or
+TARGET if provided."
   (let ((target (if (string=? target "./")
                     (getenv "PWD")
                     target)))
@@ -410,28 +407,54 @@ it is known in LIBRARY-PAIR."
     (not (nothing? (shill-value (export))))))
 
 ;;;;; Atomic Transactions / Monadic Transactions
+;;
+;; Monadic Procedures to be used within the store-monad.
+;;
+;; FIXME: I'm surprised these procedures use store-return. This should
+;; normally be implicit to the calling procedurs. This is probably a mistake
+;; in the implementation of the store-monad.
+
 (define (get-path filename)
+  "Return a monadic value which when resolved returns FILENAME converted to an
+absolute path pointing to the desired file, or a nothing indicating the
+non-existance of the file identified by FILENAME.
+
+GET-PATH will first check whether FILENAME is an absolute path, then handle
+relative paths, and finally paths relative to the WIP directory."
   (apply store-return
-   (cond ((and (char=? (string-ref filename 0) #\/)
-               (test-file filename))
-          ;; Filepath is absolute
-          (list filename))
-         ((test-file filename)
-          ;; Filepath is relative
-          (list (string-format "~a/~a" (getenv "PWD") filename)))
-         ((test-file (string-format "~a/~a"
-                                    %wip-library-dir% filename))
-          ;; File's in %wip-library-dir%
-          (list (string-format "~a/~a" %wip-library-dir% filename)))
-         ;; File does not exist.
-         (else
-          (list (nothing 'import-error filename) 'get-path 'error
-                (string-format
-                 "~a is not a regular file or does not exist"
-                 filename))))))
+   (cond
+    ;; FILENAME is an absolute path to file
+    ((and (char=? (string-ref filename 0) #\/)
+          (test-file filename))
+     (list filename))
+    ;; FILENAME is a relative path to file
+    ((test-file filename)
+     (list (string-format "~a/~a" (getenv "PWD") filename)))
+    ;; FILENAME is a path to file relative to the WIP-LIBRARY-DIR
+    ((test-file (string-format "~a/~a"
+                               %wip-library-dir% filename))
+     (list (string-format "~a/~a" %wip-library-dir% filename)))
+    ;; File does not exist.
+    (else
+     (list (nothing 'import-error filename) 'get-path 'error
+           (string-format
+            "~a is not a regular file or does not exist"
+            filename))))))
 
 (define* (move filename #:optional deletion? backup?
-                #:key (target %bak-library-dir%))
+               #:key (target %bak-library-dir%))
+  "Return a monadic value which when resolved returns a report indicating
+whether the file indicated by FILENAME was successfully moved to TARGET.
+
+If DELETION? is #t, remove the file identified by FILENAME.
+
+If BACKUP? is #t, make a backup of the file at FILENAME in TARGET.
+
+The move of the file at FILENAME is a side-effect of this procedure.
+
+The intention of this procedure is to provide a general low-level interface to
+shifting modules around %LIBRARY-DIR%.  Currently the workings of this
+procedure are not entirely clear."
   (apply store-return
          (let* ((name   (basename filename))
                 (module (string-format "~a/~a" %library-dir% name))
@@ -480,6 +503,10 @@ it is known in LIBRARY-PAIR."
                                   "hence not backed up"))))))))
 
 (define (verify filename)
+  "Return a monadic value which when resolved returns a report on the validity
+of the Glean module definitions contained in the file identified by FILENAME.
+
+The verification process is carried out as a side-effect of this procedure."
   (apply store-return
          (let ((name (basename filename)))
            (catch 'system-error
@@ -493,6 +520,11 @@ it is known in LIBRARY-PAIR."
                                  name)))))))
 
 (define (install filename)
+  "Return a monadic value which when resolved returns a report on the success
+of moving the Glean module identified by FILENAME into the store at
+%LIBRARY-DIR%.
+
+The installation of the Glean module is carried out as a side-effect."
   (apply store-return
          (let ((name (basename filename)))
            (catch 'system-error
@@ -599,7 +631,7 @@ resolve modules with a base of `glean library store', else with a base of
                                path (strerror errno))
                         result)
                       '()
-                      library-dir
+                      store-dir
                       stat))
   (define (data-files->modules path)
     (let ((name (map string->symbol
@@ -607,14 +639,18 @@ resolve modules with a base of `glean library store', else with a base of
                                       not-slash))))
       (false-if-exception (resolve-module name))))
 
-  (if (not (member (dirname library-dir) %load-path))
-      (add-to-load-path (dirname library-dir)))
+  (if (not (member (dirname store-dir) %load-path))
+      (add-to-load-path (dirname store-dir)))
   (append (filter-map data-files->modules (data-files core-dir #t))
-          (filter-map data-files->modules (data-files library-dir))))
+          (filter-map data-files->modules (data-files store-dir))))
 
 
 ;;;;; Procedures for inclusion in Set
-;; FIXME: hash functions should work with promises?
+;;
+;; These procedures should really be located in (glean library sets), as they
+;; pertain to sets in general rather than their storage in the library.
+;;
+;; FIXME: hash functions should be memoized?
 (define (crownset-minhash set)
   "Return a sha256 hash of SET's creator prefixed with its id."
   (sha256-symbol (string-append (symbol->string (set-id set))
@@ -688,3 +724,5 @@ options fields of every problem in set-contents."
   (apply sha256-symbol (cons (symbol->string (set-id set))
                              (map problem-composite
                                   (set-contents set)))))
+
+;;; library-story.scm ends here

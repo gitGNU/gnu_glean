@@ -182,7 +182,7 @@ COUNTER, or raise 'invalid-set."
           (else (challs (new-challenge (fetch-problem bh c)))))))
 
 (define (fetch-problem blobhash counter)
-  (let ((set (fetch-set blobhash (library-hash %library-dir%))))
+  (let ((set (fetch-set blobhash (store-hash %library-dir%))))
     (if set
         (let* ((problems (set-contents set))
                (num-of-problems (length problems)))
@@ -245,7 +245,7 @@ COUNTER, or raise 'invalid-set."
         (search   (knownq-search   rq)))
     (cond ((and (not operator)
                 (not search))           ; known-crownsets
-           (knowns (known-crownsets (library-hash %library-dir%)
+           (knowns (known-crownsets (store-hash %library-dir%)
                                     %ignore-keywords%)))
           ;; search contains an invalid operator
           ((not (or (eqv? operator 'match))) ; operator
@@ -254,14 +254,14 @@ COUNTER, or raise 'invalid-set."
           ((and (list? search)
                 (valid-search? search)) ; search
            (knowns (search-sets operator search
-                                (library-hash %library-dir%))))
+                                (store-hash %library-dir%))))
           (else                         ;fail
            (raise 'invalid-search)))))
 
 (define (details-provider rq)
   (let ((hash (detailq-hash rq)))
     (if (blobhash? hash)
-        (details (set-details hash (library-hash %library-dir%)))
+        (details (set-details hash (store-hash %library-dir%)))
         (raise 'invalid-sethash))))
 
 (define (hashmap-provider rq)
@@ -275,7 +275,7 @@ COUNTER, or raise 'invalid-set."
         (let ((sets (filter-map
                      (lambda (hashpair)
                        (fetch-set (cdr hashpair)
-                                  (library-hash %library-dir%)))
+                                  (store-hash %library-dir%)))
                      hashpairs)))
           (if (not (null? sets))
               (hashmaps (map make-hashtree sets))
@@ -287,5 +287,5 @@ COUNTER, or raise 'invalid-set."
     (if (and (list? fullhashes)
              (null? (filter (negate blobhash?) fullhashes)))
         (sethashess (set-hashpairs fullhashes
-                                   (library-hash %library-dir%)))
+                                   (store-hash %library-dir%)))
         (raise 'invalid-fullhashes))))
