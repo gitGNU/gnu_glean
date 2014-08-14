@@ -1,9 +1,9 @@
 ;;; glean --- fast learning tool.         -*- coding: utf-8 -*-
 
-;;;; REPL Client
+;;;; REPL Client — a Guile / Geiser interface.
 
-;; Copyright (C) 2008, 2010, 2012 Alex Sassmannshausen
-
+;; Copyright © 2012, 2014 Alex Sassmannshausen
+;;
 ;; This program is free software; you can redistribute it and/or
 ;; modify it under the terms of the GNU General Public License as
 ;; published by the Free Software Foundation; either version 3 of
@@ -23,8 +23,9 @@
 
 ;;;; Commentary:
 ;;;
-;;; Provide a simple glean client which can be run from a guile
-;;; prompt.
+;;; Play Glean from Guile or Geiser (in Emacs).
+;;; Currently, to use, start the client as usual, then connect to the default
+;;; Guile REPL server, and enter this module.
 ;;;
 ;;;; Code:
 
@@ -35,6 +36,7 @@
   #:use-module (glean common monads)
   #:use-module (glean common utils)
   #:use-module (glean library sets)     ; Should be obsolete
+  #:use-module (ice-9 match)
   #:use-module (rnrs)
   #:export (component))
 
@@ -48,7 +50,19 @@
 (define data #f)                ; Last response, mutable!
 (define mods-assoc #f)          ; assoc of set-ids -> hashes, mutable!
 
+(define (help)
+  "Display a startup message and suggest first steps."
+  (for-each guide
+            '(("Welcome to Glean!\n\n")
+              ("To start playing, first register an account or login.\n")))
+  (suggest help-register help-login help-available help-detail))
+
+(define start help)
+
 (define* (register name password #:optional lounge library)
+  "Register a player as NAME PASSWORD with LOUNGE, using LIBRARY (default to
+the %default% values for both if they are not provided).  Then suggest next
+actions."
   (let* ((lng (if lounge lounge %default-lounge%))
          (lib (if library library %default-library%))
          (rsp (register-player name password lng lib)))
@@ -58,7 +72,10 @@
            (guide `("~a has been registered.\n" ,name))
            (suggest help-available help-activate))
           (else (nothing-handler rsp)))))
+
 (define* (login name password #:optional lounge)
+  "Login the user NAME/PASSOWRD with LOUNGE (or %default-lounge% if not
+provided).  Then provide suggested next steps."
   (let* ((lng (if lounge lounge %default-lounge%))
          (rsp (authenticate-player name password lng)))
     (cond ((state? rsp)
@@ -68,7 +85,10 @@
                   '("You are now logged in."))
            (suggest help-next help-available help-activate))
           (else (nothing-handler rsp)))))
+
 (define (delete)
+  "Delete the currently logged in user from lounge.  Then provide suggested
+next steps."
   (let ((rsp (delete-player id)))
     (cond ((stateful? rsp)
            (set! id (state rsp))
@@ -76,8 +96,11 @@
            (guide `("Your profile has now been deleted.\n"))
            (suggest help-login help-register))
           (else (nothing-handler rsp)))))
+
 (define (available)
-  (let ((rsp (known-modules id)))
+  "Return the available modules from the library server.  Then provide
+suggested next steps."
+  (let ((rsp (known-modules (if id id dummy-state))))
     (cond ((stateful? rsp)
            (set! id (state rsp))
            (set! data (result rsp))
@@ -91,9 +114,45 @@
                     ;; assoc list entry: (id . hash)
                     (cons (cadr module) (car module)))
                   (result rsp)))
-           (suggest help-activate help-next help-detail))
+           (if (dummy-state? id)
+               (suggest help-register help-login help-available help-detail)
+               (suggest help-activate help-next help-detail)))
           (else (nothing-handler rsp)))))
+
+(define (detail set-id)
+  "Provide a detailed view of the set identified by SET-ID.  Then provide
+suggested next steps."
+  (let ((hash (assv-ref mods-assoc set-id)))
+    (if (not hash)
+        (begin
+          (guide `("'~a' was not found amongst our modules.\n" ,set-id))
+          (guide `("Please try again or Execute (available) first.\n"))
+          (if (dummy-state? id)
+              (suggest help-register help-login help-available help-detail)
+              (suggest help-activate help-next help-detail)))
+        (let ((rsp (view-set hash (if id id dummy-state))))
+          (cond ((stateful? rsp)
+                 (set! id (state rsp))
+                 (set! data (result rsp))
+                 (match (result rsp)
+                   ((hash id name vers keyw syn desc auth res attr prop cont
+                          logo)
+                    (format #t "Name (version): ~a (~a)\n" name vers)
+                    (format #t "Keywords: ~a\n" keyw)
+                    (format #t "Synopsis: ~a\n" syn)
+                    (format #t "Description: ~a\n" desc)
+                    (format #t "Author: ~a\n" auth))
+                   (_ (error "DETAIL -- Unexpected server response:"
+                             (result rsp))))
+                 (if (dummy-state? id)
+                     (suggest help-register help-login help-available
+                              help-detail)
+                     (suggest help-activate help-next help-detail)))
+                (else (nothing-handler rsp)))))))
+
 (define (activate . ids)
+  "Activate the disciplines identified by IDS for the currently logged in
+user.  Then provide suggested next steps."
   (let* ((hashes (map (lambda (id)
                         (assv-ref mods-assoc id))
                       ids))
@@ -106,25 +165,53 @@
                       ,(string-join (map symbol->string ids) ", ")))
              (suggest help-next help-available)))
           (else (nothing-handler rsp)))))
+
 (define (next)
+  "Provide the next challenge for the currently logged in user.  Then provide
+suggested next steps."
   (let ((rsp (next-challenge id)))
     (cond ((stateful? rsp)
            (set! id (state rsp))
            (set! data (result rsp))
-           (guide `("New Challenge: ~a\n"
-                    ,(q-text (car (result rsp)))))
+           (match (car data)
+             (((? pair? (q-text . q-media)) (? list? options)
+               (? symbol? type))
+              (guide `("~a\n" ,q-text))
+              (cond ((eqv? type 'info)
+                     ;; no action needed?
+                     )
+                    ((eqv? type 'open)
+                     ;; no action needed?
+                     )
+                    ((eqv? type 'single)
+                     (for-each (lambda (option counter)
+                                 (guide `("~a: ~a\n" ,counter ,(car option))))
+                               options (seq 1 (length options))))
+                    ((eqv? type 'multi)
+                     (for-each (lambda (option counter)
+                                 (guide `("~a: ~a\n" ,counter ,(car option))))
+                               options (seq 1 (length options)))))))
            (suggest help-solve help-available))
           (else (nothing-handler rsp)))))
-(define (solve answer)
+
+(define* (solve #:optional (answer ""))
+  "Submit a solution or request to move forward for the currently logged in
+user.  Then provide suggested next steps."
   (let ((rsp (submit-answer answer id)))
     (cond ((stateful? rsp)
            (set! id (state rsp))
            (set! data (result rsp))
-           (if (car (result rsp))
-               (guide `("Correct! The answer is indeed '~a'.\n\n"
-                        ,(s-text (cadr (result rsp)))))
-               (guide `("Incorrect: the solution is:\n  '~a'\n\n"
-                        ,(s-text (cadr (result rsp))))))
+           (match (result rsp)
+             ((#t "irrelevant")
+              ; nothing to do
+              )
+             ((#t (? s? solution))
+              (guide `("Correct! The answer is indeed '~a'.\n\n"
+                       ,(s-text solution))))
+             ((#f (? s? solution))
+              (guide `("Incorrect: the solution is:\n  '~a'\n\n"
+                       ,(s-text solution))))
+             (_ (error "SOLVE -- unexpected result" (result rsp))))
            (next))
           (else (nothing-handler rsp)))))
 
@@ -175,12 +262,14 @@ current-output-port.\n
 Example: (guide `(\"hello ~a\" ,name))."
   (for-each (lambda (out) (apply format #t out))
             output))
+
 (define (inform rsp)
   "Inform user of unexpected result in the form of RSP.\n
 Example: (inform rsp)."
   (guide `("I got an unexpected result: ~a.\n" ,rsp)
          `("Please report this issue to ~a.\n"
            ,%glean-bug-report-address%)))
+
 (define (suggest . suggestions)
   "Pretty print suggested next actions.\n
 Example: (suggest `(\"next\" . \"Retrieve the next challenge.\")
@@ -193,17 +282,17 @@ Example: (suggest `(\"next\" . \"Retrieve the next challenge.\")
                     suggestions)))
 
 (define help-register
-  (cons "register name [lounge library]"
-        "Register a new account as NAME."))
+  (cons "register name password [lounge library]"
+        "Register a new account as NAME, authenticated by PASSWORD."))
 (define help-login
-  (cons "login name"
-        "Start playing as NAME."))
+  (cons "login name password"
+        "Start playing as NAME, authenticated by PASSWORD."))
 (define help-available
   (cons "available"
         "Retrieve a list of available modules."))
 (define help-detail
-  (cons "detail '(id1 id2…)"
-        "Retrieve detailed information of modules ID1, ID2, etc."))
+  (cons "detail id"
+        "Retrieve detailed information of modules ID."))
 (define help-activate
   (cons "activate id1 id2…"
         "Activate modules ID1, ID2, etc."))
@@ -211,8 +300,13 @@ Example: (suggest `(\"next\" . \"Retrieve the next challenge.\")
   (cons "next"
         "Pose the next challenge."))
 (define help-solve
-  (cons "solve \"your answer\""
+  (cons "solve [\"your answer\"]"
         "Solve your current challenge."))
+
+(define dummy-state (mk-state 1111 %default-lounge% %default-library%))
+
+(define (dummy-state? id)
+  (equal? dummy-state id))
 
 (define component
   (define-component
@@ -220,3 +314,5 @@ Example: (suggest `(\"next\" . \"Retrieve the next challenge.\")
     #:provides    repl-client
     #:directories '()
     #:uses        (list (primary-config '()))))
+
+;;; repl-client-core.scm ends here
