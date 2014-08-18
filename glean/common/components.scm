@@ -1,21 +1,24 @@
-;; glean --- fast learning tool.         -*- coding: utf-8 -*-
+;; components.scm --- handle extensions  -*- coding: utf-8 -*-
 ;;
-;; Copyright © 2014 Alex Sassmannshausen <alex.sassmannshausen@gmail.com>
+;; Copyright (C) 2014 Alex Sassmannshausen  <alex.sassmannshausen@gmail.com>
+;;
+;; Author: Alex Sassmannshausen <alex.sassmannshausen@gmail.com>
+;; Created: 01 January 2014
 ;;
 ;; This file is part of Glean.
 ;;
-;; Glean is free software; you can redistribute it and/or modify it
-;; under the terms of the GNU General Public License as published by the
-;; Free Software Foundation; either version 3 of the License, or (at your
-;; option) any later version.
+;; Glean is free software; you can redistribute it and/or modify it under the
+;; terms of the GNU General Public License as published by the Free Software
+;; Foundation; either version 3 of the License, or (at your option) any later
+;; version.
 ;;
-;; Glean is distributed in the hope that it will be useful,
-;; but WITHOUT ANY WARRANTY; without even the implied warranty of
-;; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-;; GNU General Public License for more details.
+;; Glean is distributed in the hope that it will be useful, but WITHOUT ANY
+;; WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+;; FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more
+;; details.
 ;;
-;; You should have received a copy of the GNU General Public License
-;; along with Glean; if not, contact:
+;; You should have received a copy of the GNU General Public License along
+;; with glean; if not, contact:
 ;;
 ;; Free Software Foundation           Voice:  +1-617-542-5942
 ;; 59 Temple Place - Suite 330        Fax:    +1-617-542-2652
@@ -49,8 +52,10 @@
             component-node
             ))
 
-;;;;; Component Creation
-;;;; <component>
+
+;;;; Component Creation
+
+;;;;; <component>
 ;;; A Component Record specifies a pluggable feature for glean. It's context
 ;;; is the product of its definition and the 'component-node' (see below)
 ;;; which eventually loads it, as its paths are interpreted relatively to the
@@ -63,7 +68,8 @@
 ;;;          loaded).
 ;;; - CONFIG: configuration files to be loaded before PROCEDURE is returned.
 ;;;
-;;;; Example:
+
+;;;;; Example:
 ;;; (define test-client
 ;;;   (make-component "test-client")
 ;;;                   test-procedure
@@ -72,6 +78,7 @@
 ;;;                   (list main-config)))
 ;;; Note that these should not be used by the user directly. Instead, use the
 ;;; 'porcelain procedures' below.
+
 (define-record-type <component>
   (make-component name procedure dirs files config)
   component?
@@ -90,10 +97,10 @@
   (path      comp-config-path)
   (load      comp-config-load))
 
+
 ;;;;; Porcelain: User Convenience
-;;; COMPONENT, CONFIG and PRIMARY-CONFIG provide user-friendly interfaces to
-;;; creating components. For an example, see the 'define-component'
-;;; docstring.
+;;; The procedures provide user-friendly interfaces to creating
+;;; components. For an example, see the 'define-component' docstring.
 
 (define* (config #:key (name #f) (lang 'scheme) (settings '())
                  (path #f) (load #f))
@@ -134,6 +141,7 @@ setting does."
       (make-setting name default docstring)
       (error "SETTING -- NAME, DEFAULT or DOCSTRING missing.")))
 
+
 (define* (define-component #:key name provides directories uses)
   "Return a fully-fledged component record built from NAME, PROVIDES,
 DIRECTORIES, and USES.
@@ -220,6 +228,7 @@ return it."
       (make)
       (error "COMPONENT -- Not a valid component.")))
 
+
 (define (primary-config? object)
   "Return #t if object is a config object as returned by 'primary-config'."
   (and (component-config? object)
@@ -242,6 +251,7 @@ the foundation of the config's path if AUX-PATH is #f."
                             (string-append aux-name ".conf"))
                settings))
 
+
 ;;;;; Component Loading
 
 (define (component-node core-root core-dir extensions-root extensions-dir
@@ -285,6 +295,9 @@ configs and files and loading the configs."
     (reload)
     dispatch))
 
+
+;;;;; Helpers
+
 (define (build/load-component extensions-dir name dirs files configs mod-name)
   "Ensure the component identified by NAME and its config files and directories
 named in DIRS and FILES exist, relative to EXTENSIONS-DIR, then load CONFIGS
@@ -323,6 +336,7 @@ COMPONENTS-DIR as its base."
                                                postfix-len)
                             not-slash)))
 
+
 (define (load-components base-dir scan-dir pattern ext-so-far)
   "Return a new vhash based on COMPONENTS, consisting of all component
  records derived from component files in COMPONENTS-DIR."
