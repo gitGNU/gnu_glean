@@ -1,19 +1,24 @@
-;;; glean --- fast learning tool.         -*- coding: utf-8 -*-
-
-;; Copyright (C) 2008, 2010, 2012 Alex Sassmannshausen
-
-;; This program is free software; you can redistribute it and/or
-;; modify it under the terms of the GNU General Public License as
-;; published by the Free Software Foundation; either version 3 of
-;; the License, or (at your option) any later version.
+;; base-server.scm --- basic server structure   -*- coding: utf-8 -*-
 ;;
-;; This program is distributed in the hope that it will be useful,
-;; but WITHOUT ANY WARRANTY; without even the implied warranty of
-;; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-;; GNU General Public License for more details.
+;; Copyright (C) 2014 Alex Sassmannshausen  <alex.sassmannshausen@gmail.com>
 ;;
-;; You should have received a copy of the GNU General Public License
-;; along with this program; if not, contact:
+;; Author: Alex Sassmannshausen <alex.sassmannshausen@gmail.com>
+;; Created: 01 January 2014
+;;
+;; This file is part of Glean.
+;;
+;; Glean is free software; you can redistribute it and/or modify it under the
+;; terms of the GNU General Public License as published by the Free Software
+;; Foundation; either version 3 of the License, or (at your option) any later
+;; version.
+;;
+;; Glean is distributed in the hope that it will be useful, but WITHOUT ANY
+;; WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+;; FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more
+;; details.
+;;
+;; You should have received a copy of the GNU General Public License along
+;; with glean; if not, contact:
 ;;
 ;; Free Software Foundation           Voice:  +1-617-542-5942
 ;; 59 Temple Place - Suite 330        Fax:    +1-617-542-2652
@@ -21,8 +26,8 @@
 
 ;;; Commentary:
 ;;
-;; Module to provide daemon mode, whereby glean acts as a server,
-;; listening on a socket for requests.
+;; Module to provide a daemon mode, whereby a glean server (e.g. lounge,
+;; library) listens on a socket for requests.
 ;;
 ;;; Code:
 
@@ -30,177 +35,100 @@
   #:use-module (glean common base-requests)
   #:use-module (glean common comtools)
   #:use-module (glean common utils)
-  #:use-module (ice-9 rdelim)
-  #:use-module (rnrs)
+  #:use-module (ice-9 match)
+  #:use-module (rnrs records inspection)
   #:use-module (srfi srfi-26)
   #:export (the-server))
 
-(define %gettext-domain
-  "glean")
+
+;;;; Variables & The-server
+;;;
+;;; Typically this library is used by glean parts implementing a daemonized
+;;; server.  Examples are the lounge and the library servers.
+;;; Server implementations should simply call (the-server $socket-file
+;;; $server-dispatcher), where $server-dispatcher is the procedure actually
+;;; implemented by the server itself.
+
+(define %gettext-domain "glean")
 
 (define _ (cut gettext <> %gettext-domain))
 (define N_ (cut ngettext <> <> <> %gettext-domain))
 
-(define (clean-and-exit socket-file . args)
-  "Remove sockets, if they exist, and exit."
-  (define (del-sock-exit sock-file)
-    (display "Found socket. Deleting...")
-    (newline)
-    (delete-file sock-file)
-    (display "Deleted. Exiting.")
-    (newline)
-    (exit))
-  (define (base-exit)
-    (display "No sockets open. Exiting.")
-    (newline)
-    (exit))
+(define warning "Encountered an existing socket.
+Another instance of this Glean server might be running!
 
-  args ;; ignore args
-  (display "Caught term signal. Checking for sockets...")
-  (newline)
-  (cond ((file-exists? socket-file)
-         (del-sock-exit socket-file))
-        (else (base-exit))))
+Continue? (y/n)")
 
 (define (the-server socket-file server-dispatcher)
-  "Starts server: sets socket path, calls checks and then server
-loop."
-  (define (thunk)
-    (if (prepare-port socket-file)
-	(server-loop socket-file server-dispatcher)))
-  (define (h key . args)
-    (display args)
-    (newline)
-    (let ((socket (car args))
-	  (client (cadr args))
-	  (path (caddr args))
-	  (state (cadddr args)))
-      (server-quit socket client path state)))
-  
-  ;; start the server
-  ;;(catch #t thunk h)
-  (sigaction SIGTERM (lambda args (clean-and-exit socket-file args)))
-  (sigaction SIGINT (lambda args (clean-and-exit socket-file args)))
-  (thunk)
-  )
+  "Initiates a server loop, with the server listening at SOCKET-FILE and its
+actions defined by SERVER-DISPATCHER.
 
-(define (prepare-port socket-file)
-  "Checks whether SOCKET-FILE exists, and if so, offers to delete and
-continue load."
-  (if (not (file-exists? socket-file))
-      #t
-      (begin
-	(simple-format #t "Socket file exists. 
-Did we not exit cleanly?
+SERVER-DISPATCHER should be a procedure of one argument. That argument will
+normally be a request but has not been parsed yet."
+  ;; Check for existing socket files
+  (if (file-exists? socket-file)
+      (begin (format #t "~a\n" warning)
+             (match (read)
+               ((or 'y 'Y 'yes 'Yes 'YES)
+                (delete-file socket-file))
+               (_ (exit 1)))))
+  ;; Create socket
+  (let ((socket    (socket PF_UNIX SOCK_STREAM 0))
+        (sock-addr (make-socket-address AF_UNIX socket-file)))
+    (setsockopt socket SOL_SOCKET SO_REUSEADDR 1)
+    (bind socket sock-addr)
+    (listen socket 5)
+    ;; Catch kill signals
+    (sigaction SIGTERM (lambda args (clean-exit socket socket-file args)))
+    (sigaction SIGINT  (lambda args (clean-exit socket socket-file args)))
+    ;; Start Server
+    (gmsg #:priority 5
+          "server-loop: listening for clients as pid:" (getpid))
+    (server-loop socket server-dispatcher)
+    ;; Close Server
+    (clean-exit socket socket-file)))
 
-I can delete the socket file and continue launch.
-Enter y to continue, or anything else to abort:")
-	(newline)
-	(let ((answer (read)))
-	  (if (or (eq? answer 'y)
-		  (eq? answer 'Y)
-		  (eq? answer 'yes)
-		  (eq? answer 'Yes))
-	      (begin
-		(delete-file socket-file)
-		#t)
-	      (throw 'socket-error #f #f socket-file 'prepare-port))))))
+
+;;;; Support Procedures
 
-(define (server-loop socket-file server-dispatcher)
-  "Set up the socket on SOCKET-FILE, and use loop to accept and
-forward client requests to SERVER-DISPATCHER."
+(define (clean-exit socket socket-file . args)
+  "Remove sockets, if they exist, and exit."
+  (close socket)
+  (if (file-exists? socket-file)
+      (begin (format #t "Deleting existing socket...")
+             (delete-file socket-file)
+             (format #t "[DONE]\n")))
+  (exit))
 
-  (define (start-server)
-    (let ((s (socket PF_UNIX SOCK_STREAM 0))
-	  (sock-addr (make-socket-address AF_UNIX socket-file)))
+(define (server-loop socket server-dispatcher)
+  "Process requests arriving at SOCKET until a quit request is received.
+Requests are processed by passing them to SERVER-DISPATCHER."
+  (define (loop iter)
+    (gmsg #:priority 5 "loop: now processing request number " iter)
 
-      (setsockopt s SOL_SOCKET SO_REUSEADDR 1)
-      (bind s sock-addr)
-      (listen s 5)
+    (if (match (accept socket)
+          ((client . info)
+           (match (list->record* (gread client))
+             ((? eof-object?)
+              (gwrite (record->list* #f) client)
+              (close client))
+             ((? request? rq)
+              (format #t "Request: ~a\n" (rq-content rq))
+              (match (server-dispatcher rq)
+                ((? record? resp)
+                 (format #t "Response: ~a\n" resp)
+                 (gwrite (record->list* (response resp)) client)
+                 (close client)
+                 ;; Return #f if quitq
+                 (not (and (acks? resp) (quitq? (ack-orig resp)))))
+                (_ (error "SERVER-LOOP -- Unexpected dispatch response" _))))
+             (unknown (gwrite (record->list* (unks unknown)) client)
+                      (close client)))))
+        (begin (gmsg #:priority 5 "loop: processed request number " iter)
+               (loop (1+ iter)))
+        (begin (gmsg #:priority 1 "Quit request: quitting.\n")
+               #f)))
 
-      (gmsg #:priority 5 "start-server: Listening for clients in pid:" (getpid))
-      s))
-  
-  (let ((s (start-server)))
+  (loop 1))
 
-    (define (loop iter)
-      (gmsg #:priority 5 "loop: Now Processing Request:" iter)
-
-      (let* ((connection (accept s))
-	     (client (car connection)))
-
-	(define (respond record)
-	  (clog "in respond")
-	  (let ((resp (response (server-dispatcher record))))
-	    (gmsg #:priority 7 "respond: resp:" resp)
-	    (gmsg #:priority 7 "respond: resp:" (rs-content resp))
-	    (rprinter resp)
-	    (if resp
-		(begin
-		  (gwrite (record->list* resp) client)
-		  (close client)
-		  (gmsg #:priority 8 "respond: Client closed.")
-		  (cond ((acks? (rs-content resp))
-			 (gmsg #:priority 7 "respond: checking for quitq…")
-			 (if (quitq? (ack-orig (rs-content resp)))
-			     (begin
-			       (gmsg "respond: quit detected.")
-			       (server-quit client client socket-file
-					    'normal))
-			     (gmsg "respond: no quit.")))))
-		(begin
-		  (gmsg #:priority 7 "respond: Client closed prematurely:" resp)
-		  (close client)))))
-
-	(define (receive)
-	  (let ((result (list->record* (gread client))))
-	    (gmsg #:priority 7 "receive: received:" result)
-	    result))
-
-	(gmsg #:priority 7 "loop: Got new client connection:" connection)
-	(respond (receive)))
-      (gmsg #:priority 5 "loop: Requests Processed:" iter)
-      (loop (1+ iter)))
-
-    (loop 1)))
-
-(define (server-quit s client socket-file state)
-  "Shuts down communication and stops the server. Tries to close
-sockets gracefully even upon crash."
-  (cond ((or (eq? state 'server)
-	     (eq? state 'prepare-port))
-	 (begin
-	   (simple-format #t
-			  "Exiting. Error: ~S"
-			  state)
-	   (newline)
-	   (exit 1)))
-	((eq? state 'normal)
-	 (cond (s
-		(begin
-		  (if client
-		      (close client))
-		  (if s
-		      (close s))
-		  (if socket-file
-		      (delete-file socket-file))
-		  (simple-format #t
-				 "Thank you for playing.")
-		  (newline)
-		  (exit #f #f #f 'normal)))
-	       (else
-		(exit 0))))
-	(else
-	 (begin
-	   (simple-format #t 
-			  "Received kill signal. Now quitting.
-Arguments were: s ~S; client ~S; socket-file ~S; state ~S."
-			  s client socket-file state)
-	   (newline)
-	   ;; (if client
-	   ;;     (close client))
-	   ;; (if s
-	   ;;     (close s))
-	   ;; (if socket-file
-	   ;;     (delete-file socket-file))
-	   (exit 1)))))
+;;; base-server.scm ends here
