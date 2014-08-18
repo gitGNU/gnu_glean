@@ -1,19 +1,24 @@
-;;; glean --- fast learning tool.         -*- coding: utf-8 -*-
-
-;; Copyright (C) 2008, 2010, 2012 Alex Sassmannshausen
-
-;; This program is free software; you can redistribute it and/or
-;; modify it under the terms of the GNU General Public License as
-;; published by the Free Software Foundation; either version 3 of
-;; the License, or (at your option) any later version.
+;; config.scm --- master configuration    -*- coding: utf-8 -*-
 ;;
-;; This program is distributed in the hope that it will be useful,
-;; but WITHOUT ANY WARRANTY; without even the implied warranty of
-;; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-;; GNU General Public License for more details.
+;; Copyright (C) 2014 Alex Sassmannshausen  <alex.sassmannshausen@gmail.com>
 ;;
-;; You should have received a copy of the GNU General Public License
-;; along with this program; if not, contact:
+;; Author: Alex Sassmannshausen <alex.sassmannshausen@gmail.com>
+;; Created: 01 January 2014
+;;
+;; This file is part of Glean.
+;;
+;; Glean is free software; you can redistribute it and/or modify it under the
+;; terms of the GNU General Public License as published by the Free Software
+;; Foundation; either version 3 of the License, or (at your option) any later
+;; version.
+;;
+;; Glean is distributed in the hope that it will be useful, but WITHOUT ANY
+;; WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+;; FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more
+;; details.
+;;
+;; You should have received a copy of the GNU General Public License along
+;; with glean; if not, contact:
 ;;
 ;; Free Software Foundation           Voice:  +1-617-542-5942
 ;; 59 Temple Place - Suite 330        Fax:    +1-617-542-2652
@@ -26,6 +31,7 @@
 ;;
 ;;; Code:
 
+
 (define-module (glean config)
   #:use-module (glean common config-utils)
   #:export (
@@ -39,9 +45,8 @@
             %log-dir%
             %log-file%
             %log-level%
-	    %socket-dir%
-            %glean-dir%  ; glean libs location
-	    %debug%           ; obsolete (%log-level)
+            %socket-dir%
+            %glean-dir%                 ; glean libs location
             ;; Client configuration
             %client-dir%
             %client-config%
@@ -58,8 +63,6 @@
             %wip-library-dir%
             %bak-library-dir%
             %library-port%
-	    %module-directory%          ; obsolete (%library-dir)
-	    %wip-module-directory%      ; obsolete (%wip-library-dir)
             %library.conf%
             ;; Lounge configuration
             %lounge-persist%
@@ -68,7 +71,6 @@
             %lounge-dir%
             %lounge-port%
             %lounge.conf%
- 	    %profile-directory%         ; obsolete (%lounge-dir)
             ;; External libraries
             %libgcrypt%
             ))
@@ -80,6 +82,7 @@
   "@PACKAGE_BUGREPORT@")
 (define %glean-home-page-url% "@PACKAGE_URL@")
 
+
 ;;;; General configuration
 (define user-homedir      (getenv "HOME"))
 (define %log-level%       'critical)
@@ -90,18 +93,6 @@
 ;; set by pre-inst-env, or glean launcher
 (define %glean-dir%       (getenv "CORE_ROOT"))
 
-;;;;; DEPRECATED
-;; Int. 0 ignores all debugging messages; 1 only shows high etc.
-;; > 10: monads log.
-(define %debug% 8)
-(define (data-dir postfix)
-  (string-append
-   (dirname
-    (dirname
-     (search-path %load-path "glean/config.scm")))
-   postfix))
-
-
 ;;;; Library Configuration
 (define %ignore-keywords% '("test"))
 (define %library-root-dir% (string-append %user-dir%   "/library"))
@@ -112,21 +103,14 @@
 (define %library-port%     (string-append %socket-dir% "/library.sock"))
 (define %library-log%      (string-append %log-dir%    "/library.log"))
 
-
 ;;;; Lounge Configuration
 (define %lounge-root-dir% (string-append %user-dir%   "/lounge"))
 (define %lounge-dir%      (string-append %lounge-root-dir% "/lounge"))
 (define %lounge.conf%     (string-append %lounge-root-dir% "/lounge.conf"))
 (define %lounge-port%     (string-append %socket-dir% "/lounge.sock"))
 (define %lounge-log%      (string-append %log-dir%    "/lounge.log"))
-(define %lounge-persist% #f)
+(define %lounge-persist%  #f)
 
-;;;;; Deprecated
-(define %profile-directory%
-  ;; Absolute path of the glean profiles root.
-  (data-dir "/profiles"))
-
-
 ;;;; Client configuration
 (define %client-dir%      (string-append %user-dir% "/clients"))
 (define %client.conf%     (string-append %client-dir% "/client.conf"))
@@ -135,25 +119,18 @@
 (define %default-client%  'repl)
 (define %client-log%      (string-append %log-dir%  "/client.log"))
 
-;;;;; Deprecated
-;; Socket for the modules server
-(define %module-socket-file%
-  (string-append %socket-dir% "/library.sock"))
-;; Socket for the profiles server
-(define %profile-socket-file%
-  (string-append %socket-dir% "/lounge.sock"))
-
 ;;;; External libraries
 (define %libgcrypt% "@LIBGCRYPT@")
 
-
 (define log-setting
-  (make-setting "%log-level%" 'inform
+  (make-setting "%log-level%" %log-level%
                 (string-append
                  "Log verbosity: choose from 'critical, 'important,"
                  " 'warning, 'inform or 'debug")))
 
+
 ;;;; Specific Configurations
+
 ;;;;; Client Configurations
 (define %client-config%
   (make-config "Client" %client.conf%
