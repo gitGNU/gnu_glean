@@ -44,9 +44,7 @@ MODULES =						\
   glean/common/module-requests.scm	   		\
   glean/common/profile-requests.scm			\
   glean/common/hash.scm					\
-  glean/common/known-rtd-manager.scm			\
   glean/common/monads.scm				\
-  glean/common/record-index.scm				\
   glean/common/utils.scm				\
   glean/library/core-templates.scm			\
   glean/library/sets.scm			  	\
