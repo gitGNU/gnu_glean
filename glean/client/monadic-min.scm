@@ -36,7 +36,7 @@
   #:use-module (glean common comtools)
   #:use-module (glean common library-requests)
   #:use-module (glean common monads)
-  #:use-module (glean common profile-requests)
+  #:use-module (glean common lounge-requests)
   #:use-module (glean common utils)
   #:use-module (glean library sets)      ; Should be made obsolete
   #:use-module (glean lounge gprofiles)  ; Should be made obsolete

@@ -42,7 +42,7 @@
   #:use-module (glean common base-server)
   #:use-module (glean common comtools)
   #:use-module (glean common monads)
-  #:use-module (glean common profile-requests)
+  #:use-module (glean common lounge-requests)
   #:use-module (glean common utils)
   #:use-module (glean lounge gprofiles)
   #:use-module (glean lounge scorecards)

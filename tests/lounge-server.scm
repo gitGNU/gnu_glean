@@ -23,7 +23,7 @@
   #:use-module (srfi srfi-64)      ; Provide test suite
   #:use-module (glean config)
   #:use-module (glean common base-requests)
-  #:use-module (glean common profile-requests)
+  #:use-module (glean common lounge-requests)
   #:use-module (glean common monads)
   #:use-module (glean lounge lounge-store)
   #:use-module (glean lounge server)

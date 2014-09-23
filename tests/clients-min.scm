@@ -24,7 +24,7 @@
   #:use-module (glean config)
   #:use-module (glean common monads)
   #:use-module (glean common base-requests)
-  #:use-module (glean common profile-requests)
+  #:use-module (glean common lounge-requests)
   #:use-module (glean common library-requests)
   #:use-module (glean client monadic-min))
 
