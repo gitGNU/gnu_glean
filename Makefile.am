@@ -41,8 +41,8 @@ MODULES =						\
   glean/common/comtools.scm				\
   glean/common/config-utils.scm				\
   glean/common/base-requests.scm	     		\
-  glean/common/module-requests.scm	   		\
-  glean/common/profile-requests.scm			\
+  glean/common/library-requests.scm	   		\
+  glean/common/lounge-requests.scm			\
   glean/common/hash.scm					\
   glean/common/monads.scm				\
   glean/common/utils.scm				\
