@@ -1,6 +1,55 @@
-;;; glean --- Fast learning tool.         -*- coding: utf-8 -*-
+;; library-requests.scm --- library server requests   -*- coding: utf-8 -*-
+;;
+;; Copyright (C) 2014 Alex Sassmannshausen <alex.sassmannshausen@gmail.com>
+;;
+;; Author: Alex Sassmannshausen <alex.sassmannshausen@gmail.com>
+;; Created: 01 January 2014
+;;
+;; This file is part of Glean.
+;;
+;; Glean is free software; you can redistribute it and/or modify it under the
+;; terms of the GNU General Public License as published by the Free Software
+;; Foundation; either version 3 of the License, or (at your option) any later
+;; version.
+;;
+;; Glean is distributed in the hope that it will be useful, but WITHOUT ANY
+;; WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+;; FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more
+;; details.
+;;
+;; You should have received a copy of the GNU General Public License along
+;; with glean; if not, contact:
+;;
+;; Free Software Foundation           Voice:  +1-617-542-5942
+;; 59 Temple Place - Suite 330        Fax:    +1-617-542-2652
+;; Boston, MA  02111-1307,  USA       gnu@gnu.org
 
-(define-module (glean common module-requests)
+;; Commentary:
+;;
+;; This module defines the vocabulary for requests specifically used when
+;; communicating with a library server.
+;;
+;; Currently communications occurs through these distinct data-types,
+;; serialized to plain lists by functionality defined in comtools, and then
+;; transformed back into the respective data-types at the other end of the
+;; socket.
+;;
+;; In order to reduce the depth of the comms tower before and after the use of
+;; a socket we may switch to using simple lists which can be destructured with
+;; (ice-9 match) instead of distinct data-types at a future point.
+;;
+;; The benefits of this would be that:
+;; - we can carry out all input parsing at the point where data is read from
+;;   the socket…
+;; - we can extend the vocabulary in a simpler way by not having to define a
+;;   new record type here…
+;; - we remove the need for a hairy rnrs->list and list->rnrs record
+;;   conversion for each communication sent…
+;; - conversion to and from json/xml might be easier to implement.
+;;
+;; Code:
+
+(define-module (glean common library-requests)
   #:use-module (rnrs records procedural)
   #:export (challq
 	    challq?
@@ -56,7 +105,10 @@
 	    sethashess-token
 	    sethashess-hashpairs))
 
-;;; Game Requests
+
+;;;;; Game Requests
+
+;;;; Request Challenge
 (define challq-rtd
   (make-record-type-descriptor 'challq #f #f #f #f
 			       '#((immutable blobhash)
@@ -68,6 +120,7 @@
 (define challq-hash (record-accessor challq-rtd 0))
 (define challq-counter (record-accessor challq-rtd 1))
 
+;;;; Provide Challenge
 (define challs-rtd
   (make-record-type-descriptor 'challs #f #f #f #f
 			       '#((immutable challenge))))
@@ -77,6 +130,7 @@
 (define challs? (record-predicate challs-rtd))
 (define challs-challenge (record-accessor challs-rtd 0))
 
+;;;; Request Evaluation
 (define evalq-rtd
   (make-record-type-descriptor 'evalq #f #f #f #f
 			       '#((immutable hash)
@@ -90,6 +144,7 @@
 (define evalq-counter (record-accessor evalq-rtd 1))
 (define evalq-answer (record-accessor evalq-rtd 2))
 
+;;;; Provide Evaluation
 (define evals-rtd
   (make-record-type-descriptor 'evals #f #f #f #f
 			       '#((immutable result)
@@ -101,7 +156,8 @@
 (define evals-result (record-accessor evals-rtd 0))
 (define evals-solution (record-accessor evals-rtd 1))
 
-;; Request a list of known modules
+
+;;;; Request A List Of Known Modules
 (define knownq-rtd
   (make-record-type-descriptor 'knownq #f #f #f #f
 			       '#((immutable operator)
@@ -113,7 +169,7 @@
 (define knownq-operator (record-accessor knownq-rtd 0))
 (define knownq-search (record-accessor knownq-rtd 1))
 
-;; Return a list of known modules
+;;;; Provide A List Of Known Modules
 (define knowns-rtd
   (make-record-type-descriptor 'knowns #f #f #f #f
 			       '#((immutable list))))
@@ -123,7 +179,8 @@
 (define knowns? (record-predicate knowns-rtd))
 (define knowns-list (record-accessor knowns-rtd 0))
 
-;; Request detail for a specific module
+;;;; Request Detail
+;; Request detail for a specific module identified by its hash.
 (define detailq-rtd
   (make-record-type-descriptor 'detailq #f #f #f #f
 			       '#((immutable hash))))
@@ -133,7 +190,8 @@
 (define detailq? (record-predicate detailq-rtd))
 (define detailq-hash (record-accessor detailq-rtd 0))
 
-;; Return detail for a specific module
+;; Provide Detail
+;; Provide detail for a specific module.
 (define details-rtd
   (make-record-type-descriptor 'details #f #f #f #f
 			       '#((immutable list))))
@@ -143,9 +201,9 @@
 (define details? (record-predicate details-rtd))
 (define details-list (record-accessor details-rtd 0))
 
-;; hashmap requests ask the mod server for a nested list of sethashes
-;; reflecting the set structure for the sets identified by the
-;; set ids.
+
+;;;; Request Hashmap
+;; Request hashmaps for sets identified by their IDs
 (define hashmapq-rtd
   (make-record-type-descriptor 'hashmapq #f #f #f #f
 			       '#((immutable hashpairs))))
@@ -155,8 +213,8 @@
 (define hashmapq? (record-predicate hashmapq-rtd))
 (define hashmapq-hashpairs (record-accessor hashmapq-rtd 0))
 
-;; hashmap responses provide a nested list of blobhashes, for the
-;; requesting profile server.
+;;;; Provide Hashmap
+;; Provides hashmaps, a nested list of sethashes.
 (define hashmaps-rtd
   (make-record-type-descriptor 'hashmaps #f #f #f #f
 			       '#((immutable content))))
@@ -166,7 +224,8 @@
 (define hashmaps? (record-predicate hashmaps-rtd))
 (define hashmaps-content (record-accessor hashmaps-rtd 0))
 
-;; Requires '(set-id …) pairs
+;;;; Ruequest Sethashes
+;; Request the minhashes that go with the full sethashes provided.
 (define sethashesq-rtd
   (make-record-type-descriptor 'sethashesq #f #f #f #f
 			       '#((immutable fullhashes))))
@@ -176,7 +235,8 @@
 (define sethashesq? (record-predicate sethashesq-rtd))
 (define sethashesq-fullhashes (record-accessor sethashesq-rtd 0))
 
-;; Return '((set-id . sethash) …) pairs
+;;;; Provide Sethashes
+;; Provide the '(minghash . fullhash) sethash pairs requested above.
 (define sethashess-rtd
   (make-record-type-descriptor 'sethashess #f #f #f #f
 			       '#((immutable hashpairs))))
@@ -185,3 +245,5 @@
 (define sethashess (record-constructor sethashess-rcd))
 (define sethashess? (record-predicate sethashess-rtd))
 (define sethashess-hashpairs (record-accessor sethashess-rtd 0))
+
+;;; library-requests.scm ends here

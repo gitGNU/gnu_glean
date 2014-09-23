@@ -34,7 +34,7 @@
   #:use-module (glean config)
   #:use-module (glean common base-requests)
   #:use-module (glean common comtools)
-  #:use-module (glean common module-requests)
+  #:use-module (glean common library-requests)
   #:use-module (glean common monads)
   #:use-module (glean common profile-requests)
   #:use-module (glean common utils)

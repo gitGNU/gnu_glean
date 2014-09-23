@@ -25,7 +25,7 @@
   #:use-module (glean common monads)
   #:use-module (glean common base-requests)
   #:use-module (glean common profile-requests)
-  #:use-module (glean common module-requests)
+  #:use-module (glean common library-requests)
   #:use-module (glean client monadic-min))
 
 (test-begin "clients-min-tests")

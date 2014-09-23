@@ -30,7 +30,7 @@
   #:use-module (glean library sets)
   #:use-module (glean lounge scorecards)
   #:use-module (glean common base-requests)
-  #:use-module (glean common module-requests)
+  #:use-module (glean common library-requests)
   #:use-module (glean common profile-requests)
   #:export (
 	    $mk-rootset

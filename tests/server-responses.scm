@@ -25,7 +25,7 @@
   #:use-module (glean config)
   #:use-module (glean common comtools)
   #:use-module (glean common base-requests)
-  #:use-module (glean common module-requests)
+  #:use-module (glean common library-requests)
   #:use-module (quickcheck quickcheck)
   #:use-module (tests quickcheck-defs)
   #:use-module (tests test-utils))

@@ -22,7 +22,7 @@
 (define-module (tests library-store)
   #:use-module (srfi srfi-64)      ; Provide test suite
   #:use-module (glean common base-requests)
-  #:use-module (glean common module-requests)
+  #:use-module (glean common library-requests)
   #:use-module (glean library library-store)
   #:use-module (glean library server)
   #:use-module (ice-9 match)

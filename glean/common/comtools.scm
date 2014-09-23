@@ -42,7 +42,7 @@
 
 (define-module (glean common comtools)
   #:use-module (glean common base-requests)
-  #:use-module (glean common module-requests)
+  #:use-module (glean common library-requests)
   #:use-module (glean common profile-requests)
   #:use-module (glean common utils)
   #:use-module (glean library sets)
