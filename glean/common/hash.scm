@@ -1,30 +1,37 @@
-;;; glean --- fast learning tool.         -*- coding: utf-8 -*-
+;; hash.scm --- cryptographic hash functions         -*- coding: utf-8 -*-
+;;
+;; Copyright (C) 2012, 2013, 2014 Ludovic Courtès <ludo@gnu.org>
+;; Copyright (C) 2014 Alex Sassmannshausen <alex.sassmannshausen@gmail.com>
+;;
+;; Author: Alex Sassmannshausen <alex.sassmannshausen@gmail.com>
+;; Created: 01 January 2014
+;;
+;; This file is part of Glean.
+;;
+;; Glean is free software; you can redistribute it and/or modify it under the
+;; terms of the GNU General Public License as published by the Free Software
+;; Foundation; either version 3 of the License, or (at your option) any later
+;; version.
+;;
+;; Glean is distributed in the hope that it will be useful, but WITHOUT ANY
+;; WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+;; FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more
+;; details.
+;;
+;; You should have received a copy of the GNU General Public License along
+;; with glean; if not, contact:
+;;
+;; Free Software Foundation           Voice:  +1-617-542-5942
+;; 59 Temple Place - Suite 330        Fax:    +1-617-542-2652
+;; Boston, MA  02111-1307,  USA       gnu@gnu.org
 
-;;;; Cryptographic Hashes - Gleaned from Ludovic Courtès' Guix
-
-;;; Copyright © 2012, 2013, 2014 Ludovic Courtès <ludo@gnu.org>,
-;;; Alex Sassmannshausen <alex.sassmannshausen@gmail.com>
-;;;
-;;; This file is part of GNU Guix.
-;;;
-;;; GNU Guix is free software; you can redistribute it and/or modify it
-;;; under the terms of the GNU General Public License as published by
-;;; the Free Software Foundation; either version 3 of the License, or (at
-;;; your option) any later version.
-;;;
-;;; GNU Guix is distributed in the hope that it will be useful, but
-;;; WITHOUT ANY WARRANTY; without even the implied warranty of
-;;; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-;;; GNU General Public License for more details.
-;;;
-;;; You should have received a copy of the GNU General Public License
-;;; along with GNU Guix.  If not, see <http://www.gnu.org/licenses/>.
-
-;;; Commentary:
-;;;
-;;; Cryptographic hashes.
-;;;
-;;; Code:
+;; Commentary:
+;;
+;; Cryptographic hashes.
+;; This module has essentially been taken over from Ludovic Courtès' Guix as
+;; is.
+;;
+;; Code:
 
 (define-module (glean common hash)
   #:use-module (glean config)
@@ -43,9 +50,7 @@
             ))
 
 
-;;;
-;;; Hash.
-;;;
+;;;;; Hash Functions
 
 (define-syntax GCRY_MD_SHA256
   ;; Value as of Libgcrypt 1.5.2.
@@ -93,7 +98,8 @@
                                     (dynamic-link %libgcrypt% ))
                       '(*)))
 
-
+
+;;;;; Ports
 (define (open-sha256-port)
   "Return two values: an output port, and a thunk.  When the thunk is called,
 it returns the SHA256 hash (a bytevector) of all the data written to the
@@ -166,12 +172,19 @@ data read from PORT.  The thunk always returns the same value."
   (values (unbuffered (make-custom-binary-input-port "sha256" read! #f #f #f))
           get-hash))
 
-;; Convenience procedures to generate sha256 values.
+
+;;;;; Convenience Funtions
+;;;  These are the most likely ways in which this librarry will be used.
+
 (define (sha256-string . strings)
+  "Return a sha256 hash, as a string, of the strings joined by a simple space
+character."
   (bytevector->base32-string
    (sha256 (string->utf8 (string-join (map object->string strings))))))
-(define (sha256-symbol . strings)
-  (string->symbol (apply sha256-string strings)))
 
+(define (sha256-symbol . strings)
+  "Return a sha256 hash, as a symbol, of the strings joined by a simple space
+character."
+  (string->symbol (apply sha256-string strings)))
 
 ;;; hash.scm ends here
