@@ -1,26 +1,38 @@
-;;; glean --- Fast learning tool.         -*- coding: utf-8 -*-
-
-;;;; Generic Utilities
-
-;;; Copyright © 2012, 2013, 2014 Ludovic Courtès <ludo@gnu.org>,
-;;; Alex Sassmannshausen <alex.sassmannshausen@gmail.com>
-
-;; This program is free software; you can redistribute it and/or
-;; modify it under the terms of the GNU General Public License as
-;; published by the Free Software Foundation; either version 3 of
-;; the License, or (at your option) any later version.
+;; utils.scm --- general utility functions          -*- coding: utf-8 -*-
 ;;
-;; This program is distributed in the hope that it will be useful,
-;; but WITHOUT ANY WARRANTY; without even the implied warranty of
-;; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-;; GNU General Public License for more details.
+;; Copyright © 2012, 2013, 2014 Ludovic Courtès <ludo@gnu.org>,
+;; Copyright (C) 2014 Alex Sassmannshausen <alex.sassmannshausen@gmail.com>
 ;;
-;; You should have received a copy of the GNU General Public License
-;; along with this program; if not, contact:
+;; Author: Alex Sassmannshausen <alex.sassmannshausen@gmail.com>
+;; Created: 01 January 2014
+;;
+;; This file is part of Glean.
+;;
+;; Glean is free software; you can redistribute it and/or modify it under the
+;; terms of the GNU General Public License as published by the Free Software
+;; Foundation; either version 3 of the License, or (at your option) any later
+;; version.
+;;
+;; Glean is distributed in the hope that it will be useful, but WITHOUT ANY
+;; WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+;; FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more
+;; details.
+;;
+;; You should have received a copy of the GNU General Public License along
+;; with glean; if not, contact:
 ;;
 ;; Free Software Foundation           Voice:  +1-617-542-5942
 ;; 59 Temple Place - Suite 330        Fax:    +1-617-542-2652
 ;; Boston, MA  02111-1307,  USA       gnu@gnu.org
+
+;; Commentary:
+;;
+;; Some utility functions and quick hacks. Some of this is the result of not
+;; having implemented a proper solution to a problem yet (e.g. the logging
+;; functions).
+;; Some of this is stolen from Ludovic Courtès' Guix.
+;; 
+;; Code:
 
 (define-module (glean common utils)
   #:use-module (ice-9 match)
@@ -41,16 +53,25 @@
             emit-version
             ))
 
-(define (display=> x) (format #t "~a\n" x) x)
+
+;;;;; General Functionality
+
+(define (display=> x)
+  "Emit X to stdout, and return it afterwards.  X can be any Scheme object,
+and will simply be printed as format's '~a' would interpret it."
+(format #t "~a\n" x) x)
 
 (define (seq a b)
   "Return a list, counting upwards, from A to B (inclusive)."
   (define (helper curr result)
     (if (> curr b) (reverse result) (helper (1+ curr)
                                             (cons curr result))))
-  (if (> a b) '() (helper 1 '())))
+  (if (> a b) '() (helper a '())))
 
 (define (flatten obj)
+  "Return '() if OBJ is null?, OBJ wrapped in a list if it is not a pair, or a
+flattened proper list containing the elements of OBJ if OBJ is either a list,
+pair or improper list."
   (cond ((null? obj) '())
         ((not (pair? obj)) (list obj))
         (else
@@ -58,7 +79,7 @@
                  (flatten (cdr obj))))))
 
 (define (mkdir-p dir)
-  "Create directory DIR and all its ancestors."
+  "Create directory DIR and all its ancestors as necessary."
   (define absolute?
     (string-prefix? "/" dir))
 
@@ -82,12 +103,16 @@
                  (apply throw args))))))
       (() #t))))
 
-(define (llog args)
+
+;;;;; Logging Functions
+;;; Some more or less half-baked logging functions.
+
+(define (llog . args)
   "Returns #undefined. Provide logic-warning log abstraction:
 a gmsg call with ARGS defaulting to #:priority 1."
   (gmsg #:priority 1 args))
 
-(define (clog args)
+(define (clog . args)
   "Returns #undefined. Provide communications-warning log abstraction:
 a gmsg call with ARGS defaulting to #:priority 3."
   (gmsg #:priority 3 args))
@@ -128,29 +153,31 @@ prints RECORD and its fields as a side-effect if #t."
         (format port ":end:\n"))
       #f))
 
-(define* (gmsg #:key (priority 10) . args)
+(define* (gmsg #:key (priority 4) . args)
   "Provide a simple debugging message system. Prints ARGS with Format
 if PRIORITY is lower than %DEBUG% set in config.scm."
-  (let ((%debug% 10))
-    (define (indent length)
-      (define (i l s)
-        (if (zero? l)
-            s
-            (i (1- l) (string-append " " s))))
-      
-      (if (zero? length)
-          ""
-          (i (1- length) " ")))
-    (define (gm args format-string)
-      (cond ((null? args) format-string)
-            (else (gm (cdr args) (string-append format-string " ~S")))))
-    (if (< priority %debug%)
-        (let ((port (current-output-port)))
-          (format port "~a* Debug:" (indent (1- priority)))
-          (apply format port (gm args " ") args)
-          (newline port)))))
+  (define (indent length)
+    (define (i l s)
+      (if (zero? l)
+          s
+          (i (1- l) (string-append " " s))))
+    
+    (if (zero? length)
+        ""
+        (i (1- length) " ")))
+  (define (gm args format-string)
+    (cond ((null? args) format-string)
+          (else (gm (cdr args) (string-append format-string " ~S")))))
+  (if (relevant? 'debug)
+      (let ((port (current-output-port)))
+        (format port "~a* Debug:" (indent (1- priority)))
+        (apply format port (gm args " ") args)
+        (newline port))))
 
 (define* (relevant? priority #:key (%log-level% 'debug))
+  "Return #t if PRIORITY is higher than %LOG-LEVEL%. PRIORITY should be one of
+the symbols (in increasing order of importance) 'debug, 'inform, 'warning,
+'important or 'critical."
   (define (weigh rating)
     (cond ((eqv? rating 'critical)  0)
           ((eqv? rating 'important) 1)
@@ -161,13 +188,18 @@ if PRIORITY is lower than %DEBUG% set in config.scm."
         (filter  (weigh %log-level%)))
     (<= urgency filter)))
 
+
+;;;;; Package Procedures
+;;; Some procedures to be used by the various launchers of Guile to provide a
+;;; unified CLI.
+
 (define (emit-version package-name version)
   "Output a version message and exit."
   (format #t
           "~a ~a
 Copyright (C) 2014 Alex Sassmannshausen.
 ~a comes with ABSOLUTELY NO WARRANTY.
-License: GNU AGPL version 3 or later <http://gnu.org/licenses/agpl.html>.
+License: GNU GPL version 3 or later <http://gnu.org/licenses/gpl.html>.
 This is Free Software: you are free to change and redistribute it under the
 terms of the above license.
 
@@ -206,9 +238,7 @@ Usage: COMMAND [--LONG-OPT | -SHORT-OPT]
                    (format #t "           ~a ~a\n"
                            (spaces (string-length command)) info))
                  rest)))
-    (newline)
-    (format #t "~a" synopsis)
-    (newline)
+    (format #t "\n~a\n" synopsis)
     (for-each (lambda (pair message)
                 (match pair
                   ((name . char)
@@ -217,6 +247,6 @@ Usage: COMMAND [--LONG-OPT | -SHORT-OPT]
                            (spaces (- 15 (string-length name)))
                            message))))
               pairs messages)
-    (newline)
-    (format #t "~a" description)
-    (newline)))
+    (format #t "\n~a\n" description)))
+
+;;; utils.scm ends here
