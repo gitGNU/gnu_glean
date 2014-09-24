@@ -1,34 +1,46 @@
-;;; glean --- fast learning tool.         -*- coding: utf-8 -*-
-
-;;;; Monads
-
-;;; Copyright © 2013, 2014 Ludovic Courtès <ludo@gnu.org>
-;;; Copyright © 2014 Alex Sassmannshausen
-
-;; This program is free software; you can redistribute it and/or
-;; modify it under the terms of the GNU General Public License as
-;; published by the Free Software Foundation; either version 3 of
-;; the License, or (at your option) any later version.
+;; monads.scm --- general monad library            -*- coding: utf-8 -*-
 ;;
-;; This program is distributed in the hope that it will be useful,
-;; but WITHOUT ANY WARRANTY; without even the implied warranty of
-;; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-;; GNU General Public License for more details.
+;; Copyright (C) 2013, 2014 Ludovic Courtès <ludo@gnu.org>
+;; Copyright (C) 2014 Alex Sassmannshausen <alex.sassmannshausen@gmail.com>
 ;;
-;; You should have received a copy of the GNU General Public License
-;; along with this program; if not, contact:
+;; Author: Alex Sassmannshausen <alex.sassmannshausen@gmail.com>
+;; Created: 01 January 2014
+;;
+;; This file is part of Glean.
+;;
+;; Glean is free software; you can redistribute it and/or modify it under the
+;; terms of the GNU General Public License as published by the Free Software
+;; Foundation; either version 3 of the License, or (at your option) any later
+;; version.
+;;
+;; Glean is distributed in the hope that it will be useful, but WITHOUT ANY
+;; WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+;; FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more
+;; details.
+;;
+;; You should have received a copy of the GNU General Public License along
+;; with glean; if not, contact:
 ;;
 ;; Free Software Foundation           Voice:  +1-617-542-5942
 ;; 59 Temple Place - Suite 330        Fax:    +1-617-542-2652
 ;; Boston, MA  02111-1307,  USA       gnu@gnu.org
 
-;;;; Commentary:
-;;;
-;;; Functionality providing foundational monad logic. The library also
-;;; exposes procedures for a state, ‘Just‘ and an identity monad.
-;;;
-;;;; Code:
-
+;;; Commentary:
+;;
+;; Functionality providing foundational monad logic. The library also
+;; exposes procedures for a state, ‘Just‘ and an identity monad.
+;;
+;; The commentary from Guix's monads.scm (which this module is largely based
+;; on):
+;; This module implements the general mechanism of monads, and provides in
+;; particular an instance of the "store" monad.  The API was inspired by that
+;; of Racket's "better-monads" module (see
+;; <http://planet.racket-lang.org/package-source/toups/functional.plt/1/1/planet-docs/better-monads-guide/index.html>).
+;; The implementation and use case were influenced by Oleg Kysielov's
+;; "Monadic Programming in Scheme" (see
+;; <http://okmij.org/ftp/Scheme/monad-in-Scheme.html>).
+;;
+;;; Code:
 
 (define-module (glean common monads)
   #:use-module (ice-9 match)
@@ -77,23 +89,10 @@
   #:replace (imported-modules
              compiled-modules))
 
-;;; Commentary:
-;;;
-;;; This module implements the general mechanism of monads, and provides in
-;;; particular an instance of the "store" monad.  The API was inspired by that
-;;; of Racket's "better-monads" module (see
-;;; <http://planet.racket-lang.org/package-source/toups/functional.plt/1/1/planet-docs/better-monads-guide/index.html>).
-;;; The implementation and use case were influenced by Oleg Kysielov's
-;;; "Monadic Programming in Scheme" (see
-;;; <http://okmij.org/ftp/Scheme/monad-in-Scheme.html>).
-;;;
-;;; The store monad allows us to (1) build sequences of operations in the
-;;; store, and (2) make the store an implicit part of the execution context,
-;;; rather than a parameter of every single function.
-;;;
-;;; Code:
+
+;;;;; Basic Monad Infrastructure
 
-;; Record type for monads manipulated at run time.
+;;; Record type for monads manipulated at run time.
 (define-record-type <monad>
   (make-monad bind return)
   monad?
@@ -158,6 +157,9 @@ methods."
                                         (monad-return monad))))
            body ...)))))
 
+
+;;;;; Basic Monad Use
+
 (define-syntax mlet*
   (syntax-rules (->)
     "Bind the given monadic values MVAL to the given variables VAR.  When the
@@ -210,6 +212,9 @@ return a monadic function in monad."
     (with-monad monad
       (return (apply proc args)))))
 
+
+;;;;; Common Higher Order Functions For Monads
+
 (define (foldm monad mproc init lst)
   "fold mproc over lst, a list of monadic values in monad, and return a
 monadic value seeded by init."
@@ -255,6 +260,7 @@ lifted in monad, for which proc returns true."
                (return result)
                (loop tail))))))))
 
+;;;;; A Monadic List Generator
 (define-syntax listm
   (lambda (s)
     "return a monadic list in monad from the monadic values mval."
@@ -264,11 +270,10 @@ lifted in monad, for which proc returns true."
          #'(mlet monad ((val mval) ...)
              (return (list val ...))))))))
 
-
 
-;;;
-;;; identity monad.
-;;;
+;;;;; Specific Monads
+
+;;;; The Identity Monad
 
 (define-inlinable (identity-return value)
   value)
@@ -280,17 +285,15 @@ lifted in monad, for which proc returns true."
   (bind   identity-bind)
   (return identity-return))
 
-;;;
-;;; state monad
-;;;
+;;;; The State Monad
 
-;;;; In the context of the state monad:
-;;;;
-;;;; MPROC: returns an MVALUE seeded with values passed to MPROC as
-;;;; it's arguments.
-;;;;
-;;;; MVALUE: returns a procedure taking state, which in turn, when
-;;;; provided with state, returns a stateful.
+;;; In the context of the state monad:
+;;;
+;;; MPROC: returns an MVALUE seeded with values passed to MPROC as
+;;; it's arguments.
+;;;
+;;; MVALUE: returns a procedure taking state, which in turn, when
+;;; provided with state, returns a stateful.
 
 (define-record-type <nothing>
   (nothing id context)
@@ -336,42 +339,43 @@ applying MVALUE to MPROC."
   "Procedure for testing monad laws."
   (car (mvalue 'state)))
 
-;; ===
-;; Example State Monad Application:
-;; ===
-;;
-;; Given:
-;; (define (sf v)
-;;   (lambda (state)
-;;     (cons (* v state) (+ v state))))
-;;
-;; ((mlet* state-monad
-;;         ((last (sf 7))
-;;          (penult (sf last)))
-;;         ;; second    init
-;;         (sf penult)) 20)
-;; $83 = (631260 . 3947)
-;;
-;; is equivalent to
-;;
-;; init second      penult      last
-;; (    (state-bind (state-bind (sf 7) sf) sf) 20)
-;; $84 = (631260 . 3947)
-;;
-;; I do not even know how to start thinking of this without the monad!
+;;; ===
+;;; Example State Monad Application:
+;;; ===
+;;;
+;;; Given:
+;;; (define (sf v)
+;;;   (lambda (state)
+;;;     (cons (* v state) (+ v state))))
+;;;
+;;; ((mlet* state-monad
+;;;         ((last (sf 7))
+;;;          (penult (sf last)))
+;;;         ;; second    init
+;;;         (sf penult)) 20)
+;;; $83 = (631260 . 3947)
+;;;
+;;; is equivalent to
+;;;
+;;; init second      penult      last
+;;; (    (state-bind (state-bind (sf 7) sf) sf) 20)
+;;; $84 = (631260 . 3947)
+;;;
+;;; I do not even know how to start thinking of this without the monad!
 
+
 ;;;; Logging for monads
-;;
-;; mlogger implements an approach to logging in monads.  It takes a predicate
-;; and a dictionary, after which, for every call to it (for instance from
-;; within a monadic bind procedure), it will apply the predicate to supplied
-;; values and if it passes, pass the value to the dictionary.
-;;
-;; The dictionary should as a result return 3 values:
-;; - source (e.g. procedure name of the procedure causing the value currently
-;;   being logged)
-;; - message (e.g. an informative string)
-;; - value (e.g. a value to assist in interpreting the situation)
+;;;
+;;; mlogger implements an approach to logging in monads.  It takes a predicate
+;;; and a dictionary, after which, for every call to it (for instance from
+;;; within a monadic bind procedure), it will apply the predicate to supplied
+;;; values and if it passes, pass the value to the dictionary.
+;;;
+;;; The dictionary should as a result return 3 values:
+;;; - source (e.g. procedure name of the procedure causing the value currently
+;;;   being logged)
+;;; - message (e.g. an informative string)
+;;; - value (e.g. a value to assist in interpreting the situation)
 
 (define (mlogger predicate dictionary-proc)
   "Return a procedure which, when invoked, will return messages according to
@@ -388,13 +392,12 @@ stateful."
 
 
 ;;;; Monad Tests
-;;;;; Monads have to obey 3 formal rules, as well as doing what you
-;;;;; need them to do. The rules are 'left identitiy', 'right
-;;;;; identity' and 'associativity'. The procedures in this section
-;;;;; expose these rules in a simple fashion as a basis for a test
-;;;;; suite.
+;;; Monads have to obey 3 formal rules, as well as doing what you
+;;; need them to do. The rules are 'left identitiy', 'right
+;;; identity' and 'associativity'. The procedures in this section
+;;; expose these rules in a simple fashion as a basis for a test
+;;; suite.
 
-;;test-assert "left identity"
 (define (left-identity? monad unmonad)
   (let ((number (random 777)))
     (with-monad monad
@@ -402,12 +405,13 @@ stateful."
         (return (* (1+ x) 2)))
       (= (unmonad (>>= (return number) f))
          (unmonad (f number))))))
-;;test-assert "right identity"
+
 (define (right-identity? monad unmonad)
   (with-monad monad
     (let ((number (return (random 777))))
       (= (unmonad (>>= number return))
          (unmonad number)))))
+
 (define (associative? monad unmonad)
   (with-monad monad
     (define (f x)
