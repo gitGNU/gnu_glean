@@ -24,7 +24,7 @@
 ;; 59 Temple Place - Suite 330        Fax:    +1-617-542-2652
 ;; Boston, MA  02111-1307,  USA       gnu@gnu.org
 
-;; Commentary:
+;;; Commentary:
 ;;
 ;; This module's aim is to provide high-level communication tools used by
 ;; base-server and monadic-min (i.e. UI and server parts).
@@ -38,7 +38,7 @@
 ;; - 1) transmission of symbols by transforming them to strings and back;
 ;; - 2) catching of any errors that may occur during reading / writing.
 ;;
-;; Code:
+;;; Code:
 
 (define-module (glean common comtools)
   #:use-module (glean common base-requests)

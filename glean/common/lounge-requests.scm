@@ -24,7 +24,7 @@
 ;; 59 Temple Place - Suite 330        Fax:    +1-617-542-2652
 ;; Boston, MA  02111-1307,  USA       gnu@gnu.org
 
-;; Commentary:
+;;; Commentary:
 ;;
 ;; This module defines the vocabulary for requests specifically used when
 ;; communicating with a lounge server.
@@ -47,7 +47,7 @@
 ;;   conversion for each communication sent…
 ;; - conversion to and from json/xml might be easier to implement.
 ;;
-;; Code:
+;;; Code:
 
 (define-module (glean common lounge-requests)
   #:use-module (rnrs records procedural)

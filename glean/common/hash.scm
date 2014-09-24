@@ -25,13 +25,13 @@
 ;; 59 Temple Place - Suite 330        Fax:    +1-617-542-2652
 ;; Boston, MA  02111-1307,  USA       gnu@gnu.org
 
-;; Commentary:
+;;; Commentary:
 ;;
 ;; Cryptographic hashes.
 ;; This module has essentially been taken over from Ludovic Courtès' Guix as
 ;; is.
 ;;
-;; Code:
+;;; Code:
 
 (define-module (glean common hash)
   #:use-module (glean config)

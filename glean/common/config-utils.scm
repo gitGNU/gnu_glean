@@ -24,7 +24,7 @@
 ;; 59 Temple Place - Suite 330        Fax:    +1-617-542-2652
 ;; Boston, MA  02111-1307,  USA       gnu@gnu.org
 
-;; Commentary:
+;;; Commentary:
 ;;
 ;; A module providing component configuration and extensibility features.
 ;;
@@ -32,7 +32,7 @@
 ;; - when writing extensions, make-config, make-component, make-setting.
 ;; - when embedding components in a glean server, use component-node
 ;;
-;; Code:
+;;; Code:
 
 (define-module (glean common config-utils)
   #:use-module (glean common utils)

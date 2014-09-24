@@ -25,14 +25,14 @@
 ;; 59 Temple Place - Suite 330        Fax:    +1-617-542-2652
 ;; Boston, MA  02111-1307,  USA       gnu@gnu.org
 
-;; Commentary:
+;;; Commentary:
 ;;
 ;; Some utility functions and quick hacks. Some of this is the result of not
 ;; having implemented a proper solution to a problem yet (e.g. the logging
 ;; functions).
 ;; Some of this is stolen from Ludovic Courtès' Guix.
 ;; 
-;; Code:
+;;; Code:
 
 (define-module (glean common utils)
   #:use-module (ice-9 match)
