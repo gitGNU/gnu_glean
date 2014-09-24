@@ -293,6 +293,7 @@ adding it with VALUE if not."
       properties
       (acons property value properties)))
 
+
 ;;;;; High Level Monadic Validators
 
 (define (monadic-check-meta . args)
@@ -345,6 +346,7 @@ if CONTENTS did not pass validation."
                  (append result (list current))))
            '() contents))))
 
+
 ;;;;; High Level Resolvers
 
 (define (reify-contents meta prop contents)
@@ -429,6 +431,7 @@ should leave this field empty."
 Keywords are optional.  However, NAIVE should always extend BASE."
   (append base-keywords naive-keywords))
 
+
 (define (resolve-creator base-creator naive-creator)
   "Return a merged creator field.
 
@@ -478,6 +481,7 @@ having been applied to all other arguments."
              cont)
         name vers syno desc keyw crea attr reso logo prop))
 
+
 ;;;;; Validators: Ensure Each Field Contains An Acceptable Value
 
 (define (validator-nothing-label nothing)
@@ -543,6 +547,7 @@ This currently is not capable of testing the pair for type."
   (lambda (object)
     (type-validate pair? label object)))
 
+
 (define (validate-id obj)
   "Return OBJ if it is a valid set-id, a 'type nothing otherwise."
   ((symbol-validator 'id) obj))
