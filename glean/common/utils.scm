@@ -207,7 +207,8 @@ For more information about these matters, see the file named COPYING.
 "
           package-name version package-name))
 
-(define (emit-usage command synopsis description options messages)
+(define* (emit-usage command synopsis description options messages
+                     #:key subcommand)
   "Return a usage message formatted in the following fashion:
 Usage: COMMAND [--LONG-OPT | -SHORT-OPT]
                ...
@@ -233,10 +234,16 @@ Usage: COMMAND [--LONG-OPT | -SHORT-OPT]
   (let ((pairs (map name-char-pair options)))
     (match (map info-line pairs)
       ((first . rest)
-       (format #t "Usage:     ~a ~a\n" command first)
+       (if subcommand
+           (format #t "Usage:     ~a ~a ~a\n" command subcommand first)
+           (format #t "Usage:     ~a ~a\n" command first))
        (for-each (lambda (info)
                    (format #t "           ~a ~a\n"
-                           (spaces (string-length command)) info))
+                           (spaces (+ (string-length command)
+                                      (if subcommand
+                                          (1+ (string-length subcommand))
+                                          0)))
+                           info))
                  rest)))
     (format #t "\n~a\n" synopsis)
     (for-each (lambda (pair message)

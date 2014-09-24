@@ -87,13 +87,14 @@ actions requested."
     (cond ((option-ref opts 'version #f)      ; --version
            (emit-version %glean-package-name%
                          %glean-version%))
-          ((or (option-ref opts 'usage #f)
+          ((or (option-ref opts 'usage #f) ; --help or --usage
                (option-ref opts 'help #f))
-           (emit-usage %glean-package-name%   ; --help or --usage
+           (emit-usage (string-downcase %glean-package-name%)
                        *synopsis*
                        *description*
                        *option-grammar*
-                       *messages*))
+                       *messages*
+                       #:subcommand "client | cln"))
           (else                               ; launch client
            (if (option-ref opts 'listen #f)   ; and listen?
                ((@ (system repl server) spawn-server)))
