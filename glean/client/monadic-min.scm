@@ -1,46 +1,46 @@
-;;; glean --- fast learning tool.         -*- coding: utf-8 -*-
-
-;;;; Client Base Library With Monads
-
-;; Copyright © 2014 Alex Sassmannshausen
+;; monadic-min.scm --- monadic library to build clients  -*- coding: utf-8 -*-
 ;;
-;; This program is free software; you can redistribute it and/or
-;; modify it under the terms of the GNU General Public License as
-;; published by the Free Software Foundation; either version 3 of
-;; the License, or (at your option) any later version.
+;; Copyright © 2014 Alex Sassmannshausen <alex.sassmannshausen@gmail.com>
 ;;
-;; This program is distributed in the hope that it will be useful,
-;; but WITHOUT ANY WARRANTY; without even the implied warranty of
-;; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-;; GNU General Public License for more details.
+;; Author: Alex Sassmannshausen <alex.sassmannshausen@gmail.com>
+;; Created: 01 January 2014
 ;;
-;; You should have received a copy of the GNU General Public License
-;; along with this program; if not, contact:
+;; This file is part of Glean.
+;;
+;; Glean is free software; you can redistribute it and/or modify it under the
+;; terms of the GNU General Public License as published by the Free Software
+;; Foundation; either version 3 of the License, or (at your option) any later
+;; version.
+;;
+;; Glean is distributed in the hope that it will be useful, but WITHOUT ANY
+;; WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+;; FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more
+;; details.
+;;
+;; You should have received a copy of the GNU General Public License along
+;; with glean; if not, contact:
 ;;
 ;; Free Software Foundation           Voice:  +1-617-542-5942
 ;; 59 Temple Place - Suite 330        Fax:    +1-617-542-2652
 ;; Boston, MA  02111-1307,  USA       gnu@gnu.org
 
-;;;; Commentary:
-;;;
-;;; Provide the common interfaces likely to be used by all other
-;;; client implementations. These are built using the 'lounge-monad',
-;;; allowing us to abstract from lounge context (tokens,
-;;; lounge-connection and library-connection).
-;;;
-;;;; Code:
+;;; Commentary:
+;;
+;; Provide the common interfaces likely to be used by all other client
+;; implementations. These are built using the 'client-monad', allowing us to
+;; abstract from lounge context (tokens, lounge-connection and
+;; library-connection).
+;;
+;;; Code:
 
 (define-module (glean client monadic-min)
   #:use-module (glean config)
   #:use-module (glean common base-requests)
   #:use-module (glean common comtools)
   #:use-module (glean common library-requests)
-  #:use-module (glean common monads)
   #:use-module (glean common lounge-requests)
+  #:use-module (glean common monads)
   #:use-module (glean common utils)
-  #:use-module (glean library sets)      ; Should be made obsolete
-  #:use-module (glean lounge gprofiles)  ; Should be made obsolete
-  #:use-module (glean lounge scorecards) ; Should be made obsolete
   #:use-module (srfi srfi-26)
   #:export (
             ;; state generating transactions
@@ -85,10 +85,13 @@
                                            (echos-library rs))))))
 
 
-;;;; Client Monad
+;;;;; Client Monad
+;;;
+;;; A monad specialised for client stateful tasks. It provides state
+;;; management, exception handling and logging.
+;;;
+;;; As in other places in Glean, logging is… ugly, at best.
 
-;;;; A monad specialised for the client stateful tasks. It provides
-;;;; state management, exception handling and logging.
 (define (logger st8ful)
   (if (relevant? 'debug)
       (let ((port (if (string? %log-file%)
@@ -123,25 +126,25 @@ applying MVALUE to MPROC."
 (define-monad client-monad
   (bind   client-bind)
   (return client-return))
+
 
-;;;; Communication Wrappers
+;;;;; Communication Wrappers
+;;;
+;;; This section contains wrappers and convenience procedures for clients to
+;;; communicate with glean servers.  The approach has been to provide a
+;;; powerful general procedure (call/exchange), which is capable of returning
+;;; very precise data sets from the server, and to then provide wrappers for
+;;; individual requests and their responses that use call/exchange to provide
+;;; data to the client program.
 
-;;; This section contains wrappers and convenience procedures for
-;;; clients to communicate with glean servers.  The approach has
-;;; been to provide a powerful general procedure (call/exchange),
-;;; which is capable of returning very precise data sets from the
-;;; server, and to then provide wrappers for individual requests and
-;;; their responses that use call/exchange to provide data to the
-;;; client program.
+;;;; 'State' Generating Procedures
 
-;;;;; 'State' Generating Procedures
-
-(define (register-player name password profile-server module-server)
+(define (register-player name password profile-server library-server)
   "Return 'lounge state' upon successful registration with the
 lounge using NAME. Raise an Exchange Error otherwise."
   (let ((rs (call/exchange profile-server auths? regq
                            name password profile-server
-                           module-server)))
+                           library-server)))
     (if (nothing? rs)
         rs
         (mk-state (auths-token rs) (auths-prof-server rs)
@@ -157,7 +160,8 @@ lounge using NAME. Raise an Exchange Error otherwise."
         (mk-state (auths-token rs) (auths-prof-server rs)
                   (auths-mod-server rs)))))
 
-;;;;; Composite Transactions
+
+;;;; Composite Transactions
 (define (view-set fullhash state)
   "Return a user-friendly list of full set fields as provided by the
 details response, for the set identified by FULLHASH."
@@ -165,6 +169,7 @@ details response, for the set identified by FULLHASH."
           ((test         (test-servers 'library))
            (detail       (fetch-detail fullhash)))
           (return detail)) state))
+
 (define (view-player state)
   "Return a user-friendly list of profile fields for display for the
 profile identified by the token in STATE."
@@ -261,6 +266,7 @@ provides us with details of available modules."
     ((test (test-servers 'library)))
     (fetch-known-modules)) state))
 
+
 ;;;;; Atomic Transactions / Monadic Transactions
 (define* (test-servers #:optional (server #f))
   "Return a client-monad mval which returns a nothing if one of the
@@ -277,6 +283,7 @@ server."
            (nothing 'lounge-down (state-lng state)))
           (else (stateful '(unimportant)
                           state)))))
+
 (define (fetch-known-modules)
   "Return a client-monad mval for an availq."
   (lambda (state)
@@ -289,6 +296,7 @@ server."
           rs
           (stateful (knowns-list rs)
                     state)))))
+
 (define (fetch-detail fullhash)
   "Return a client-monad mval which, when invoked, returns details
 about the set identified by FULLHASH or nothing."
@@ -302,6 +310,7 @@ about the set identified by FULLHASH or nothing."
           rs
           (stateful (details-list rs)
                     state)))))
+
 (define (details->full-details details)
   "Return a client-monad mval, resolving to new DETAILS with
 human-friendly information about active-modules."
@@ -318,6 +327,7 @@ human-friendly information about active-modules."
                             (caddr details)
                             (knowns-list rs))
                       state))))))
+
 (define (push-deletion)
   "Return a client-monad mval for a delq request."
   (lambda (state)
@@ -523,3 +533,5 @@ an error if the response is not expected."
     (if rs
         (rs-content rs)
         (negs (apply rq args) '(exchange servers-down)))))
+
+;;; monadic-min.scm ends here
