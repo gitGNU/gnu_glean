@@ -1,34 +1,43 @@
-;; glean --- fast learning tool.         -*- coding: utf-8 -*-
+;; bootstrap.scm --- library for bootstrap web-clients  -*- coding: utf-8 -*-
 ;;
 ;; Copyright © 2014 Alex Sassmannshausen <alex.sassmannshausen@gmail.com>
 ;;
+;; Author: Alex Sassmannshausen <alex.sassmannshausen@gmail.com>
+;; Created: 01 January 2014
+;;
 ;; This file is part of Glean.
 ;;
-;; Glean is free software; you can redistribute it and/or modify it
-;; under the terms of the GNU General Public License as published by the
-;; Free Software Foundation; either version 3 of the License, or (at your
-;; option) any later version.
+;; Glean is free software; you can redistribute it and/or modify it under the
+;; terms of the GNU General Public License as published by the Free Software
+;; Foundation; either version 3 of the License, or (at your option) any later
+;; version.
 ;;
-;; Glean is distributed in the hope that it will be useful,
-;; but WITHOUT ANY WARRANTY; without even the implied warranty of
-;; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-;; GNU General Public License for more details.
+;; Glean is distributed in the hope that it will be useful, but WITHOUT ANY
+;; WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+;; FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more
+;; details.
 ;;
-;; You should have received a copy of the GNU General Public License
-;; along with Glean; if not, contact:
+;; You should have received a copy of the GNU General Public License along
+;; with glean; if not, contact:
 ;;
 ;; Free Software Foundation           Voice:  +1-617-542-5942
 ;; 59 Temple Place - Suite 330        Fax:    +1-617-542-2652
 ;; Boston, MA  02111-1307,  USA       gnu@gnu.org
 
-;; Commentary:
+;;; Commentary:
 ;;
 ;; A library providing a basic convenience layer between bootstrap and sxml. I
 ;; envisage procedures from this library to provide bootstrap building blocks,
 ;; which can be composed and combined to form individual pages of wildly
-;; differing formats.
+;; differing formats; i.e. this file is a library for building bootstrap and
+;; artanis based web clients.
 ;;
-;; Code:
+;; Please note that web-clients are currently considered experimental.  Whilst
+;; a (old) version of Artanis is provided with Glean, we do not install it,
+;; nor do we check for its existence.  Unless you've manually installed
+;; Artanis, any web-client using this library will error out.
+;;
+;;; Code:
 
 (define-module (glean client components web bootstrap)
   #:use-module (artanis artanis)
@@ -65,7 +74,8 @@
             website-source
             ))
 
-;;;; Web Handler
+
+;;;;; Web Handler
 (define* (artanis-dispatch resource-dir #:key index login register account
                            session search content browse detail auth-action
                            reg-action mod-action del-action eval-action)
@@ -131,7 +141,7 @@
 
   (run))
 
-;;;; For inclusion in Artanis
+;;;;; Procedures For inclusion in Artanis
 (define (params-raw rc)
   (unless (rc-qt rc) ((@@ (artanis artanis) init-query!) rc))
   (rc-qt rc))
@@ -142,7 +152,8 @@
 (define (params-filter pred rc)
   (filter pred (params-raw rc)))
 
-;;;; Foundation
+
+;;;;; Foundation
 (define (state->form-fields state)
   `(fieldset
     (input (@ (type "hidden")
@@ -176,6 +187,7 @@
                   (uri-decode lng)
                   (uri-decode lib))
         #f)))
+
 (define (dummy-state? state) (= (state-tk state) 0))
 
 (define* (frame-maker base-url #:optional (css (list "/css/custom.css")))
@@ -243,6 +255,9 @@ the page."
                             (type "text/javascript"))
                          " ")))))
 
+
+;;;;; Error Handler
+
 (define (nothing-handler nothing)
   (match (list (nothing-id nothing)
                (nothing-context nothing))
@@ -288,7 +303,7 @@ response. Message: " (object->string neg-msg)) 'danger))
                     (else
                      (alert "Unknown error." 'danger)))))))))
 
-;;;; Views Components
+;;;;; Views Components
 (define* (modules-carousel modules st8)
   "Return the list MODULES as an sxml representation, formatted as a carousel.
 ST8 will wrap any links part of the carousel."
@@ -430,7 +445,9 @@ ST8 will wrap any links part of the carousel."
                                                        st8
                                                        #f 'list)))))))))
 
-;;;; Bootstrap Components
+
+;;;;; Bootstrap Components
+
 (define* (panel heading contents #:optional (type 'default) (xtraclass ""))
   "Return an sxml representation of a bootstrap panel containing the
 string HEADING and the sxml value CONTENTS. If TYPE is given it should
@@ -514,3 +531,5 @@ list of strings or a single string."
   `(iframe (@ (src ,url)
               (class "website"))
            " "))
+
+;;; bootstrap.scm ends here

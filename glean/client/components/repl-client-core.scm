@@ -1,33 +1,36 @@
-;;; glean --- fast learning tool.         -*- coding: utf-8 -*-
-
-;;;; REPL Client — a Guile / Geiser interface.
-
-;; Copyright © 2012, 2014 Alex Sassmannshausen
+;; repl-client-core.scm --- a guile repl client    -*- coding: utf-8 -*-
 ;;
-;; This program is free software; you can redistribute it and/or
-;; modify it under the terms of the GNU General Public License as
-;; published by the Free Software Foundation; either version 3 of
-;; the License, or (at your option) any later version.
+;; Copyright © 2014 Alex Sassmannshausen <alex.sassmannshausen@gmail.com>
 ;;
-;; This program is distributed in the hope that it will be useful,
-;; but WITHOUT ANY WARRANTY; without even the implied warranty of
-;; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-;; GNU General Public License for more details.
+;; Author: Alex Sassmannshausen <alex.sassmannshausen@gmail.com>
+;; Created: 01 January 2014
 ;;
-;; You should have received a copy of the GNU General Public License
-;; along with this program; if not, contact:
+;; This file is part of Glean.
+;;
+;; Glean is free software; you can redistribute it and/or modify it under the
+;; terms of the GNU General Public License as published by the Free Software
+;; Foundation; either version 3 of the License, or (at your option) any later
+;; version.
+;;
+;; Glean is distributed in the hope that it will be useful, but WITHOUT ANY
+;; WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+;; FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more
+;; details.
+;;
+;; You should have received a copy of the GNU General Public License along
+;; with glean; if not, contact:
 ;;
 ;; Free Software Foundation           Voice:  +1-617-542-5942
 ;; 59 Temple Place - Suite 330        Fax:    +1-617-542-2652
 ;; Boston, MA  02111-1307,  USA       gnu@gnu.org
 
-;;;; Commentary:
-;;;
-;;; Play Glean from Guile or Geiser (in Emacs).
-;;; Currently, to use, start the client as usual, then connect to the default
-;;; Guile REPL server, and enter this module.
-;;;
-;;;; Code:
+;;; Commentary:
+;;
+;; Play Glean from Guile or Geiser (in Emacs).  Currently, to use, start the
+;; client as usual, then connect to the default Guile REPL server, and enter
+;; this module.
+;;
+;;; Code:
 
 (define-module (glean client components repl-client-core)
   #:use-module (glean config)
@@ -35,10 +38,19 @@
   #:use-module (glean common components)
   #:use-module (glean common monads)
   #:use-module (glean common utils)
-  #:use-module (glean library sets)     ; Should be obsolete
   #:use-module (ice-9 match)
   #:use-module (rnrs)
   #:export (component))
+
+;;;;; Preliminaries
+;;;
+;;; Really, when launched from the command line, using the usual launch
+;;; sequence for the client, this should fire up a REPL at the shell prompt.
+;;; Instead, currently, the user is forced to connect to the spawned server
+;;; and 'enter' this module.  This renders the client launch sequence rather
+;;; useless.
+;;;
+;;; I have not gotten around to figuring out how to do this yet…
 
 (define (repl-client)
   ((@ (system repl server) spawn-server))
@@ -49,6 +61,9 @@
 (define id #f)                  ; Session data, mutable!
 (define data #f)                ; Last response, mutable!
 (define mods-assoc #f)          ; assoc of set-ids -> hashes, mutable!
+
+
+;;;;; Porcelain
 
 (define (help)
   "Display a startup message and suggest first steps."
@@ -205,15 +220,16 @@ user.  Then provide suggested next steps."
              ((#t "irrelevant")
               ; nothing to do
               )
-             ((#t (? s? solution))
-              (guide `("Correct! The answer is indeed '~a'.\n\n"
-                       ,(s-text solution))))
-             ((#f (? s? solution))
-              (guide `("Incorrect: the solution is:\n  '~a'\n\n"
-                       ,(s-text solution))))
+             ((#t solution)
+              (guide `("Correct! The answer is indeed '~a'.\n\n" ,solution)))
+             ((#f solution)
+              (guide `("Incorrect: the solution is:\n  '~a'\n\n" ,solution)))
              (_ (error "SOLVE -- unexpected result" (result rsp))))
            (next))
           (else (nothing-handler rsp)))))
+
+
+;;;;; Helpers
 
 (define (nothing-handler rsp)
   (cond ((eqv? 'servers-down (nothing-id rsp))
@@ -281,6 +297,9 @@ Example: (suggest `(\"next\" . \"Retrieve the next challenge.\")
                                            "\n")))
                     suggestions)))
 
+
+;;;;; Messages
+
 (define help-register
   (cons "register name password [lounge library]"
         "Register a new account as NAME, authenticated by PASSWORD."))
@@ -307,6 +326,9 @@ Example: (suggest `(\"next\" . \"Retrieve the next challenge.\")
 
 (define (dummy-state? id)
   (equal? dummy-state id))
+
+
+;;;;; Finally, The Component
 
 (define component
   (define-component

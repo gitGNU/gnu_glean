@@ -30,11 +30,10 @@ nodist_noinst_SCRIPTS =					\
 MODULES =						\
   glean/boot.scm					\
   glean/client/boot.scm					\
-  glean/client/components/cli.scm			\
-  glean/client/monadic-min.scm				\
   glean/client/components/repl-client-core.scm	     	\
   glean/client/components/web/web-client-core.scm	\
   glean/client/components/web/bootstrap.scm		\
+  glean/client/monadic-min.scm				\
   glean/common/base32.scm			     	\
   glean/common/base-server.scm				\
   glean/common/components.scm			   	\

@@ -1,50 +1,57 @@
-;;; glean --- fast learning tool.         -*- coding: utf-8 -*-
-
-;;;; Web Client
-
-;; Copyright (C) 2008, 2010, 2012 Alex Sassmannshausen
-
-;; This program is free software; you can redistribute it and/or
-;; modify it under the terms of the GNU General Public License as
-;; published by the Free Software Foundation; either version 3 of
-;; the License, or (at your option) any later version.
+;; web-client-core --- an Artanis based web-client    -*- coding: utf-8 -*-
 ;;
-;; This program is distributed in the hope that it will be useful,
-;; but WITHOUT ANY WARRANTY; without even the implied warranty of
-;; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-;; GNU General Public License for more details.
+;; Copyright © 2014 Alex Sassmannshausen <alex.sassmannshausen@gmail.com>
 ;;
-;; You should have received a copy of the GNU General Public License
-;; along with this program; if not, contact:
+;; Author: Alex Sassmannshausen <alex.sassmannshausen@gmail.com>
+;; Created: 01 January 2014
+;;
+;; This file is part of Glean.
+;;
+;; Glean is free software; you can redistribute it and/or modify it under the
+;; terms of the GNU General Public License as published by the Free Software
+;; Foundation; either version 3 of the License, or (at your option) any later
+;; version.
+;;
+;; Glean is distributed in the hope that it will be useful, but WITHOUT ANY
+;; WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+;; FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more
+;; details.
+;;
+;; You should have received a copy of the GNU General Public License along
+;; with glean; if not, contact:
 ;;
 ;; Free Software Foundation           Voice:  +1-617-542-5942
 ;; 59 Temple Place - Suite 330        Fax:    +1-617-542-2652
 ;; Boston, MA  02111-1307,  USA       gnu@gnu.org
 
-;;;; Commentary:
-;;;
-;;; Provide a web user interface. It can be published to other network
-;;; participants through a reverse proxy setup with other web servers
-;;; (e.g. Apache, Nginx).
-;;;
-;;;; Code:
+;;; Commentary:
+;;
+;; Provide an experimental web user interface. It can be published to other
+;; network participants (should you wish to do so) through a reverse proxy
+;; setup with other web servers (e.g. Apache, Nginx).
+;;
+;; The web client depends on Artanis, a pretty cool web framework for Guile.
+;; We currently distribute a (old) version of this framework with Guile, but
+;; do not check for its installation, nor do we install it, using our build
+;; system.  A user wanting to use this experimental client should ensure
+;; artanis is available as a module in Guile's library path
+;; (GUILE_LOAD_PATH).
+;;
+;;; Code:
 
 (define-module (glean client components web web-client-core)
-  #:use-module (glean config)           ; Ideally obsolete?
+  #:use-module (glean config)
   #:use-module (artanis artanis)
   #:use-module (glean client components web bootstrap)
   #:use-module (glean client monadic-min)
   #:use-module (glean common components)
   #:use-module (glean common monads)
   #:use-module (glean common utils)
-  #:use-module (glean library sets)     ; Should be obsolete
   #:use-module (ice-9 match)
   #:use-module (web uri)
   #:export (component))
 
-;; Make text more easily fit the 72columns
-(define (sa . args)
-  (apply string-append args))
+;;;;; Preliminaries
 
 (define (web-client)
   (artanis-dispatch %glean-dir%
@@ -59,6 +66,9 @@
                     #:mod-action mod-action
                     #:del-action del-action
                     #:eval-action eval-action))
+
+
+;;;;; Pages
 
 (define (index rc)
   (let* ((state (query-string->state rc))
@@ -82,6 +92,7 @@
          #:page  `((h1 "Sign In")
                    (p "Sign in to your account.")
                    ,(login-block))))
+
 (define (register rc)
   (frame #:state (query-string->state rc)
          #:title (sa %title% " — Register")
@@ -340,12 +351,16 @@ Please visit your account page where you will be able to enable some."
                                       (state rsp)))
                    (else
                     (nothing-handler rsp))))))
+
+
+;;;;; Actions
+
 (define (auth-action rc)
   (let* ((name     (params rc "username"))
          (password (params rc "password"))
-         ;;(params rc "lounge") (params rc "library")
          (st8      (authenticate-player name password %lounge-port%)))
     (post-auth st8 rc "aut-success")))
+
 (define (reg-action rc)
   (let ((name     (params rc "username"))
         (password (params rc "password"))
@@ -359,12 +374,7 @@ Please visit your account page where you will be able to enable some."
                       library))
            (st8   (register-player name password lng lib)))
       (post-auth st8 rc "reg-success"))))
-(define (post-auth st8 rc msg)
-  (if (state? st8)
-      (redirect-to rc (wrap st8 "/account" (sa "result=" msg)))
-      (response-emit
-       (tpl->html
-        (frame #:page (nothing-handler st8))))))
+
 (define (mod-action rc)
   (define (parse-ids)
     (map (lambda (kv) (string->symbol (car kv)))
@@ -433,6 +443,7 @@ Please visit your account page where you will be able to enable some."
            (response-emit
             (tpl->html
              (frame #:page (nothing-handler (nothing 'invalid-form "")))))))))
+
 (define (del-action rc)
   (let* ((st8 (query-string->state rc))
          (rsp (delete-player st8)))
@@ -441,6 +452,7 @@ Please visit your account page where you will be able to enable some."
         (response-emit
          (tpl->html
           (frame #:page (nothing-handler rsp)))))))
+
 (define (eval-action rc)
   (let* ((st8    (query-string->state rc))
          (answer (let ((a (params rc "solution")))
@@ -472,10 +484,8 @@ Please visit your account page where you will be able to enable some."
                                (p ,(sa "The solution is actually: "
                                        (if (list? answer)
                                            (string-join
-                                            (map s-text
-                                                 (cadr (result rsp)))
-                                            ", ")
-                                           (s-text (cadr (result rsp))))))
+                                            (cadr (result rsp)) ", ")
+                                           (cadr (result rsp)))))
                                (p "Ready for your "
                                   (a (@ (href  ,(wrap (state rsp) "/session"))
                                         (title "Click for your next challenge"))
@@ -485,6 +495,9 @@ Please visit your account page where you will be able to enable some."
             (tpl->html
              (frame #:page (nothing-handler rsp))))))))
 
+
+;;;;; Layout Helpers
+
 (define (next-block rc)
   (let* ((st8 (query-string->state rc))
          (rsp (next-challenge st8)))
@@ -493,6 +506,7 @@ Please visit your account page where you will be able to enable some."
                  (p ,(q-text (car (result rsp))))))
           (else
            (nothing-handler rsp)))))
+
 (define (login-block)
   (form "/auth-action"
         `((div (@ (class "form-group"))
@@ -578,6 +592,8 @@ de-activated." 'success))
                        ,page)
                   ,(footer-region))
                 title))
+
+;;;;; Page Regions
 
 (define* (header-region help #:optional st8)
   `(div (@ (class "navbar navbar-inverse") ; navbar-fixed-top
@@ -629,6 +645,22 @@ de-activated." 'success))
                                 (p (@ (style "text-align:center;padding-top:1em"))
                                    "Copyright © 2014 Alex Sassmannshausen")))
 
+;;;;; Helpers
+
+(define (post-auth st8 rc msg)
+  (if (state? st8)
+      (redirect-to rc (wrap st8 "/account" (sa "result=" msg)))
+      (response-emit
+       (tpl->html
+        (frame #:page (nothing-handler st8))))))
+
+(define (sa . args)
+  "Wrapper around string-append, shortening its invocation."
+  (apply string-append args))
+
+
+;;;;; Finally, The Component
+
 (define component
   (define-component
     #:name        "web-client"
@@ -660,3 +692,5 @@ de-activated." 'success))
                      (setting
                       #:name  "%footer%" #:default %footer%
                       #:docstring "Web Client: Footer block content."))))))
+
+;;; web-client-core ends here

@@ -37,8 +37,9 @@ dnl Check whether Artanis is installed; install otherwise.
 dnl GLEAN_CHECK_ARTANIS
 dnl AM_CONDITIONAL([INSTALL_ARTANIS],
 dnl                [test "x$ac_cv_glean_artanis_installed" = xno])
-dnl For now simply check whether it's already installed.
-GUILE_MODULE_REQUIRED([artanis artanis])
+dnl For now we consider the web client experimental and don't even
+dnl check whether artanis is available.
+dnl GUILE_MODULE_REQUIRED([artanis artanis])
 
 dnl Locate libgcrypt & test it.
 AC_ARG_WITH([libgcrypt-prefix],
