@@ -1,40 +1,53 @@
-;;; glean --- fast learning tool.         -*- coding: utf-8 -*-
-
-;;;; Library Store — Library → Filesystem Interface
-
-;; Copyright © 2012, 2014 Alex Sassmannshausen
+;; library-store.scm --- library → filesystem interface   -*- coding: utf-8 -*-
 ;;
-;; This program is free software; you can redistribute it and/or
-;; modify it under the terms of the GNU General Public License as
-;; published by the Free Software Foundation; either version 3 of
-;; the License, or (at your option) any later version.
+;; Copyright (C) 2012, 2014 Alex Sassmannshausen <alex.sassmannshausen@gmail.com>
 ;;
-;; This program is distributed in the hope that it will be useful,
-;; but WITHOUT ANY WARRANTY; without even the implied warranty of
-;; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-;; GNU General Public License for more details.
+;; Author: Alex Sassmannshausen <alex.sassmannshausen@gmail.com>
+;; Created: 01 January 2014
 ;;
-;; You should have received a copy of the GNU General Public License
-;; along with this program; if not, contact:
+;; This file is part of Glean.
+;;
+;; Glean is free software; you can redistribute it and/or modify it under the
+;; terms of the GNU General Public License as published by the Free Software
+;; Foundation; either version 3 of the License, or (at your option) any later
+;; version.
+;;
+;; Glean is distributed in the hope that it will be useful, but WITHOUT ANY
+;; WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+;; FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more
+;; details.
+;;
+;; You should have received a copy of the GNU General Public License along
+;; with glean; if not, contact:
 ;;
 ;; Free Software Foundation           Voice:  +1-617-542-5942
 ;; 59 Temple Place - Suite 330        Fax:    +1-617-542-2652
 ;; Boston, MA  02111-1307,  USA       gnu@gnu.org
 
-;;;; Commentary:
-;;;
-;;; Provide functions to interface between the Glean Library and
-;;; the underlying filesystem.
-;;;
-;;; Functionality covers two areas:
-;;; 1) Manage loading of modules from filesystem into Glean
-;;; 2) Provide functionality to uniformly retrieve any data from
-;;;    Glean sets.
-;;;
-;;;; Tests:
-;;; (tests library-store)
-;;;
-;;;; Code:
+;;; Commentary:
+;;
+;; Provide functions to interface between the Glean Library and
+;; the underlying filesystem.
+;;
+;; Functionality covers two areas:
+;; 1) Manage loading of modules from filesystem into Glean
+;; 2) Provide functionality to uniformly retrieve any data from
+;;    Glean sets.
+;;
+;; In the medium term I want to turn the filesystem interface proper into an
+;; 'extensible component', allowing arbitrary methods of storing disciplines
+;; in persistent state (direct file-system reads, rdb interfaces, etc.).
+;;
+;; This would probably mean the re-writing of this interface to load
+;; 'components' and use a standardized interface to interact with discipline
+;; data (fetch arbitrary parts of those disciplines).  The current direct
+;; filesystem interface would be moved to become the 'reference
+;; implementation' of the above standard interface.
+;;
+;;; Tests:
+;; (tests library-store)
+;;
+;;; Code:
 
 (define-module (glean library library-store)
   #:use-module (glean config)
@@ -44,14 +57,14 @@
   #:use-module (glean common utils)
   #:use-module (glean library core-templates)
   #:use-module (glean library sets)
-  #:use-module (glean lounge scorecards) ; Should be made obsolete.
   #:use-module (ice-9 ftw)
   #:use-module (ice-9 match)
   #:use-module (ice-9 vlist)
   #:use-module (rnrs bytevectors)
   #:use-module (srfi srfi-1)
   #:use-module (srfi srfi-9)
-  #:export (import-module
+  #:export (
+            import-module
             export-module
             remove-module
             compile-library
@@ -67,20 +80,22 @@
             make-hashtree
             ))
 
-;; A library is a database of two tables:
-;; 1) All known modules are indexed by their fullhashes.
-;; 2) A secondary reference from minhash to fullhash.  The latter can contain
-;;    one to many mappings and can be used to ensure continuity even after
-;;    module upgrades.
-;;
-;; A fullhash is a hash of a module's meta-data as well as its contents.
-;;
-;; A minhash is a hash of a module's author and id data.  Normally modules are
-;; identified using fullhashes only, but these will change when any changes to
-;; the module are made (e.g. version bumps).
-
-;; To allow mapping of hashes supplied by the lounge server from before the
-;; version bump, the minhash will be used instead of the fullhash.
+
+;;;;; The Library
+;;; A library is a database of two tables:
+;;; 1) All known modules are indexed by their fullhashes.
+;;; 2) A secondary reference from minhash to fullhash.  The latter can contain
+;;;    one to many mappings and can be used to ensure continuity even after
+;;;    module upgrades.
+;;;
+;;; A fullhash is a hash of a module's meta-data as well as its contents.
+;;;
+;;; A minhash is a hash of a module's author and id data.  Normally modules are
+;;; identified using fullhashes only, but these will change when any changes to
+;;; the module are made (e.g. version bumps).
+;;;
+;;; To allow mapping of hashes supplied by the lounge server from before the
+;;; version bump, the minhash will be used instead of the fullhash.
 
 (define-record-type <library>
   (library catalogue reference)
@@ -119,12 +134,14 @@
         (string-join (vlist->list (comp-string (library-ref lib)))
                      "\n")))
 
-;; A shill is a talkative value: it either grants logger premission to
-;; interrogate its contents (value) or it provides a custom
-;; informative message. Occasionally a programmer may not wish a shill
-;; to “Spill the beans” — it won't if beans is #f.
-;;
-;; FIXME: intermediate monadic logging experiment. Will be phased out.
+
+;;;;; Store Monad
+;;; A shill is a talkative value: it either grants logger premission to
+;;; interrogate its contents (value) or it provides a custom
+;;; informative message. Occasionally a programmer may not wish a shill
+;;; to “Spill the beans” — it won't if beans is #f.
+;;;
+;;; FIXME: intermediate monadic logging experiment. Will be phased out.
 (define-record-type <shill>
   (mecha-shill value source urgency beans)
   shill?
@@ -156,9 +173,9 @@
                   urgency msg source)
           (if (string? %log-file%) (close-output-port port))))))
 
-;;;;; Store Monad
-;; A specialised monad providing logging, exception (FIXME: and file
-;; locking) management.
+;;;; Actual
+;;; A specialised monad providing logging, exception (FIXME: and file
+;;; locking?) management.
 
 (define (store-return . args)
   "Return a store mvalue seeded with ARGS."
@@ -180,12 +197,31 @@ applying MVALUE to MPROC."
   (bind   store-bind)
   (return store-return))
 
+
 ;;;;; Store API
-;;
-;; Any compiled-library dependent procedure (virtually all in the library)
-;; require first a call to the "compile-library" procedure. This is a lazy
-;; procedure that, given a store hash, returns either a memoized library or
-;; compiles the store a-fresh into a new library when the value is required.
+;;;
+;;; Any compiled-library dependent procedure (virtually all in the library)
+;;; require first a call to the "compile-library" procedure. This is a lazy
+;;; procedure that, given a store hash, returns either a memoized library or
+;;; compiles the store a-fresh into a new library when the value is required.
+;;;
+;;; The idea here is that we could hot-swap the library, if the underlying
+;;; filesystem structure changes (e.g. new files are added, existing
+;;; definitions change).  We don't want to reload the library with every
+;;; access to loaded disciplines though, so we cache the loaded library.
+;;;
+;;; The cache is implemented through the memoized procedure
+;;; 'compile-library'.  It expects a store-hash-pair, which is generated by
+;;; 'store-hash'. Store-hash will return the sha-256 hash of the status of
+;;; 'store-dir', thus returning an identical value if 'store-dir' has not
+;;; changed.
+;;;
+;;; The mechanism described above seems to work — though it's efficacy in
+;;; terms of comparative performance is currently unknown.
+;;;
+;;; The above is an example of the kind of logic that should be stripped out
+;;; of Glean proper and into 'components' — in this case the
+;;; library-filesystem component.
 
 (define (store-hash store-dir)
   "Return a hash, representing the state of STORE-DIR."
@@ -196,10 +232,12 @@ applying MVALUE to MPROC."
             (close-port port)
             (reader)))))
 
-;; The current implementation of compile-library will return modules for
-;; core-dir and user-dir, but will only recompile the lounge on the basis of
-;; changes to user-dir (see store-hash implementation and library-modules
-;; implementation as well as this one, compile-library).
+;;; The current implementation of compile-library will return modules for
+;;; core-dir and user-dir, but will only recompile the lounge on the basis of
+;;; changes to user-dir (see store-hash implementation and library-modules
+;;; implementation as well as this one, compile-library).
+;;;
+;;; i.e., compile library assumes the core-dir is a read-only store.
 (define compile-library
   (let ((cached-hash    (make-bytevector 0))
         (cached-library (empty-library)))
@@ -234,6 +272,9 @@ to us before, return the previously computed library.  Else, re-compute."
                     (set! cached-library (compile))
                     cached-library)))))))
 
+
+;;;;; Library Convenience
+
 (define (library-cons set lib)
   "Return a new library consisting of LIBRARY augmented by SET."
   (let ((fullhash (set-fullhash set))
@@ -241,31 +282,57 @@ to us before, return the previously computed library.  Else, re-compute."
         (cat      (library-cat  lib))
         (ref      (library-ref  lib)))
     (library (fold (lambda (hash-set-pair cat-so-far)
-                     (if (libv-assoc (car hash-set-pair) cat-so-far)
+                     (if (lib-assoc (car hash-set-pair) cat-so-far)
                          cat-so-far
-                         (libv-cons (car hash-set-pair)
+                         (lib-cons (car hash-set-pair)
                                     (cdr hash-set-pair)
                                     cat-so-far)))
                    cat
                    (crownset-hash-index set))
-             (if (libv-assoc minhash ref) ; if minhash exists, append
-                 (let ((kv-pair (libv-assoc minhash ref)))
-                   (libv-cons minhash (cons fullhash (cdr kv-pair))
-                              (libv-delete minhash ref)))
-                 (libv-cons minhash (list fullhash) ref)))))
+             (if (lib-assoc minhash ref) ; if minhash exists, append
+                 (let ((kv-pair (lib-assoc minhash ref)))
+                   (lib-cons minhash (cons fullhash (cdr kv-pair))
+                              (lib-delete minhash ref)))
+                 (lib-cons minhash (list fullhash) ref)))))
 
-(define (libv-cat library-pair)
+(define (lib-cat library-pair)
   "Return the catalogue of sets derived from LIBRARY-PAIR."
   (library-cat (compile-library library-pair)))
-(define (libv-ref library-pair)
+
+(define (lib-ref library-pair)
   "Return the min-hash->full-hash catalogue derived from
 LIBRARY-PAIR."
   (library-ref (compile-library library-pair)))
 
+(define (lib-cons hash value component)
+  "Return a new library component based on COMPONENT where KEY is ASSOCIATED
+with VALUE."
+  (vhash-cons hash value component))
+
+(define (lib-assoc hash component)
+  "Return the first hash/value pair from the library component COMPONENT whose
+hash is equal to HASH."
+  (vhash-assoc hash component))
+
+(define (lib-delete hash component)
+  "Remove all associations from the library component COMPONENT with HASH."
+  (vhash-delete hash component))
+
+(define (lib-fold proc init component)
+  "Fold over the hash/value elements of the library component COMPONENT from
+left to right, with each call to PROC having the form ‘(PROC hash value
+result)’, where RESULT is the result of the previous call to PROC and INIT the
+value of RESULT for the first call to PROC."
+  (vhash-fold proc init component))
+
+
+;;;;; Porcelain Library Procedures
+;;; These are procedures most likely to be used outside of this module.
+
 (define (fetch-set hash library-pair)
   "Return the set identified by HASH from the library derived from
 LIBRARY-PAIR."
-  (let ((set-pair? (libv-assoc hash (libv-cat library-pair))))
+  (let ((set-pair? (lib-assoc hash (lib-cat library-pair))))
     (if set-pair? (cdr set-pair?) #f)))
 
 (define (known-crownsets library-pair config-ignore-keywords)
@@ -344,10 +411,10 @@ cannot be found in LIBRARY-PAIR."
         #f)))
 
 (define (known-crownset-hashes library-pair)
-  "Return a list of all known crownset hashes in libv-ref derived
+  "Return a list of all known crownset hashes in lib-ref derived
 from LIBRARY-PAIR."
   (flatten (vlist->list (vlist-map cdr
-                                   (libv-ref library-pair)))))
+                                   (lib-ref library-pair)))))
 
 (define (set-hashpairs fullhashes library-pair)
   "Return a list of (minhash . fullhash) for each hash in FULLHASH, if
@@ -360,22 +427,23 @@ it is known in LIBRARY-PAIR."
                (cons #f      fullhash)))) ; invalid fullhash
        fullhashes))
 
+
 ;;;;; Composite Transactions
-;;
-;; A first draft of high-level procedures for manipulating the user store
-;; directories.
-;;
-;; FIXME: These procedures probably do not work at present due to the
-;; significant changes to the underlying library/store architecture.
+;;;
+;;; A first draft of high-level procedures for manipulating the user store
+;;; directories.
+;;;
+;;; FIXME: These procedures probably do not work at present due to the
+;;; significant changes to the underlying library/store architecture.
 
 (define (import-module filename)
-    "Install the Glean module identified by FILENAME in the user store,
+  "Install the Glean module identified by FILENAME in the user store,
 reporting the result of the procedure, or the failure."
   (define (import)
     ((mlet* store-monad
             ((path         (get-path filename))
              (valid-module (verify path))
-             (backed-up    (move  path #t #t)) ; side-effects
+             (backed-up    (move path #t #t)) ; side-effects
              (result       (install path)))
             (return result))))
   (not (nothing? (shill-value (import)))))
@@ -406,13 +474,14 @@ TARGET if provided."
              (return result))))
     (not (nothing? (shill-value (export))))))
 
+
 ;;;;; Atomic Transactions / Monadic Transactions
-;;
-;; Monadic Procedures to be used within the store-monad.
-;;
-;; FIXME: I'm surprised these procedures use store-return. This should
-;; normally be implicit to the calling procedurs. This is probably a mistake
-;; in the implementation of the store-monad.
+;;;
+;;; Monadic Procedures to be used within the store-monad.
+;;;
+;;; FIXME: I'm surprised these procedures use store-return. This should
+;;; normally be implicit to the calling procedurs. This is probably a mistake
+;;; in the implementation of the store-monad.
 
 (define (get-path filename)
   "Return a monadic value which when resolved returns FILENAME converted to an
@@ -538,6 +607,7 @@ The installation of the Glean module is carried out as a side-effect."
                  ,(string-format "~a: could not be installed"
                                  name)))))))
 
+
 ;;;;; Helpers
 
 (define (string-format msg . args)
@@ -551,24 +621,6 @@ otherwise."
   (catch 'system-error
     (lambda () (eqv? (stat:type (stat filename)) 'regular))
     (lambda (key . args) #f)))
-
-(define (libv-cons hash value component)
-  "Return a new library component based on COMPONENT where KEY is ASSOCIATED
-with VALUE."
-  (vhash-cons hash value component))
-(define (libv-assoc hash component)
-  "Return the first hash/value pair from the library component COMPONENT whose
-hash is equal to HASH."
-  (vhash-assoc hash component))
-(define (libv-delete hash component)
-  "Remove all associations from the library component COMPONENT with HASH."
-  (vhash-delete hash component))
-(define (libv-fold proc init component)
-  "Fold over the hash/value elements of the library component COMPONENT from
-left to right, with each call to PROC having the form ‘(PROC hash value
-result)’, where RESULT is the result of the previous call to PROC and INIT the
-value of RESULT for the first call to PROC."
-  (vhash-fold proc init component))
 
 (define (sets-from-module module)
   "Return a list containing each exported set in MODULE.  Ignore all exported
@@ -646,27 +698,39 @@ resolve modules with a base of `glean library store', else with a base of
 
 
 ;;;;; Procedures for inclusion in Set
-;;
-;; These procedures should really be located in (glean library sets), as they
-;; pertain to sets in general rather than their storage in the library.
-;;
-;; FIXME: hash functions should be memoized?
-(define (crownset-minhash set)
-  "Return a sha256 hash of SET's creator prefixed with its id."
-  (sha256-symbol (string-append (symbol->string (set-id set))
-                                (set-creator set))))
+;;;
+;;; These procedures should really be located in (glean library sets), as they
+;;; pertain to sets in general rather than their storage in the library.
+;;;
+;;; A) I'm not sure whether these should actually be pushed down to the Set
+;;;    stack.  They feel library-store-like for me.
+;;; B) This module needs to be split consistently into a component node, and
+;;;    it's interface expectations (i.e., the reference implementation for the
+;;;    component.)
 
-(define (crownset-hash-index set)
-  "Return a list containing pairs of the form '(fullhash . set) for  SET and
-every set referred to in SET's contents field."
-  (define (minor-index set index)
-    (cond ((rootset? set)
-           (cons (cons (rootset-hash set) set) index))
-          (else (cons (cons (set-fullhash set) set)
-                      (fold minor-index index (set-contents set))))))
+;;;; Sethash Revisions: The Library Store, Upgrades & Set Identities
+;;;
+;;; Our new approach to set identities will be fully based on the set's
+;;; hash.  This hash is contained in the set's hash field and consists of all
+;;; other fields hashed together with the set's contents.  If the set's
+;;; contents are further sets, then we simply take their hashes. If the set's
+;;; contents are problems, then we hash each problem individually.
+;;;
+;;; We introduce a further new field, historic-hashes: a list of hashes, which
+;;; starts out empty. Every time a module is installed into a library that
+;;; contains that module, the hash of each set in that existing module is
+;;; extracted and inserted at the beginning of the new version's historic-hash
+;;; field.
+;;;
+;;; As a result we can do away with minhashes: upgrade paths are determined
+;;; entirely by a set's current hash and it's historic hashes.  Upgrade maps
+;;; can be described through these semantics too.
+;;;
+;;; It will be the responsibility of the file-store component to implement
+;;; appropriate 'install', 'delete', 'compile' procedures, which implement the
+;;; above features reliably.
 
-  (cons (cons (set-fullhash set) set) (fold minor-index '() (set-contents set))))
-
+;;; Exported, not used here
 (define (hashtree? obj)
   "Return #t if OBJ is a hashtree, #f otherwise.
 
@@ -686,6 +750,7 @@ car, and either '() or a list containing hashtrees as its cdr."
                           (set-properties set))
                     (map make-hashtree (set-contents set))))))
 
+;;; Exported, used here
 (define (set-fullhash set)
   "Return a sha256 hash of the product of recursively concatenating
 all of SET's children."
@@ -700,6 +765,23 @@ all of SET's children."
           (else
            (error "HASHTRAVERSE-SET -- SET is not a set" set))))
   (hashtraverse-set set))
+
+;; used here.
+(define (crownset-minhash set)
+  "Return a sha256 hash of SET's creator prefixed with its id."
+  (sha256-symbol (string-append (symbol->string (set-id set))
+                                (set-creator set))))
+
+(define (crownset-hash-index set)
+  "Return a list containing pairs of the form '(fullhash . set) for  SET and
+every set referred to in SET's contents field."
+  (define (minor-index set index)
+    (cond ((rootset? set)
+           (cons (cons (rootset-hash set) set) index))
+          (else (cons (cons (set-fullhash set) set)
+                      (fold minor-index index (set-contents set))))))
+
+  (cons (cons (set-fullhash set) set) (fold minor-index '() (set-contents set))))
 
 (define (rootset-hash set)
   "Return a sha256 hash of the set-id + the question, solution and
