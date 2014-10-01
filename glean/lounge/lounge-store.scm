@@ -1,32 +1,39 @@
-;;; glean --- fast learning tool.         -*- coding: utf-8 -*-
-
-;;;; Lounge Store — Lounge → Filesystem Interface
-
-;; Copyright © 2012, 2014 Alex Sassmannshausen
+;; lounge-store.scm --- lounge operational interface  -*- coding: utf-8 -*-
 ;;
-;; This program is free software; you can redistribute it and/or
-;; modify it under the terms of the GNU General Public License as
-;; published by the Free Software Foundation; either version 3 of
-;; the License, or (at your option) any later version.
+;; Copyright (C) 2014 Alex Sassmannshausen <alex.sassmannshausen@gmail.com>
 ;;
-;; This program is distributed in the hope that it will be useful,
-;; but WITHOUT ANY WARRANTY; without even the implied warranty of
-;; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-;; GNU General Public License for more details.
+;; Author: Alex Sassmannshausen <alex.sassmannshausen@gmail.com>
+;; Created: 01 January 2014
 ;;
-;; You should have received a copy of the GNU General Public License
-;; along with this program; if not, contact:
+;; This file is part of Glean.
+;;
+;; Glean is free software; you can redistribute it and/or modify it under the
+;; terms of the GNU General Public License as published by the Free Software
+;; Foundation; either version 3 of the License, or (at your option) any later
+;; version.
+;;
+;; Glean is distributed in the hope that it will be useful, but WITHOUT ANY
+;; WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+;; FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more
+;; details.
+;;
+;; You should have received a copy of the GNU General Public License along
+;; with glean; if not, contact:
 ;;
 ;; Free Software Foundation           Voice:  +1-617-542-5942
 ;; 59 Temple Place - Suite 330        Fax:    +1-617-542-2652
 ;; Boston, MA  02111-1307,  USA       gnu@gnu.org
 
-;;;; Commentary:
-;;;
-;;; Provide functionality to manage lounge state and to interface with
-;;; the filesystem.
-;;;
-;;;; Code:
+;;; Commentary:
+;;
+;; Provide functionality to manage lounge state and to interface with
+;; the filesystem.
+;;
+;; Part of the lounge-store's responsibility is the loading of the filesystem
+;; components.  At present this is simply hard-coded to lounge-filesystem, but
+;; this will be replaced with the 'component' subsystem.
+;;
+;;; Code:
 
 (define-module (glean lounge lounge-store)
   #:use-module (glean common monads)
@@ -41,16 +48,7 @@
   #:use-module (srfi srfi-1)
   #:use-module (srfi srfi-9)
   #:export (
-            extract
-            statef
-
-            lounge?
-            lounge-profiles
-            lounge-tokens
             store-profile
-            pdiff
-            pdiff-hash
-            pdiff-profile
             lounge-monad
             token?
 
@@ -63,6 +61,7 @@
             modify-profile
             delete-profile
             purge-profile
+            
             scorecard-diff
             scorecard-next
 
@@ -70,38 +69,107 @@
             missing-blobs
             ))
 
+
+;;;;; Lounge and Lounge Monad Definition
+;;; A lounge is a record-type which contains a vhash of profile-hashes ->
+;;; profiles in its profiles field and a vhash of tokens -> tk-entry records
+;;; in its tokens field.
+
 (define-record-type <lounge>
   (make-lounge profiles tokens)
   lounge?
   (profiles lounge-profiles)
   (tokens   lounge-tokens))
 
-(define (make-diff hash field value)
-  (list 'diff hash field value))
-(define (diff? obj)
-  (match obj
-    (('diff (? string?) (? symbol?) value)
-     #t)
-    (_ #f)))
+;;; A tk-entry is a record type which contains a profile-hash in its hash
+;;; field and an expiration time in its time field.
 
 (define-record-type <tk-entry>
   (tk-entry hash time)
   tk-entry?
   (hash tk-hash)
   (time tk-time))
-(define (mk-time ctime) (+ ctime (timeout)))
-(define (tk-expired? tk-time ctime)
-  (<= tk-time ctime))
-(define timeout (const 600))
 
-;;; for monads:
-;; synonym for stateful, to force list around value(s)
+(define (mk-time ctime)
+  "Return an expiration time value on the basis of CTIME."
+  (define timeout (const 600))
+  (+ ctime (timeout)))
+
+(define (tk-expired? tk-time ctime)
+  "Return #t if TK-TIME is expired, i.e. smaller than CTIME, #f otherwise."
+  (<= tk-time ctime))
+
+;;;; Diffs
+;;; Diffs are transactional summary suitable for passing to the storage system
+;;; as well as for updating the in-memory profile representations.
+
+(define (make-diff hash field value)
+  "Return a diff, a tagged list, containing HASH, FIELD and VALUE."
+  (list 'diff hash field value))
+
+(define (diff? obj)
+  "Return #t if OBJ is a diff, #f otherwise."
+  (match obj
+    (('diff (? string?) (? symbol?) value) #t)
+    (_ #f)))
+
+
+;;;;; Lounge Monad
+;;; A specialised monad providing logging and exception management.
+
+(define (lounge-return . args)
+  "Return a store mvalue seeded with ARGS."
+  (lambda (lng-dir)
+    "Return a stateful created using args."
+    (if (null? (cdr args))
+        (statef (car args) lng-dir)
+        (stateful args lng-dir))))
+
+(define (lounge-bind mvalue mproc)
+  "Return a lounge mvalue, in turn capable of returning the result of
+applying MVALUE to MPROC."
+  (lambda (lng-dir)
+    (let* ((new-stateful (mvalue lng-dir)) ; generate next stateful
+           (reslt        (result new-stateful)))
+      ((mlogger stateful? lounge-monad-dict) new-stateful)
+      (cond ((nothing? (car reslt)) (car reslt))
+            ;; As lounge should never be modified by mvalue (that
+            ;; would mean that lounge logic would be carrying out
+            ;; state updates — these should be done at monad level),
+            ;; the LNG passed to lounge-bind will be identical to LNG
+            ;; coming out of new-stateful.
+            (else (let ((next (apply mproc reslt)))
+                    (if (procedure? next)
+                        (next lng-dir)
+                        next)))))))
+
+(define-monad lounge-monad
+  (bind   lounge-bind)
+  (return lounge-return))
+
+
+;;;; Monad Helpers:
+
 (define* (statef value #:optional (state 'unimportant))
   "Return a stateful with VALUE wrapped in a list and a default STATE
 of 'unimportant."
   (stateful (list value) state))
 
+(define (extract st8teful)
+  "Retrieve the result from ST8TEFUL, taking into account nothings. If
+result contains only one item, extract that from the result list."
+  (let ((prelim (result st8teful)))
+    (if (null? (cdr prelim))
+        (if (nothing? (car prelim))
+            nothing
+            (car prelim))
+        prelim)))
+
 (define (lounge-monad-dict stateful level)
+  "Interpret STATEFUL with regard to LEVEL, and return a list suitable for
+interpretation by mlogger, to emit meaningful lounge-monad message.
+
+Meaningful logging continues to be an issue.  This approach seems promising."
   (match (car (result stateful))
     ((? token? tk)  (list 'authenticate "Token:" tk)) ; authenticate
     (($ <lounge> profiles tks)                        ; fetch-lounge
@@ -157,50 +225,7 @@ of 'unimportant."
                  id))))               ; -> log msg.
     (_ (list 'unknown "Result:" stateful))))
 
-;; synonym for result, to take into account nothing possibility.
-(define (extract st8teful)
-  "Retrieve the result from ST8TEFUL, taking into account nothings. If
-result contains only one item, extract that from the result list."
-  (let ((prelim (result st8teful)))
-    (if (null? (cdr prelim))
-        (if (nothing? (car prelim))
-            nothing
-            (car prelim))
-        prelim)))
-
-;;;; Lounge Monad
-;; A specialised monad providing logging, exception (FIXME: and file
-;; locking) management.
-(define (lounge-return . args)
-  "Return a store mvalue seeded with ARGS."
-  (lambda (lng-dir)
-    "Return a stateful created using args."
-    (if (null? (cdr args))
-        (statef (car args) lng-dir)
-        (stateful args lng-dir))))
-
-(define (lounge-bind mvalue mproc)
-  "Return a lounge mvalue, in turn capable of returning the result of
-applying MVALUE to MPROC."
-  (lambda (lng-dir)
-    (let* ((new-stateful (mvalue lng-dir)) ; generate next stateful
-           (reslt        (result new-stateful)))
-      ((mlogger stateful? lounge-monad-dict) new-stateful)
-      (cond ((nothing? (car reslt)) (car reslt))
-            ;; As lounge should never be modified by mvalue (that
-            ;; would mean that lounge logic would be carrying out
-            ;; state updates — these should be done at monad level),
-            ;; the LNG passed to lounge-bind will be identical to LNG
-            ;; coming out of new-stateful.
-            (else (let ((next (apply mproc reslt)))
-                    (if (procedure? next)
-                        (next lng-dir)
-                        next)))))))
-
-(define-monad lounge-monad
-  (bind   lounge-bind)
-  (return lounge-return))
-
+
 ;;;;; Monadic Procedures
 
 (define (login hash)
@@ -236,9 +261,9 @@ eligible challenge for the profile associated with TOKEN in LOUNGE."
              (statef diff lng-dir))))))
 
 (define (scorecard-diff token result lounge)
-  "Return a lounge mvalue which, when resolved, returns a pdiff for
-the profile associated with TOKEN in LOUNGE on the basis of the
-challenge evaluation RESULT."
+  "Return a lounge mvalue which, when resolved, returns a diff for the profile
+associated with TOKEN in LOUNGE on the basis of the challenge evaluation
+RESULT."
   (lambda (lng-dir)
     (let* ((profile  (profile-from-token token lounge))
            (blobhash (car (fetch-next-hash-counter-pair profile))))
@@ -249,9 +274,8 @@ challenge evaluation RESULT."
               lng-dir))))
 
 (define (register-profile name password lng-port lib-port lounge)
-  "Return a lounge mvalue which, when resolved, returns a pdiff for
-a new profile created using NAME, PASSWORD, LNG-PORT and LIB-PORT in
-LOUNGE."
+  "Return a lounge mvalue which, when resolved, returns a diff for a new
+profile created using NAME, PASSWORD, LNG-PORT and LIB-PORT in LOUNGE."
   (lambda (lng-dir)
     (if (name-taken? name (lounge-profiles lounge))
         (statef (nothing 'username-taken (list name)))
@@ -273,9 +297,9 @@ TOKEN."
               lng-dir))))
 
 (define (modify-profile token field value lounge)
-  "Return a lounge mvalue which, when resolved, returns a pdiff for
-the profile identified by TOKEN in LOUNGE, where FIELD has been
-updated according to VALUE."
+  "Return a lounge mvalue which, when resolved, returns a diff for the profile
+identified by TOKEN in LOUNGE, where FIELD has been updated according to
+VALUE."
   (lambda (lng-dir)
     (let ((hash (hash-from-token token (lounge-tokens lounge))))
       (cond ((eqv? field 'scorecard)    ; Scorecard
@@ -317,8 +341,8 @@ updated according to VALUE."
              (statef (nothing 'unknown-field `(,field))))))))
 
 (define (delete-profile token lounge)
-  "Return a lounge mvalue which, when resolved, returns a pdiff for
-the profile identified by TOKEN in LOUNGE requesting its deletion."
+  "Return a lounge mvalue which, when resolved, returns a diff for the profile
+identified by TOKEN in LOUNGE requesting its deletion."
   (lambda (lng-dir)
     (let* ((tk-entry (cdr (vhash-assoc token
                                        (lounge-tokens lounge))))
@@ -331,37 +355,39 @@ destroy TOKEN in its token table."
   (lambda (lng-dir)
     (statef (lounge lng-dir 'purge #:token token) lng-dir)))
 
-(define (fetch-lounge)
-  "Return a lounge mvalue which, when resolved, returns a lounge."
-  (lambda (lng-dir)
-    (statef (lounge lng-dir) lng-dir)))
-
 (define (update-lounge diff save?)
   "Return a lounge mvalue which, when resolved, updates the lounge on
 the basis of DIFF. The return value is irrelevant."
   (lambda (lng-dir)
     (statef (lounge lng-dir diff #:save? save?) lng-dir)))
 
+
 ;;;;; I/O Lounge Store Operations
-;; A lounge is a database of all known profiles stored in a vhash
-;; table. A secondary index of tokens to hashes is maintained in the
-;; lounge to manage transactional authentication.
+;;; A lounge is a database of all known profiles stored in a vhash table. A
+;;; secondary index of tokens to hashes is maintained in the lounge to manage
+;;; transactional authentication.
 
-;; FIXME: The current implementation of lounge is likely to become a
-;; serious bottle-neck and requires further consideration. At the very
-;; least it might be worth considering to split tokens into a
-;; separately maintained procedure, allowing for more parrallelism.
+;;; FIXME: The current implementation of lounge is likely to become a serious
+;;; bottle-neck and requires further consideration. At the very least it might
+;;; be worth considering to split tokens into a separately maintained
+;;; procedure, allowing for more parrallelism.
+
 (define lounge
   (let ((profiles vlist-null)
         (tokens   vlist-null))
     (lambda* (lng-dir #:optional operation #:key (save? #f)
                       (token #f))
+      "A weird twister of a dispatch, aiming to act as central lounge cache
+and interface to filesystem modules.  Rich in side-effects."
       (if (vlist-null? profiles)
+          ;; Invocation of storage module's 'retrieve-lounge'.
           (set! profiles (compile-lounge lng-dir)))
-      (cond ((not operation) (make-lounge profiles tokens))
+      (cond ((not operation)
+             (make-lounge profiles tokens)) ; just return a lounge.
             ;; Update Profile
             ((diff? operation)
-             ;; use futures to write to disk as well as set!
+             ;; Invocation of storage module's 'save-transaction'.
+             ;; FIXME: use futures to write to disk as well as set!
              (if save? (write-diff operation lng-dir (current-time)))
              (match (store-profile operation profiles)
                ((profile . profilez)
@@ -394,10 +420,11 @@ the basis of DIFF. The return value is irrelevant."
                      (cdr tk-pair))
                    #f)))))))
 
-;;;;; Safe I/O Helpers
+
+;;;; Safe I/O Helpers
+
 (define (store-profile diff profiles)
-  "Return a new profiles vhash based on PROFILES, taking into account
-instructions carried by HASH, FIELD and VALUE."
+  "Return a new profiles vhash based on PROFILES, augmented by DIFF."
   (match diff
     (('diff hash field value)
      (cond ((eqv? field 'score)
@@ -460,10 +487,15 @@ instructions carried by HASH, FIELD and VALUE."
            (else (error "store-profile -- invalid field."))))))
 
 (define (save hash profile profiles)
+  "Return a new profiles vhash based on PROFILES, augmented by HASH and
+PROFILE."
   (cons profile (vhash-cons hash profile profiles)))
 
 (define (modify-meta hash name password lounge library oldhash
                      profiles)
+  "Return a new profiles vhash, based on PROFILES, augmented by the new
+profile resulting from processing the profile-hash HASH, NAME, PASSWORD,
+LOUNGE, LIBRARY and the profile's OLDHASH."
   (cond ((and name password lounge
               library)             ; Registration
          (save hash
@@ -495,6 +527,9 @@ instructions carried by HASH, FIELD and VALUE."
                       (vhash-delete oldhash profiles)))))
         (else (error "modify-meta -- invalid values."))))
 
+
+;;;; Token Operations
+
 (define (fresh-tk hash tokens profiles time)
   "Return a new tokens/token pair if HASH corresponds to an entry in
 PROFILES.  TIME is used to create the new tk-entry for HASH in the
@@ -505,6 +540,7 @@ return #f."
             (tks (clear-tokens hash tokens time)))
         (cons (vhash-cons tk (tk-entry hash (mk-time time)) tks) tk))
       #f))
+
 (define (renew-tk token tokens time)
   "Return a new tokens/token pair if TOKEN corresponds to a token in
 TOKENS and is not expired.  TIME is used to create the new
@@ -522,12 +558,14 @@ TOKEN cannot be found in TOKENS, return #f."
                                (vhash-delete token tokens))
                    tk)))
           (else #f))))
+
 (define (hash-from-token token tokens)
   "Return the hash associated with TOKEN in TOKENS."
   (let ((prelim (vhash-assoc token tokens)))
     (if prelim                          ; match
         (tk-hash (cdr prelim))          ; get hash
         #f)))                           ; no match
+
 (define (profile-from-token token lounge)
   "Return the profile associated with TOKEN in LOUNGE or #f if TOKEN
 does not identify a profile."
@@ -536,6 +574,7 @@ does not identify a profile."
                       (vhash-assoc token (lounge-profiles lounge))
                       #f)))
     (if profile (cdr profile) #f)))
+
 (define (profile-from-hash hash profiles)
   "Return the profile associated with HASH in PROFILES or #f if HASH
 does not identify a profile."
@@ -559,15 +598,17 @@ or all expired tokens (on the basis of TIME) removed."
               tokens))
 
 (define (make-token hash time)
-  "Return a transactional token generated from HASH and TIME."
+  "Return a transactional token generated from HASH and TIME. This procedure
+is not referentially transparent."
 (random (* 2 time)
         (seed->random-state
          (string-append hash
                         (number->string time)))))
 
+
 ;;;;; Profile Management
-;;;; Define the functions used to provide the functionality defined
-;;;; above.
+;;; Define the functions used to provide the functionality defined above.
+
 (define (missing-blobs profile)
   "Return a list of blobs not currently contained in the
 scorecard of PROFILE. Used to check whether we need to request a new
@@ -638,6 +679,7 @@ PROFILES. Return #f otherwise."
                     (string=? name (profile-name profile))
                     found))
               #f profiles))
+
 (define (wrong-password? password profile profiles)
   "Return #t if the hash of PASSWORD and the name in PROFILE is not a
 key in profiles. Return #f otherwise."
@@ -647,34 +689,30 @@ key in profiles. Return #f otherwise."
 
 ;;;;;; On Scorecards and Blobhashes
 ;;
-;; FIXME: this commentary is partly obsolete.
+;; Scorecards are essentially a flat (hash?) table, associating a given
+;; blobhash with the corresponding blob.
 ;;
-;; Scorecards are essentially a flat (hash?) table, associating a
-;; given blobhash with the corresponding blob.
+;; Each blob contains the blobhash, the parent's blobhash (if applicable, else
+;; #f), the children's blobhashes (if applicable, else #f), the score
+;; associated with the blobhash and a counter, indicating how many challenges
+;; have been provided for this blobhash.
 ;;
-;; Each blob contains the blobhash, the parent's blobhash (if
-;; applicable, else #f), the children's blobhashes (if applicable,
-;; else #f), the score associated with the blobhash and a counter,
-;; indicating how many challenges have been provided for this
-;; blobhash.
+;; In this manner, locating any specific blobhash can be done in constant
+;; time.
 ;;
-;; In this manner, locating any specific blobhash can be done in
-;; constant time.
+;; A profile's active-modules field provides a list of all known 'crown
+;; blobhashes', i.e. blobhashes that do not themselves contain parents. In
+;; this way, when searching for the lowest scoring blobhash we can search the
+;; 'crown-blobhashes' scores for the lowest scoring crown-blobhash, and from
+;; there search each child's score until we reach the lowest-scoring
+;; 'root-blobhash', i.e. the blobhash that has no children — this is the
+;; blob-hash that should be provided to mod-server to generate the next
+;; challenge.
 ;;
-;; A separate, non-profile specific table exists, maintaining a list
-;; of all known 'crown blobhashes', i.e. blobhashes that do not
-;; themselves contain parents. In this way, when searching for the
-;; lowest scoring blobhash we can search the 'crown-blobhashes' scores
-;; for the lowest scoring crown-blobhash, and from there search each
-;; child's score until we reach the lowest-scoring 'root-blobhash',
-;; i.e. the blobhash that has no children — this is the blob-hash that
-;; should be provided to mod-server to generate the next challenge.
-;;
-;; This search will take x * n score queries (constant time, see
-;; above), where n is the number of blobhashes at any level
-;; (crown-blobhashes and then each set of children), and x is the
-;; number of levels along this path.  (This search is carried out by
-;; (fetch-next-blobhash)).
+;; This search will take x * n score queries (constant time, see above), where
+;; n is the number of blobhashes at any level (crown-blobhashes and then each
+;; set of children), and x is the number of levels along this path.  (This
+;; search is carried out by (fetch-next-blobhash)).
 
 (define (hashmap->blobs hashmap)
   "Return a list of blobs, by converting each hashtree in HASHMAP to blobs."
@@ -689,8 +727,8 @@ key in profiles. Return #f otherwise."
   (define (qblob name parents children properties)
     (make-blob name parents children 0 0 properties '()))
   (define (children subtrees) (map caar subtrees))
-  (hashtree-map hashtree
-                (lambda (hash properties subtrees)
+  (hashtree-apply hashtree
+                (lambda (hash properties subtrees) ; branch proc
                   (cons (qblob hash parents
                                (children subtrees)
                                properties)
@@ -698,11 +736,14 @@ key in profiles. Return #f otherwise."
                          (map (lambda (subtree)
                                 (hashtree->blobs subtree (list hash)))
                               subtrees))))
-                (lambda (hash properties)
+                (lambda (hash properties) ; leave proc
                   (list (qblob hash parents no-children properties)))
-                (const #f)))
+                (const #f)))            ; error proc
 
-(define (hashtree-map hashtree branch-proc leaf-proc error-proc)
+(define (hashtree-apply hashtree branch-proc leaf-proc error-proc)
+  "If HASHTREE is a hashtree, apply either BRANCH-PROC or LEAF-PROC to it,
+depending on whether it is a leaf or a branch.  If not, apply ERROR-PROC to
+HASHTREE."
   (match hashtree
     (((hash . properties) subtrees)
      (branch-proc hash properties subtrees))
@@ -710,24 +751,4 @@ key in profiles. Return #f otherwise."
      (leaf-proc hash properties))
     (_ (error-proc))))
 
-(define* (old-hashtree->blobs hashtree #:optional (parents '()))
-  "Return a list of blobs by converting HASHTREE into blobs recursively."
-  ;; FIXME: this procedure is currently not tail-recursive. It is also an
-  ;; expensive operation in general and would benefit from being
-  ;; re-factored. A lot.
-  (define no-children '())
-  (define (qblob name parents children properties)
-    (make-blob name parents children 0 0 properties '()))
-  (define (children subtrees) (map caar subtrees))
-  (match hashtree
-    (((hash . properties) subtrees)
-     (cons (qblob hash parents
-                  (children subtrees)
-                  properties)
-           (flatten
-            (map (lambda (subtree)
-                   (hashtree->blobs subtree (list hash)))
-                 subtrees))))
-    (((hash . properties))
-     (list (qblob hash parents no-children properties)))
-    (_ #f)))
+;;; lounge-store.scm ends here
