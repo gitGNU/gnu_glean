@@ -122,12 +122,12 @@
   "Check config exists, creating it if it does not. Currently always returns
 #t."
   (if (access? (config-target config) R_OK)
-      (format #t "~a configuration exists.\n" (config-name config))
+      (format #t "The ~a configuration exists. [ok]\n" (config-name config))
       (begin
-        (format #t "~a configuration is being created… "
+        (format #t "~a configuration is being created... "
                 (config-name config))
         (config-write config)
-        (format #t "[Done]\n"))))
+        (format #t "[done]\n"))))
 
 (define* (load-config config #:optional (mod-name '(glean config)))
   "Load CONFIG, an absolute path to a scheme file, in the context of the
@@ -137,7 +137,8 @@
     (save-module-excursion
      (lambda ()
        (set-current-module config-module)
-       (format #t "loading ~s..." config)
-       (primitive-load config)))))
+       (format #t "Loading ~s... " config)
+       (primitive-load config)
+       (format #t "[done]\n")))))
 
 ;;; config-utils.scm ends here

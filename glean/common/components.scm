@@ -348,13 +348,13 @@ simply return result."
       (if (regexp-match? match)
           (let* ((ext-name (basename (match:prefix match)))
                  (mod-name (module-name path base-dir)))
-            (format #t "Found component ~s. Adding...\n" ext-name)
+            (format #t "Found component ~s: [add]\n" ext-name)
             (vhash-cons ext-name
                         (cons mod-name
                               (delay (module-ref (resolve-interface mod-name)
                                                  'component)))
                         result))
-          (begin (format #t "Skipping ~s...\n" (basename path))
+          (begin (format #t "Found non-component ~s: [skip]\n" (basename path))
                  result))))
 
   (format #t "Scanning for ~s...\n" pattern)
