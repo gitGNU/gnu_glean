@@ -355,6 +355,11 @@ destroy TOKEN in its token table."
   (lambda (lng-dir)
     (statef (lounge lng-dir 'purge #:token token) lng-dir)))
 
+(define (fetch-lounge)
+  "Return a lounge mvalue which, when resolved, returns a lounge."
+  (lambda (lng-dir)
+    (statef (lounge lng-dir) lng-dir)))
+
 (define (update-lounge diff save?)
   "Return a lounge mvalue which, when resolved, updates the lounge on
 the basis of DIFF. The return value is irrelevant."
