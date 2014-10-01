@@ -1,41 +1,48 @@
-;;; glean --- fast learning tool.         -*- coding: utf-8 -*-
-
-;;;; Profile Server
-
-;; Copyright (C) 2008, 2010, 2012 Alex Sassmannshausen
-
-;; This program is free software; you can redistribute it and/or
-;; modify it under the terms of the GNU General Public License as
-;; published by the Free Software Foundation; either version 3 of
-;; the License, or (at your option) any later version.
+;; server.scm --- lounge server interface    -*- coding: utf-8 -*-
 ;;
-;; This program is distributed in the hope that it will be useful,
-;; but WITHOUT ANY WARRANTY; without even the implied warranty of
-;; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-;; GNU General Public License for more details.
+;; Copyright © 2014 Alex Sassmannshausen <alex.sassmannshausen@gmail.com>
 ;;
-;; You should have received a copy of the GNU General Public License
-;; along with this program; if not, contact:
+;; Author: Alex Sassmannshausen <alex.sassmannshausen@gmail.com>
+;; Created: 01 January 2014
+;;
+;; This file is part of Glean.
+;;
+;; Glean is free software; you can redistribute it and/or modify it under the
+;; terms of the GNU General Public License as published by the Free Software
+;; Foundation; either version 3 of the License, or (at your option) any later
+;; version.
+;;
+;; Glean is distributed in the hope that it will be useful, but WITHOUT ANY
+;; WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+;; FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more
+;; details.
+;;
+;; You should have received a copy of the GNU General Public License along
+;; with glean; if not, contact:
 ;;
 ;; Free Software Foundation           Voice:  +1-617-542-5942
 ;; 59 Temple Place - Suite 330        Fax:    +1-617-542-2652
 ;; Boston, MA  02111-1307,  USA       gnu@gnu.org
 
 ;;; Commentary:
-;;;
-;;; The Profile Server manages authentication, user profiles (both
-;;; in-game and profile persistence) and user scorecards.
-;;;
-;;; It uses the server communication framework defined in base-server,
-;;; implements a profile server specific dispatcher, and the logic for
-;;; carrying out the functionality implied through the requests it
-;;; receives.
-
-;;;; Documentation:
-;;; FIXME: Write documentation
-
+;;
+;; The lounge server manages authentication, user profiles (both in-game and
+;; profile persistence) and user scorecards.
+;;
+;; Much like the library server, this module should implement full parsing of
+;; messages, and should pass the resulting trusted data to a separate module
+;; for actual action.
+;;
+;; At present this module falls short of its aims on two counts:
+;; - it does not sufficiently parse incoming messages, and to the extent that
+;;   it does parse, it does so haphazardly.
+;; - it contains 'logic', or actions to do with library functionality. This
+;;   functionality should take place in a separate module, to enhance
+;;   separation of concerns, and to allow the re-use of library in a
+;;   non-server context.
+;;
 ;;; Code:
-
+
 (define-module (glean lounge server)
   #:use-module (glean config)
   #:use-module (glean common base-requests)
@@ -52,9 +59,9 @@
   #:use-module (srfi srfi-26)
   #:export (lounge-server))
 
+
 ;;;;; Profile Server Dispatch Logic
-;;;; Define the actual profile server and the server-dispatcher used
-;;;; by it.
+;;; Define the actual profile server and the server-dispatcher used by it.
 (define (lounge-server lounge-socket-file)
   "Launch a lounge-server."
   (the-server lounge-socket-file server-dispatcher))
@@ -100,8 +107,8 @@ handling to request handler."
         (else (unks request))))
 
 ;;;;; Server Response Creation
-;;;; Functions that provide request specific parsing and response
-;;;; skeletons.
+;;; Functions that provide request specific parsing and response skeletons.
+
 (define (process-echoq rq)
   "Return an echos, containing a new token, the profile's profile
 server, module server and the message contained in RQ."
@@ -274,3 +281,5 @@ if RQ parses correctly. Otherwise raise a an error."
                  (ignore2 (purge-profile tk)))
                 (acks rq)) %lounge-dir%)
         (raise '(process-delq invalid-token)))))
+
+;;; server.scm ends here
