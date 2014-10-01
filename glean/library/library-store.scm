@@ -630,7 +630,7 @@ Should module not export any bindings, raise an error."
   (or (and=> (module-public-interface module)
              (lambda (mod-interface)
                (filter (lambda (set)
-                         (if (module? set)
+                         (if (plain-module? set)
                              set
                              (begin
                                (format #t "~a: not a module, eliminating."

@@ -33,7 +33,10 @@
 ;;
 ;;; Code:
 
-(define-module (glean boot)    
+(define-module (glean boot)
+  #:autoload (glean client boot) (client-boot)
+  #:autoload (glean library boot) (library-boot)
+  #:autoload (glean lounge boot) (lounge-boot)
   #:use-module (glean config)
   #:use-module (glean common config-utils)
   #:use-module (glean common utils)
@@ -91,13 +94,17 @@ or client) you can run that command followed by the `--help' option."))
   (setlocale LC_ALL "")                 ; sets the locale to the system locale
   (ensure-user-dirs %log-dir% %socket-dir%)
 
+  ;; FIXME: despite the use of #:autoload in the module definition, the use of
+  ;; client-, lounge-, and library-boot cause the entire module dependency of
+  ;; Glean to be loaded when this boot is first executed.  It seem to me, at
+  ;; present, that this is an implementation error in Guile?
   (match args
     ((path (? client?) . rest)                   ; launch client
-     ((@ (glean client boot) client-boot) (cons path rest)))
+     (client-boot (cons path rest)))
     ((path (? lounge?) . rest)                   ; launch lounge
-     ((@ (glean lounge boot) lounge-boot) (cons path rest)))
-    ((path (? library?) . rest)                  ; launge library
-     ((@ (glean library boot) library-boot) (cons path rest)))
+     (lounge-boot (cons path rest)))
+    ((path (? library?) . rest)                  ; launch library
+     (library-boot (cons path rest)))
     (_
      (let ((opts (getopt-long args *option-grammar*)))
        (cond ((option-ref opts 'version #f)      ; --version

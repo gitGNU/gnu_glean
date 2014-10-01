@@ -98,8 +98,8 @@ handling to request handler."
                                   (process-set!q rq))
                                  ((regq?    rq)
                                   (process-regq rq))
-                                 ((delq?    rq)
-                                  (process-delq rq))
+                                 ((delpq?    rq)
+                                  (process-delpq rq))
                                  (else (unks rq))))))
            (if (nothing? re)
                (negs rq (nothing-id re))
@@ -270,9 +270,9 @@ if RQ parses correctly. Otherwise raise a an error."
                        (set!s new-tk 'scorecard sc-diff)))
             %lounge-dir%)))))
 
-(define (process-delq rq)
-  (let ((tk (delq-token rq)))
-    (if (token? (delq-token rq))
+(define (process-delpq rq)
+  (let ((tk (delpq-token rq)))
+    (if (token? (delpq-token rq))
         ((mlet* lounge-monad
                 ((new-tk  (authenticate tk))
                  (lng     (fetch-lounge))
@@ -280,6 +280,6 @@ if RQ parses correctly. Otherwise raise a an error."
                  (ignore  (update-lounge diff %lounge-persist%))
                  (ignore2 (purge-profile tk)))
                 (acks rq)) %lounge-dir%)
-        (raise '(process-delq invalid-token)))))
+        (raise '(process-delpq invalid-token)))))
 
 ;;; server.scm ends here

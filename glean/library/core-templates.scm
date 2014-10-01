@@ -57,13 +57,18 @@
                 chapter
                 set
                 module
-                problem
-                q
-                s
-                o
-                p
-                media
-                ))
+                )
+  ;; Procedures currently re-exported from (glean library sets).  These
+  ;; procedures are likely to be developed into more convenient content
+  ;; creation templates.
+  #:re-export (
+               problem
+               q
+               s
+               o
+               p
+               media
+               ))
 
 (define* (example)
   "Return an example tutorial set."
@@ -235,30 +240,6 @@ information can then be inherited by child sets and modules."
         (contents   (monadic-check-contents contents))
         (set        (transient-set meta properties contents)))
      (return set))))
-
-;;;;; Re-exports?
-;;;
-;;; Procedures currently re-exported from (glean library sets).
-;;; These procedures are likely to be developed into more convenient content
-;;; creation templates.
-
-;; Problem creation
-(define (problem . args) (apply (@ (glean library sets) problem) args))
-
-;; Question creation
-(define (q . args) (apply (@ (glean library sets) q) args))
-
-;; Solution creation
-(define (s . args) (apply (@ (glean library sets) s) args))
-
-;; Option creation
-(define (o . args) (apply (@ (glean library sets) o) args))
-
-;; Predicate creation
-(define (p . args) (apply (@ (glean library sets) p) args))
-
-;; Media creation
-(define (media . args) (apply (@ (glean library sets) media) args))
 
 ;;;; Initiator
 ;;;

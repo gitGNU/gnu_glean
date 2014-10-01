@@ -150,8 +150,8 @@
 (test-assert "Delete Registration"
              (let* ((tk (auths-token (server-dispatcher
                                       (request (authq %nname %npass)))))
-                    (dels (server-dispatcher (request (delq tk)))))
-               (and (acks? dels)
-                    (delq? (ack-orig dels)))))
+                    (delps (server-dispatcher (request (delpq tk)))))
+               (and (acks? delps)
+                    (delpq? (ack-orig delps)))))
 
 (test-end "lounge-server")

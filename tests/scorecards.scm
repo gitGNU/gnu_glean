@@ -35,8 +35,8 @@
   (@@ (glean lounge lounge-store) hashmap->blobs))
 (define make-hashtree
   (@@ (glean library library-store) make-hashtree))
-(define hashtree-map
-  (@@ (glean lounge lounge-store) hashtree-map))
+(define hashtree-apply
+  (@@ (glean lounge lounge-store) hashtree-apply))
 
 (define (exp-growth num depth)
   (define (helper num depth total)
@@ -95,14 +95,14 @@ GENERATOR derived dynamic input and the boolean ASSESS."
   (define (crownhash/roothash-selector hashmap)
     "Return the crownhash, and the hash of the first roothash."
     (define (recurse-until-root hashtree)
-      (hashtree-map hashtree
-                    (lambda (hash properties subtrees)
-                      ;; ignore hash, properties)
-                      (recurse-until-root (car subtrees)))
-                    (lambda (hash properties)
-                      ;; ignore properties)
-                      hash)
-                    (const #f)))
+      (hashtree-apply hashtree
+                      (lambda (hash properties subtrees)
+                        ;; ignore hash, properties)
+                        (recurse-until-root (car subtrees)))
+                      (lambda (hash properties)
+                        ;; ignore properties)
+                        hash)
+                      (const #f)))
     (cons (caaar hashmap)
           (recurse-until-root (car hashmap))))
 

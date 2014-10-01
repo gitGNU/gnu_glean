@@ -53,14 +53,21 @@
   #:use-module (glean common utils)
   #:use-module (glean library sets)
   #:use-module (glean library library-store)
-  #:use-module (glean lounge scorecards) ; Should be obsolete?
-  #:use-module (glean lounge profiles)   ; Should be obsolete?
   #:use-module (ice-9 rdelim)
   #:use-module (srfi srfi-1)
   #:use-module (srfi srfi-26)
-  #:use-module (rnrs)
+  #:use-module (rnrs exceptions)
   #:export (library-server))
+
 
+;;;;; Blobhash?
+;;; This should not be needed here.  There should be a library side module
+;;; which provides this procedure.  After all, we know the great secret which
+;;; is that a blobhash is the same as a sethash.
+
+(define (blobhash? obj)
+  "Return #t if OBJ is a blobhash, #f otherwise."
+  (symbol? obj))
 
 ;;;;; Module Server Dispatch Logic
 ;;; Define the actual module server and the server-dispatcher used by it.

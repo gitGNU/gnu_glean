@@ -90,9 +90,9 @@
             set!s-field
             set!s-value
 
-            delq
-            delq?
-            delq-token
+            delpq
+            delpq?
+            delpq-token
 
             authq
             authq?
@@ -314,16 +314,15 @@
 (define evauthq-result (record-accessor evauthq-rtd 1))
 
 ;;;; Request Profile Deletion
-;; Del Requests provide a token to identify the player profile to be
-;; deleted.
+;; Delp Requests provide a token to identify the player profile to be deleted.
 ;; Returns an acks on success, a negs otherwise.
-(define delq-rtd
-  (make-record-type-descriptor 'delq #f #f #f #f
+(define delpq-rtd
+  (make-record-type-descriptor 'delpq #f #f #f #f
                                '#((immutable token))))
-(define delq-rcd
-  (make-record-constructor-descriptor delq-rtd #f #f))
-(define delq (record-constructor delq-rcd))
-(define delq? (record-predicate delq-rtd))
-(define delq-token (record-accessor delq-rtd 0))
+(define delpq-rcd
+  (make-record-constructor-descriptor delpq-rtd #f #f))
+(define delpq (record-constructor delpq-rcd))
+(define delpq? (record-predicate delpq-rtd))
+(define delpq-token (record-accessor delpq-rtd 0))
 
 ;;; lounge-requests.scm ends here

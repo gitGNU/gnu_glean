@@ -48,6 +48,7 @@
 (define-module (glean lounge scorecards)
   #:use-module (glean common utils)
   #:use-module (rnrs records procedural)
+  #:use-module (rnrs hashtables)
   #:use-module (srfi srfi-1)
   #:export (
             make-scorecard

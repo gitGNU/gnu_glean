@@ -45,9 +45,6 @@
   #:use-module (glean common library-requests)
   #:use-module (glean common lounge-requests)
   #:use-module (glean common utils)
-  #:use-module (glean library sets)
-  #:use-module (glean lounge profiles)
-  #:use-module (glean lounge scorecards)
   #:use-module (ice-9 match)
   #:use-module (rnrs records inspection)
   #:use-module (rnrs records procedural)
@@ -79,21 +76,7 @@
 (define known-rc? get-rc)
 
 (define record-kv-pairs
-  `((set        . ,mecha-set)
-    (question   . ,make-q)
-    (solution   . ,make-s)
-    (option     . ,make-o)
-    (medii      . ,make-media)
-    (prob       . ,make-problem)
-    (predicate  . ,p)
-
-    (score-card . ,make-scorecard)
-    (blob       . ,make-blob)
-
-    (profile    . ,make-profile)
-    
-    ;; generic requests
-    (request    . ,request)
+  `((request    . ,request)
     (response   . ,response)
 
     (aliveq     . ,aliveq)
@@ -110,7 +93,7 @@
     (views      . ,views)
     (set!q      . ,set!q)
     (set!s      . ,set!s)
-    (delq       . ,delq)
+    (delpq      . ,delpq)
     (authq      . ,authq)
     (auths      . ,auths)
     (chauthq    . ,chauthq)

@@ -116,7 +116,7 @@
 (define %client.conf%     (string-append %client-dir% "/client.conf"))
 (define %default-library% %library-port%)
 (define %default-lounge%  %lounge-port%)
-(define %default-client%  'repl)
+(define %default-client%  "repl-client")
 (define %client-log%      (string-append %log-dir%  "/client.log"))
 
 ;;;; External libraries

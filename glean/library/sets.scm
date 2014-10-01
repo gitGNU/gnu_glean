@@ -74,7 +74,7 @@
             set?
             rootset?
             module
-            module?
+            plain-module?
             tutorial
             tutorial?
             number-of-problems
@@ -429,12 +429,14 @@ rootset?). #f otherwise."
         (((? problem?) ...) #t)
         (_ #f))
       #f))
-(define (module? set)
+
+(define (plain-module? set)
   "Return #t if set is a module, #f otherwise."
   (if (set? set)
       (let ((props (assoc 'module (set-properties set))))
         (and props (cdr props)))
       #f))
+
 (define (tutorial? set)
   "Return #t if set is a tutorial, #f otherwise."
   (if (set? set)

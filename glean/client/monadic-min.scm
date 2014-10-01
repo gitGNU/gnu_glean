@@ -329,14 +329,14 @@ human-friendly information about active-modules."
                       state))))))
 
 (define (push-deletion)
-  "Return a client-monad mval for a delq request."
+  "Return a client-monad mval for a delpq request."
   (lambda (state)
     "Return a steteful whose result's first values is #t upon
 successful deletion of the profile identified by the lounge server and
 the token in STATE. Raise an Exchange Error otherwise."
     (let ((rs (call/exchange
                (state-lng state)        ; lounge connection
-               acks? delq               ; predicate, constructor
+               acks? delpq              ; predicate, constructor
                (state-tk state))))      ; input
       (if (nothing? rs)
           rs

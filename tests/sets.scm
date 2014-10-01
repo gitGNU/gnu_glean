@@ -76,7 +76,7 @@
   (quickcheck (lambda (_) (set? _))
               50 $set))
 (test-assert "module generation"
-  (quickcheck (lambda (_) (module? _))
+  (quickcheck (lambda (_) (plain-module? _))
               50 $module))
 (test-assert "tutorial generation"
   (quickcheck (lambda (_) (tutorial? _))
