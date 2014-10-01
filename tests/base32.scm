@@ -1,6 +1,6 @@
 ;;; glean --- fast learning tool.         -*- coding: utf-8 -*-
 
-;;; Copyright © 2012, 2013, 2014 Ludovic Courtès <ludo@gnu.org>,
+;;; Copyright (C) 2012, 2013, 2014 Ludovic Courtès <ludo@gnu.org>,
 ;;; Alex Sassmannshausen <alex.sassmannshausen@gmail.com>
 
 ;; This program is free software; you can redistribute it and/or

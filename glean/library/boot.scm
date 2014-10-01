@@ -1,6 +1,6 @@
 ;; boot.scm --- handle launching glean library    -*- coding: utf-8 -*-
 ;;
-;; Copyright © 2014 Alex Sassmannshausen <alex.sassmannshausen@gmail.com>
+;; Copyright (C) 2014 Alex Sassmannshausen <alex.sassmannshausen@gmail.com>
 ;;
 ;; Author: Alex Sassmannshausen <alex.sassmannshausen@gmail.com>
 ;; Created: 27 July 2014

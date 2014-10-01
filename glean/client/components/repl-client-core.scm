@@ -1,6 +1,6 @@
 ;; repl-client-core.scm --- a guile repl client    -*- coding: utf-8 -*-
 ;;
-;; Copyright © 2014 Alex Sassmannshausen <alex.sassmannshausen@gmail.com>
+;; Copyright (C) 2014 Alex Sassmannshausen <alex.sassmannshausen@gmail.com>
 ;;
 ;; Author: Alex Sassmannshausen <alex.sassmannshausen@gmail.com>
 ;; Created: 01 January 2014

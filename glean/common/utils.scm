@@ -1,6 +1,6 @@
 ;; utils.scm --- general utility functions          -*- coding: utf-8 -*-
 ;;
-;; Copyright © 2012, 2013, 2014 Ludovic Courtès <ludo@gnu.org>,
+;; Copyright (C) 2012, 2013, 2014 Ludovic Courtès <ludo@gnu.org>,
 ;; Copyright (C) 2014 Alex Sassmannshausen <alex.sassmannshausen@gmail.com>
 ;;
 ;; Author: Alex Sassmannshausen <alex.sassmannshausen@gmail.com>

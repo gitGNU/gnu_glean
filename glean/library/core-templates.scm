@@ -1,6 +1,6 @@
 ;; core-templates.scm --- Content creation templates.    -*- coding: utf-8 -*-
 ;;
-;; Copyright © 2014 Alex Sassmannshausen <alex.sassmannshausen@gmail.com>
+;; Copyright (C) 2014 Alex Sassmannshausen <alex.sassmannshausen@gmail.com>
 ;;
 ;; Author: Alex Sassmannshausen <alex.sassmannshausen@gmail.com>
 ;; Created: 15 Jul 2014
