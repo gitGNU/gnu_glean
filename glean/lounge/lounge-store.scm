@@ -29,11 +29,11 @@
 ;;;; Code:
 
 (define-module (glean lounge lounge-store)
-  #:use-module (glean lounge gprofiles)
-  #:use-module (glean lounge scorecards)
-  #:use-module (glean lounge lounge-filesystem)
   #:use-module (glean common monads)
   #:use-module (glean common utils)
+  #:use-module (glean lounge lounge-filesystem)
+  #:use-module (glean lounge profiles)
+  #:use-module (glean lounge scorecards)
   #:use-module (ice-9 ftw)
   #:use-module (ice-9 match)
   #:use-module (ice-9 vlist)

@@ -26,7 +26,7 @@
   #:use-module (srfi srfi-1)
   #:use-module (srfi srfi-27)
   #:use-module (glean common comtools)
-  #:use-module (glean lounge gprofiles)
+  #:use-module (glean lounge profiles)
   #:use-module (glean library sets)
   #:use-module (glean lounge scorecards)
   #:use-module (glean common base-requests)
@@ -45,8 +45,7 @@
 	    $pred
 
 	    $profile
-	    $id
-
+            
 	    $scorecard
 	    $empty-scorecard
             $mk-rootblob
@@ -147,13 +146,9 @@ $mk-rootset)."
 (define ($profile)
   "Return a randomised profile."
   (let ((name ($string)))
-    (make-profile name ($id name) ($string) ($string)
+    (make-profile name ($string) ($string)
                   (($short-list ($pair $symbol $symbol)))
                   ($scorecard))))
-
-(define ($id name)
-  "Return a randomised id."
-  (make-id (string->symbol name) ($symbol)))
 
 (define ($scorecard)
   "Return a randomised scorecard."

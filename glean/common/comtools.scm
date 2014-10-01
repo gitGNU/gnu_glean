@@ -46,8 +46,7 @@
   #:use-module (glean common lounge-requests)
   #:use-module (glean common utils)
   #:use-module (glean library sets)
-  #:use-module (glean lounge gprofiles)
-  #:use-module (glean lounge gprofiles)
+  #:use-module (glean lounge profiles)
   #:use-module (glean lounge scorecards)
   #:use-module (ice-9 match)
   #:use-module (rnrs records inspection)
@@ -92,8 +91,7 @@
     (blob       . ,make-blob)
 
     (profile    . ,make-profile)
-    (id         . ,make-id)
-
+    
     ;; generic requests
     (request    . ,request)
     (response   . ,response)

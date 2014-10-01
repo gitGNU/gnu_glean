@@ -54,7 +54,7 @@
   #:use-module (glean library sets)
   #:use-module (glean library library-store)
   #:use-module (glean lounge scorecards) ; Should be obsolete?
-  #:use-module (glean lounge gprofiles)  ; Should be obsolete?
+  #:use-module (glean lounge profiles)   ; Should be obsolete?
   #:use-module (ice-9 rdelim)
   #:use-module (srfi srfi-1)
   #:use-module (srfi srfi-26)

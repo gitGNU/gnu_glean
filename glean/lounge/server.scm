@@ -48,18 +48,18 @@
   #:use-module (glean common base-requests)
   #:use-module (glean common base-server)
   #:use-module (glean common comtools)
-  #:use-module (glean common monads)
   #:use-module (glean common lounge-requests)
+  #:use-module (glean common monads)
   #:use-module (glean common utils)
-  #:use-module (glean lounge gprofiles)
-  #:use-module (glean lounge scorecards)
   #:use-module (glean lounge lounge-store)
+  #:use-module (glean lounge profiles)
+  #:use-module (glean lounge scorecards)
   #:use-module (ice-9 rdelim)
   #:use-module (rnrs exceptions)
   #:use-module (srfi srfi-26)
   #:export (lounge-server))
-
 
+
 ;;;;; Profile Server Dispatch Logic
 ;;; Define the actual profile server and the server-dispatcher used by it.
 (define (lounge-server lounge-socket-file)
@@ -251,8 +251,8 @@ if RQ parses correctly. Otherwise raise a an error."
           ((and (eqv? field 'active-modules) ; active-modules
                 (not (list? value))
                 (if (eqv? (car value) 'negate)
-                    (not (parse-active-modules (cdr value)))
-                    (not (parse-active-modules value))))
+                    (not (valid-active-modules? (cdr value)))
+                    (not (valid-active-modules? value))))
            (raise '(process-set!q invalid-active-modules)))
           (else
            ((mlet* lounge-monad

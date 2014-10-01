@@ -22,7 +22,7 @@
 (define-module (tests test-utils)
   #:use-module (glean config)
   #:use-module (glean library sets)
-  #:use-module (glean lounge gprofiles)
+  #:use-module (glean lounge profiles)
   #:use-module (glean lounge scorecards)
 
   #:export (test-gmodule
@@ -60,7 +60,6 @@
 
 (define test-gprofile-2
   (make-profile  "test2"
-                 (make-id "test2" 1366787517)
                  %lounge-port%
                  %library-port%
                  '(test)
