@@ -50,7 +50,6 @@ MODULES =						\
   glean/library/boot.scm			     	\
   glean/library/library-store.scm			\
   glean/library/server.scm			    	\
-  glean/lounge/data-manager.scm				\
   glean/lounge/profiles.scm		   		\
   glean/lounge/scorecards.scm		  		\
   glean/lounge/boot.scm					\
