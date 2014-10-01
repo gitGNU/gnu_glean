@@ -52,32 +52,32 @@
 (define-module (glean common library-requests)
   #:use-module (rnrs records procedural)
   #:export (challq
-	    challq?
+            challq?
             challq-hash
             challq-counter
 
-	    evalq
-	    evalq?
-	    evalq-hash
-	    evalq-counter
-	    evalq-answer
+            evalq
+            evalq?
+            evalq-hash
+            evalq-counter
+            evalq-answer
 
-	    challs
-	    challs?
-	    challs-challenge
+            challs
+            challs?
+            challs-challenge
 
-	    evals
-	    evals?
-	    evals-result
-	    evals-solution
+            evals
+            evals?
+            evals-result
+            evals-solution
 
-	    knownq
+            knownq
             knownq-operator
             knownq-search
-	    knownq?
-	    knowns
-	    knowns?
-	    knowns-list
+            knownq?
+            knowns
+            knowns?
+            knowns-list
 
             detailq
             detailq?
@@ -86,24 +86,24 @@
             details?
             details-list
 
-	    hashmapq
-	    hashmapq?
-	    hashmapq-token
-	    hashmapq-hashpairs
-	    hashmaps
-	    hashmaps?
-	    hashmaps-token
-	    hashmaps-content
+            hashmapq
+            hashmapq?
+            hashmapq-token
+            hashmapq-hashpairs
+            hashmaps
+            hashmaps?
+            hashmaps-token
+            hashmaps-content
 
-	    sethashesq
-	    sethashesq?
-	    sethashesq-token
-	    sethashesq-fullhashes
+            sethashesq
+            sethashesq?
+            sethashesq-token
+            sethashesq-fullhashes
 
-	    sethashess
-	    sethashess?
-	    sethashess-token
-	    sethashess-hashpairs))
+            sethashess
+            sethashess?
+            sethashess-token
+            sethashess-hashpairs))
 
 
 ;;;;; Game Requests
@@ -111,8 +111,8 @@
 ;;;; Request Challenge
 (define challq-rtd
   (make-record-type-descriptor 'challq #f #f #f #f
-			       '#((immutable blobhash)
-				  (immutable blobcounter))))
+                               '#((immutable blobhash)
+                                  (immutable blobcounter))))
 (define challq-rcd
   (make-record-constructor-descriptor challq-rtd #f #f))
 (define challq (record-constructor challq-rcd))
@@ -123,7 +123,7 @@
 ;;;; Provide Challenge
 (define challs-rtd
   (make-record-type-descriptor 'challs #f #f #f #f
-			       '#((immutable challenge))))
+                               '#((immutable challenge))))
 (define challs-rcd
   (make-record-constructor-descriptor challs-rtd #f #f))
 (define challs (record-constructor challs-rcd))
@@ -133,9 +133,9 @@
 ;;;; Request Evaluation
 (define evalq-rtd
   (make-record-type-descriptor 'evalq #f #f #f #f
-			       '#((immutable hash)
-				  (immutable counter)
-				  (immutable answer))))
+                               '#((immutable hash)
+                                  (immutable counter)
+                                  (immutable answer))))
 (define evalq-rcd
   (make-record-constructor-descriptor evalq-rtd #f #f))
 (define evalq (record-constructor evalq-rcd))
@@ -147,7 +147,7 @@
 ;;;; Provide Evaluation
 (define evals-rtd
   (make-record-type-descriptor 'evals #f #f #f #f
-			       '#((immutable result)
+                               '#((immutable result)
                                   (immutable solution))))
 (define evals-rcd
   (make-record-constructor-descriptor evals-rtd #f #f))
@@ -160,7 +160,7 @@
 ;;;; Request A List Of Known Modules
 (define knownq-rtd
   (make-record-type-descriptor 'knownq #f #f #f #f
-			       '#((immutable operator)
+                               '#((immutable operator)
                                   (immutable search))))
 (define knownq-rcd
   (make-record-constructor-descriptor knownq-rtd #f #f))
@@ -172,7 +172,7 @@
 ;;;; Provide A List Of Known Modules
 (define knowns-rtd
   (make-record-type-descriptor 'knowns #f #f #f #f
-			       '#((immutable list))))
+                               '#((immutable list))))
 (define knowns-rcd
   (make-record-constructor-descriptor knowns-rtd #f #f))
 (define knowns (record-constructor knowns-rcd))
@@ -183,7 +183,7 @@
 ;; Request detail for a specific module identified by its hash.
 (define detailq-rtd
   (make-record-type-descriptor 'detailq #f #f #f #f
-			       '#((immutable hash))))
+                               '#((immutable hash))))
 (define detailq-rcd
   (make-record-constructor-descriptor detailq-rtd #f #f))
 (define detailq (record-constructor detailq-rcd))
@@ -194,7 +194,7 @@
 ;; Provide detail for a specific module.
 (define details-rtd
   (make-record-type-descriptor 'details #f #f #f #f
-			       '#((immutable list))))
+                               '#((immutable list))))
 (define details-rcd
   (make-record-constructor-descriptor details-rtd #f #f))
 (define details (record-constructor details-rcd))
@@ -206,7 +206,7 @@
 ;; Request hashmaps for sets identified by their IDs
 (define hashmapq-rtd
   (make-record-type-descriptor 'hashmapq #f #f #f #f
-			       '#((immutable hashpairs))))
+                               '#((immutable hashpairs))))
 (define hashmapq-rcd
   (make-record-constructor-descriptor hashmapq-rtd #f #f))
 (define hashmapq (record-constructor hashmapq-rcd))
@@ -217,7 +217,7 @@
 ;; Provides hashmaps, a nested list of sethashes.
 (define hashmaps-rtd
   (make-record-type-descriptor 'hashmaps #f #f #f #f
-			       '#((immutable content))))
+                               '#((immutable content))))
 (define hashmaps-rcd
   (make-record-constructor-descriptor hashmaps-rtd #f #f))
 (define hashmaps (record-constructor hashmaps-rcd))
@@ -228,7 +228,7 @@
 ;; Request the minhashes that go with the full sethashes provided.
 (define sethashesq-rtd
   (make-record-type-descriptor 'sethashesq #f #f #f #f
-			       '#((immutable fullhashes))))
+                               '#((immutable fullhashes))))
 (define sethashesq-rcd
   (make-record-constructor-descriptor sethashesq-rtd #f #f))
 (define sethashesq (record-constructor sethashesq-rcd))
@@ -239,7 +239,7 @@
 ;; Provide the '(minghash . fullhash) sethash pairs requested above.
 (define sethashess-rtd
   (make-record-type-descriptor 'sethashess #f #f #f #f
-			       '#((immutable hashpairs))))
+                               '#((immutable hashpairs))))
 (define sethashess-rcd
   (make-record-constructor-descriptor sethashess-rtd #f #f))
 (define sethashess (record-constructor sethashess-rcd))

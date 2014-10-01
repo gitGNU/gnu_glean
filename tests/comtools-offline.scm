@@ -20,7 +20,7 @@
 ;; Boston, MA  02111-1307,  USA       gnu@gnu.org
 
 (define-module (tests comtools-offline)
-  #:use-module (srfi srfi-64)		; Provide test suite
+  #:use-module (srfi srfi-64)           ; Provide test suite
   #:use-module (quickcheck quickcheck)
   #:use-module (tests quickcheck-defs)
   #:use-module (rnrs records inspection)

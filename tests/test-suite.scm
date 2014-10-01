@@ -32,8 +32,8 @@
 
 (define (run-test-suite)
   (with-cwd %log-dir%
-	    (lambda ()
-	      (use-modules
+            (lambda ()
+              (use-modules
                (tests base32)
                (tests hash)
                (tests sets)
@@ -43,30 +43,30 @@
                (tests comtools-offline)
                (tests lounge-server)
                (tests library-server))
-	      (let* ((path %library-port%))
-		(if (and (access? path W_OK)
-			 (catch #t
-			   (lambda ()
-			     (let ((s (socket PF_UNIX SOCK_STREAM 0)))
-			       (connect s AF_UNIX path)
-			       (write "alive?" s)
-			       (read s)
-			       (close s)))
-			   (lambda (k . args) #f)))
-		    (use-modules (tests comtools-online)
+              (let* ((path %library-port%))
+                (if (and (access? path W_OK)
+                         (catch #t
+                           (lambda ()
+                             (let ((s (socket PF_UNIX SOCK_STREAM 0)))
+                               (connect s AF_UNIX path)
+                               (write "alive?" s)
+                               (read s)
+                               (close s)))
+                           (lambda (k . args) #f)))
+                    (use-modules (tests comtools-online)
                                  ;; FIXME: Causes Crash
-				 ;;(tests server-responses)
+                                 ;;(tests server-responses)
                                  )
-		    (begin (format #t "
+                    (begin (format #t "
 No server is running; we will skip communication tests.\n")
-			   (newline)))))))
+                           (newline)))))))
 
 (define (with-cwd path thunk)
   (let ((old-path (getcwd)))
     (if (access? path F_OK)
-	(chdir path)
-	(begin
-	  (mkdir path)
-	  (chdir path)))
+        (chdir path)
+        (begin
+          (mkdir path)
+          (chdir path)))
     (thunk)
     (chdir old-path)))

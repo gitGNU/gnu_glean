@@ -33,36 +33,36 @@
 
 ;; Test a well behaving symbol message (it uses gwrite)
 (test-assert "server-random"
-	     (let ((s (socket PF_UNIX SOCK_STREAM 0)))
-	       (connect s address)
-	       (gwrite 'random s)
-	       (let ((msg (read s)))
-		 (close s)
-		 (if (eqv? msg 'invalid-request)
-		     #t
-		     #f))))
+             (let ((s (socket PF_UNIX SOCK_STREAM 0)))
+               (connect s address)
+               (gwrite 'random s)
+               (let ((msg (read s)))
+                 (close s)
+                 (if (eqv? msg 'invalid-request)
+                     #t
+                     #f))))
 
 ;; Test a misbehaving symbol message (will hang comms unless server
 ;; disconnects in some fashion)
 ;; I don't know how to pass this test yet, so disabling for now
 ;; (test-assert "server-evil"
-;; 	     (let ((s (socket PF_UNIX SOCK_STREAM 0)))
-;; 	       (connect s address)
-;; 	       (write 'random s)
-;; 	       (let ((msg (read s)))
-;; 		 (close s)
-;; 		 (if msg
-;; 		     #t
-;; 		     #f))))
+;;              (let ((s (socket PF_UNIX SOCK_STREAM 0)))
+;;                (connect s address)
+;;                (write 'random s)
+;;                (let ((msg (read s)))
+;;                  (close s)
+;;                  (if msg
+;;                      #t
+;;                      #f))))
 
 (test-assert "server-disconnect"
-	     (let ((s (socket PF_UNIX SOCK_STREAM 0)))
-	       (connect s address)
-	       (close s)))
+             (let ((s (socket PF_UNIX SOCK_STREAM 0)))
+               (connect s address)
+               (close s)))
 (test-assert "server-quit"
-	     (let ((s (socket PF_UNIX SOCK_STREAM 0)))
-	       (connect s address)
-	       (write 'quit s)
-	       (close s)))
+             (let ((s (socket PF_UNIX SOCK_STREAM 0)))
+               (connect s address)
+               (write 'quit s)
+               (close s)))
 
 (test-end "server-tests")

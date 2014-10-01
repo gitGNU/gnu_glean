@@ -33,45 +33,45 @@
   #:use-module (glean common library-requests)
   #:use-module (glean common lounge-requests)
   #:export (
-	    $mk-rootset
+            $mk-rootset
             $mk-set
             $mk-hashtree
             $mk-hashmap
             $question
-	    $solution
-	    $option
-	    $medii
-	    $prob
-	    $pred
+            $solution
+            $option
+            $medii
+            $prob
+            $pred
 
-	    $profile
+            $profile
             
-	    $scorecard
-	    $empty-scorecard
+            $scorecard
+            $empty-scorecard
             $mk-rootblob
             $mk-blob-list
 
-	    $request
-	    $response
+            $request
+            $response
 
-	    $aliveq
- 	    $challq
-	    $challs
-	    $evalq
-	    $evals
-	    $acks
-	    $negs
-	    $unks
-	    $quitq
+            $aliveq
+             $challq
+            $challs
+            $evalq
+            $evals
+            $acks
+            $negs
+            $unks
+            $quitq
 
-	    $datum
-	    $record
-	    $simple-tagged-list
+            $datum
+            $record
+            $simple-tagged-list
             $tagged-list
-	    quickname
+            quickname
             $short-list
-	    $short-assoc
-	    ))
+            $short-assoc
+            ))
 
 ;;;;; Set Generators
 (define* ($mk-rootset #:optional num_problems)
@@ -124,7 +124,7 @@ $mk-rootset)."
 (define ($prob)
   "Return a randomised problem."
   (apply problem ($question) ($solution) ($pred)
-	 (($short-list $option))))
+         (($short-list $option))))
 ;; FIXME: Should include $medii at random points
 (define ($question)
   "Return a randomised question."
@@ -229,7 +229,7 @@ child-blobs with each CHILD_NUM of children."
 GENERATOR."
   (lambda ()
     (build-list (if (number? num_problems) num_problems ($small))
-		(lambda (_) (generator)))))
+                (lambda (_) (generator)))))
 (define ($short-assoc key-generator value-generator)
   "Return an association list with up to ten members of type returned by
 KEY-GENERATOR and VALUE-GENERATOR"
@@ -259,11 +259,11 @@ KEY-GENERATOR and VALUE-GENERATOR"
 (define ($tagged-list)
   "Return a random record enumerated in the list."
   ((from-list (list (lambda ()
-		      (record->list* ($profile)))
-		    (lambda ()
-		      (record->list* ($scorecard)))
-		    (lambda ()
-		      (record->list* ($mk-set)))))))
+                      (record->list* ($profile)))
+                    (lambda ()
+                      (record->list* ($scorecard)))
+                    (lambda ()
+                      (record->list* ($mk-set)))))))
 
 ;;;;; Support Generators & Functions
 ;;;; This section contains library internal definitions that should

@@ -38,13 +38,13 @@
 (define test-q #f)
 
 (test-assert "lesser-call/exchange"
-	     (negs?
+             (negs?
               (lesser-call/exchange
                %lounge-port%    ; target
                echoq                    ; request
                'token-lc/e 'msg-lc/e))) ; inputs
 (test-assert "call/exchange"
-	     (negs?
+             (negs?
               (call/exchange
                %lounge-port%    ; target
                negs? echoq              ; predicate, constructor

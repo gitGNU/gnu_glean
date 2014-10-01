@@ -18,29 +18,29 @@
   ;; (srfi :48 intermediate-format-strings)
   #:use-module (ice-9 format)
   #:export (
-	    quickcheck
-	    $integer
-	    $real
-	    $boolean
-	    $char
-	    $string
-	    $symbol
-	    $pair
-	    $list
-	    $vector
-	    $bytevector
-	    check
-	    implies
-	    ->
-	    one-of
-	    elements
-	    return
-	    $=>
-	    >>=
-	    ;;(rename ($call call))
-	    such-that
-	    frequency
-	    ))
+            quickcheck
+            $integer
+            $real
+            $boolean
+            $char
+            $string
+            $symbol
+            $pair
+            $list
+            $vector
+            $bytevector
+            check
+            implies
+            ->
+            one-of
+            elements
+            return
+            $=>
+            >>=
+            ;;(rename ($call call))
+            such-that
+            frequency
+            ))
 
 (define (build-list size proc)
   (define (loop i l)

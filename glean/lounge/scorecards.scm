@@ -51,31 +51,31 @@
   #:use-module (srfi srfi-1)
   #:export (
             make-scorecard
-	    scorecard?
- 	    scorecard-data
-
-	    make-blob
-	    blob?
-	    blob-hash
-	    blob-parents
-	    blob-children
-	    blob-score
-	    blob-counter
+            scorecard?
+            scorecard-data
+            
+            make-blob
+            blob?
+            blob-hash
+            blob-parents
+            blob-children
+            blob-score
+            blob-counter
             blob-properties
             blob-effects
-
-	    make-empty-scorecard
-	    empty-scorecard?
             
-	    make-dummy-blob
-	    dummy-blob?
-	    find-blob
- 	    add-blobs
-
-	    update-scorecard
-
- 	    lower-score?
-	    blobhash?
+            make-empty-scorecard
+            empty-scorecard?
+            
+            make-dummy-blob
+            dummy-blob?
+            find-blob
+            add-blobs
+            
+            update-scorecard
+            
+            lower-score?
+            blobhash?
             ))
 
 
@@ -83,11 +83,11 @@
 
 (define blob-rtd
   (make-record-type-descriptor 'blob #f #f #f #f
-			       '#((immutable hash)
-				  (immutable parents)
-				  (immutable children)
-				  (immutable score)
-				  (immutable counter)
+                               '#((immutable hash)
+                                  (immutable parents)
+                                  (immutable children)
+                                  (immutable score)
+                                  (immutable counter)
                                   (immutable properties)
                                   (immutable effects))))
 (define blob-rcd
@@ -104,7 +104,7 @@
 
 (define scorecard-rtd
   (make-record-type-descriptor 'score-card #f #f #f #f
-			       '#((immutable data))))
+                               '#((immutable data))))
 (define scorecard-rcd
   (make-record-constructor-descriptor scorecard-rtd #f #f))
 (define make-scorecard (record-constructor scorecard-rcd))
@@ -125,7 +125,7 @@
   "Return a new scorecard created by adding BLOBS to SCORECARD."
   (let ((data (scorecard-data scorecard)))
     (map (lambda (blob) (data 'put (blob-hash blob) blob))
-	 blobs)
+         blobs)
     (make-scorecard data)))
 
 (define (make-empty-scorecard)
@@ -142,7 +142,7 @@ of the blob identified by BLOBHASH, and its parents, adjusted based on
 ASSESSMENT-RESULT."
   (let* ((data (scorecard-data scorecard))
          (initial-blob (data 'get blobhash)))
-
+    
     (define (update-skorecard data blobhash)
       (let ((blob (data 'get blobhash)))
         (define (update-data)
@@ -156,7 +156,7 @@ ASSESSMENT-RESULT."
             ;; which could conceivably contain more than one element. We
             ;; may need to process the other parents too… perhaps.
             (update-skorecard (update-data) (car (blob-parents blob))))))
-
+    
     (make-scorecard (update-skorecard data blobhash))))
 
 
@@ -172,8 +172,8 @@ ASSESSMENT-RESULT."
 adapted according to ASSESSMENT-RESULT, its counter progressed, and its
 effects updated if INITIAL-BLOB contains 'tutorial key.."
   (make-blob (blob-hash blob)
-	     (blob-parents blob)
-	     (blob-children blob)
+             (blob-parents blob)
+             (blob-children blob)
              (modify-score (blob-score blob)
                            assessment-result
                            number-of-child-blobs)
@@ -190,8 +190,8 @@ effects updated if INITIAL-BLOB contains 'tutorial key.."
 (define (dummy-blob? score-blob)
   "Return #t if score-mod-blob is a dummy-blob, #f otherwise."
   (if (and (eq? (blob-hash score-blob) 'no-tag)
-	   (not (blob-score score-blob))
-	   (zero? (blob-counter score-blob)))
+           (not (blob-score score-blob))
+           (zero? (blob-counter score-blob)))
       #t
       #f))
 
@@ -254,7 +254,7 @@ same inputs."
                                    (map blob-children
                                         (child-hashes->child-blobs
                                          child-hashes)))))))
-
+        
         (if (and (blob? blob) (procedure? data))
             (num-of-child-blobs-helper (blob-children blob) 0)
             (error 'number-of-child-blobs "Blob or data not right."))))))
@@ -335,25 +335,23 @@ otherwise."
     "An old-school, non-functional (hash-table based) non-persistent
 data-store to store scorecard data.  This is crufty, and should be abandoned
 ASAP!"
-
     (let ([data (make-eqv-hashtable)])
       (lambda (message . args)
-	"Return the value associated with (car ARGS) if MESSAGE is
+        "Return the value associated with (car ARGS) if MESSAGE is
 'get, or #f if the (car ARGS) is not a key in the hashtable.
 
  Return #t if MESSAGE is 'put, and (cadr ARGS) passes the predicate
 check and is added to table. Return #f otherwise.
 
 Return all values stored in the table when MESSAGE is 'list."
-
-	(cond ((eqv? message 'get)      ; Retrieving an entry
-	       (hashtable-ref data (car args) #f))
-	      ((eqv? message 'put)	; Storing an entry
-	       (if (predicate (cadr args))
-		   (begin
-		     (hashtable-set! data (car args) (cadr args))
-		     #t)
-		   #f))
+        (cond ((eqv? message 'get)      ; Retrieving an entry
+               (hashtable-ref data (car args) #f))
+              ((eqv? message 'put)        ; Storing an entry
+               (if (predicate (cadr args))
+                   (begin
+                     (hashtable-set! data (car args) (cadr args))
+                     #t)
+                   #f))
               ((eqv? message 'rem-val)
                (call-with-values
                    ;; fetch values and keys
@@ -366,20 +364,20 @@ Return all values stored in the table when MESSAGE is 'list."
                       (if (equal? v (car args))
                           (hashtable-delete! data k)))
                     ks vs))))
-	      ((eqv? message 'rem)
-	       (hashtable-delete! data (car args)))
-	      ((eqv? message 'list-keys (hashtable-keys data)))
-	      ((eqv? message 'list) (hashtable-entries data))
-	      ((eqv? message 'values)
-	       (vector->list
-		(vector-map (lambda (key)
-			      (hashtable-ref data key #f))
-			    (hashtable-keys data))))
-	      ((eqv? message 'contains)
-	       (hashtable-contains? data (car args)))
-	      ((eqv? message 'update)
-	       (hashtable-update! data (car args)
-				  (cadr args) (caddr args)))
-	      (else (error "data-manager: unknown message: " message)))))))
+              ((eqv? message 'rem)
+               (hashtable-delete! data (car args)))
+              ((eqv? message 'list-keys (hashtable-keys data)))
+              ((eqv? message 'list) (hashtable-entries data))
+              ((eqv? message 'values)
+               (vector->list
+                (vector-map (lambda (key)
+                              (hashtable-ref data key #f))
+                            (hashtable-keys data))))
+              ((eqv? message 'contains)
+               (hashtable-contains? data (car args)))
+              ((eqv? message 'update)
+               (hashtable-update! data (car args)
+                                  (cadr args) (caddr args)))
+              (else (error "data-manager: unknown message: " message)))))))
 
 ;;; scorecards.scm ends here

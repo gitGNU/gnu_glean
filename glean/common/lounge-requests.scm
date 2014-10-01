@@ -64,11 +64,11 @@
             echos-message
 
             regq
-	    regq?
-	    regq-name
-	    regq-password
-	    regq-prof-server
-	    regq-mod-server
+            regq?
+            regq-name
+            regq-password
+            regq-prof-server
+            regq-mod-server
 
             viewq
             viewq?
@@ -78,45 +78,45 @@
             views-token
             views-details
 
-	    set!q
-	    set!q?
-	    set!q-token
-	    set!q-field
-	    set!q-value
+            set!q
+            set!q?
+            set!q-token
+            set!q-field
+            set!q-value
 
-	    set!s
-	    set!s?
-	    set!s-token
-	    set!s-field
-	    set!s-value
+            set!s
+            set!s?
+            set!s-token
+            set!s-field
+            set!s-value
 
-	    delq
-	    delq?
-	    delq-token
+            delq
+            delq?
+            delq-token
 
-	    authq
-	    authq?
-	    authq-name
-	    authq-password
-	    auths
-	    auths?
-	    auths-token
-	    auths-mod-server
-	    auths-prof-server
+            authq
+            authq?
+            authq-name
+            authq-password
+            auths
+            auths?
+            auths-token
+            auths-mod-server
+            auths-prof-server
 
-	    chauthq
-	    chauthq?
-	    chauthq-token
-	    chauths
-	    chauths?
-	    chauths-token
-	    chauths-hash
-	    chauths-counter
+            chauthq
+            chauthq?
+            chauthq-token
+            chauths
+            chauths?
+            chauths-token
+            chauths-hash
+            chauths-counter
 
-	    evauthq
-	    evauthq?
-	    evauthq-token
-	    evauthq-result))
+            evauthq
+            evauthq?
+            evauthq-token
+            evauthq-result))
 
 
 ;;;;; Lounge Requests
@@ -128,7 +128,7 @@
 ;; Returns an Echos.
 (define echoq-rtd
   (make-record-type-descriptor 'echoq #f #f #f #f
-			       '#((immutable token)
+                               '#((immutable token)
                                   (immutable message))))
 (define echoq-rcd
   (make-record-constructor-descriptor echoq-rtd #f #f))
@@ -140,9 +140,9 @@
 ;;;; Provide Echo
 (define echos-rtd
   (make-record-type-descriptor 'echos #f #f #f #f
-			       '#((immutable token)
-				  (immutable prof-server)
-				  (immutable mod-server)
+                               '#((immutable token)
+                                  (immutable prof-server)
+                                  (immutable mod-server)
                                   (immutable message))))
 (define echos-rcd
   (make-record-constructor-descriptor echos-rtd #f #f))
@@ -160,10 +160,10 @@
 ;; negs otherwise.
 (define regq-rtd
   (make-record-type-descriptor 'regq #f #f #f #f
-			       '#((immutable name)
+                               '#((immutable name)
                                   (immutable password)
-				  (immutable prof-server)
-				  (immutable mod-server))))
+                                  (immutable prof-server)
+                                  (immutable mod-server))))
 (define regq-rcd
   (make-record-constructor-descriptor regq-rtd #f #f))
 (define regq (record-constructor regq-rcd))
@@ -180,7 +180,7 @@
 ;; Returns a views, or negs on error.
 (define viewq-rtd
   (make-record-type-descriptor 'viewq #f #f #f #f
-			       '#((immutable token))))
+                               '#((immutable token))))
 (define viewq-rcd
   (make-record-constructor-descriptor viewq-rtd #f #f))
 (define viewq (record-constructor viewq-rcd))
@@ -190,7 +190,7 @@
 ;;;; Provide View
 (define views-rtd
   (make-record-type-descriptor 'views #f #f #f #f
-			       '#((immutable token)
+                               '#((immutable token)
                                   (immutable details))))
 (define views-rcd
   (make-record-constructor-descriptor views-rtd #f #f))
@@ -207,9 +207,9 @@
 ;; If no further action is required, return auths, else set!s.
 (define set!q-rtd
   (make-record-type-descriptor 'set!q #f #f #f #f
-			       '#((immutable token)
-				  (immutable field)
-				  (immutable value))))
+                               '#((immutable token)
+                                  (immutable field)
+                                  (immutable value))))
 (define set!q-rcd
   (make-record-constructor-descriptor set!q-rtd #f #f))
 (define set!q (record-constructor set!q-rcd))
@@ -222,9 +222,9 @@
 ;; Indicate to the client that further action is required.
 (define set!s-rtd
   (make-record-type-descriptor 'set!s #f #f #f #f
-			       '#((immutable token)
-				  (immutable field)
-				  (immutable value))))
+                               '#((immutable token)
+                                  (immutable field)
+                                  (immutable value))))
 (define set!s-rcd
   (make-record-constructor-descriptor set!s-rtd #f #f))
 (define set!s (record-constructor set!s-rcd))
@@ -240,7 +240,7 @@
 ;; Returns an auths, or negs on error.
 (define authq-rtd
   (make-record-type-descriptor 'authq #f #f #f #f
-			       '#((immutable name)
+                               '#((immutable name)
                                   (immutable password))))
 (define authq-rcd
   (make-record-constructor-descriptor authq-rtd #f #f))
@@ -257,9 +257,9 @@
 ;; token, as provided by auths.
 (define auths-rtd
   (make-record-type-descriptor 'auths #f #f #f #f
-			       '#((immutable token)
+                               '#((immutable token)
                                   (immutable prof-server)
-				  (immutable mod-server))))
+                                  (immutable mod-server))))
 (define auths-rcd
   (make-record-constructor-descriptor auths-rtd #f #f))
 (define auths (record-constructor auths-rcd))
@@ -274,7 +274,7 @@
 ;; error.
 (define chauthq-rtd
   (make-record-type-descriptor 'chauthq #f #f #f #f
-			       '#((immutable token))))
+                               '#((immutable token))))
 (define chauthq-rcd
   (make-record-constructor-descriptor chauthq-rtd #f #f))
 (define chauthq (record-constructor chauthq-rcd))
@@ -286,9 +286,9 @@
 ;; be asked, as well as the mod-server to be used by the client.
 (define chauths-rtd
   (make-record-type-descriptor 'chauths #f #f #f #f
-			       '#((immutable token)
-				  (immutable hash)
-				  (immutable counter))))
+                               '#((immutable token)
+                                  (immutable hash)
+                                  (immutable counter))))
 (define chauths-rcd
   (make-record-constructor-descriptor chauths-rtd #f #f))
 (define chauths (record-constructor chauths-rcd))
@@ -304,8 +304,8 @@
 ;; Returns an auths, or negs on error.
 (define evauthq-rtd
   (make-record-type-descriptor 'evauthq #f #f #f #f
-			       '#((immutable token)
-				  (immutable result))))
+                               '#((immutable token)
+                                  (immutable result))))
 (define evauthq-rcd
   (make-record-constructor-descriptor evauthq-rtd #f #f))
 (define evauthq (record-constructor evauthq-rcd))
@@ -319,7 +319,7 @@
 ;; Returns an acks on success, a negs otherwise.
 (define delq-rtd
   (make-record-type-descriptor 'delq #f #f #f #f
-			       '#((immutable token))))
+                               '#((immutable token))))
 (define delq-rcd
   (make-record-constructor-descriptor delq-rtd #f #f))
 (define delq (record-constructor delq-rcd))
