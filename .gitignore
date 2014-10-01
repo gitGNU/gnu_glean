@@ -35,5 +35,6 @@ install-sh
 mdate-sh
 missing
 test-driver
+aclocal.m4
 texinfo.tex
 *.go
