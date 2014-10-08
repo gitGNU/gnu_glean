@@ -22,16 +22,12 @@ Documentation License''.
 
 @dircategory Education
 @direntry
-* glean: (glean).       Glean, glean knowledge freely.
-* glean lounge: (glean)Invoking glean lounge
-                      using the lounge server.
-* glean library: (glean)Invoking glean library
-                      using the library server
+* Glean: (Glean).       Glean knowledge freely!
 @end direntry
 
 @titlepage
-@title Glean Reference Manual
-@subtitle Using the Glean Learning Tool
+@title The Complete Glean Manual
+@subtitle Using & Contributing to Glean
 @author Alex Sassmannshausen
 
 @page
@@ -48,84 +44,498 @@ Edition @value{EDITION} @*
 @node Top
 @top Glean
 
-This document describes Glean version @value{VERSION}, a functional
-package management tool written for the GNU system.
+This document describes Glean version @value{VERSION}.
 
 @menu
-* Introduction::                What is Glean about?
-* Installation::                Installing Glean.
-* Programming Interface::       Using Glean in Scheme.
-* Contributing::                Your help needed!
+* Introduction::                Who or what is a 'Glean'?
+* Installation & First Use::    Installing Glean.
+* Overview::                    A birds' eye view.
+* The Client::                  User Interfaces in-depth.
+* The Lounge::                  User data storage in-depth.
+* The Library::                 Discipline storage in-depth.
 
+* Contributing::                Contributing to the Glean project.
 * Acknowledgments::             Thanks!
 * GNU Free Documentation License::  The license of this manual.
 * Concept Index::               Concepts.
-* Function Index::              Functions.
+@c * Function Index::              Functions.
 @end menu
 
 @c *********************************************************************
 @node Introduction
 @chapter Introduction
 
-Glean …
+Glean is a piece of software that helps you get better at stuff
+(@pxref{Disciplines}) through repetition: think katas in martial arts.
+Like katas, exercices in Glean are only effective for motivated
+individuals.  Finally, whilst it might turn out to be useful in contexts
+of collective study (schools, unversities, etc.), Glean was primarily
+designed for self-directed study.
+
+Let's try to define Glean by what it is not:
+@itemize
+@item
+Glean does not provide you with ``courses'', ``lessons'' or any other
+in-depth guidance.  We've got @emph{simple} introductions, and links to
+extra materials, but other than that — go do your own reading you lazy
+sod!
+
+@item
+Glean is not a study panacaea: if you're looking for ``learn foo in
+fixnum days'' you'll be disappointed.  I believe most acquired skills
+are patently @emph{not} like bicycling: you will lose the skills unless
+you regularly keep practising.  Tough luck.
+@end itemize
+
+On the bright side, Glean…
+@itemize
+@item
+…does not require you to sign up to a service;
+
+@item
+…does not require you to give any freedom and privacy (information
+leakage is considered a bug — but sometimes a hard problem.  If you
+think you can do better, contribute!);
+
+@item
+…will not lock you in to it (at minimum by being entirely open to study
+itself).
+@end itemize
+
+So, with that out of the way, what characterizes it?
+
+@itemize
+@item
+It is not tied to a specific problem domain: its @emph{discipline}
+Domain Specific Language aims to be broad enough to allow you to design
+exercises for a wide set of areas of study.
+
+@item
+It will guide you through disciplines, from incompetence to mastery, and
+will keep you at that level as time goes by.
+
+@item
+It provides a flexible framework: user interface, discipline stores and
+data storage can be made to work how you need it, by separating those
+parts into @emph{clients} (@pxref{The Client}), @emph{libraries}
+(@pxref{The Library}) and @emph{stores} (@pxref{The Lounge}).  But don't
+worry: if you just want to get on and use it, then it will work
+transparently and out of the box for you too.
+@end itemize
 
 @c *********************************************************************
-@node Installation
-@chapter Installation
+@section Using This Manual
+
+This manual is most emphatically meant to be read in the order in which
+it is presented.  Do not get distracted by the wealth of references and
+links to different concepts and other parts of the manual: those are
+merely there should you wish to find out more about that particular
+topic @emph{at that instant}.
+
+Having said this, by all means, skip sections of the manual that do not
+seem relevant to your use case.
+
+@c *********************************************************************
+@node Installation & First Use
+@chapter Installation & First Use
 
 Glean is available for download from its website at
-@url{http://glean.somewhere/}.  This section describes the software
-requirements of Glean, as well as how to install it and get ready
-to use it.
+@url{http://glean.somewhere/}.  In this section you'll find the
+prerequisites of Glean, as well as instructions for installing it.
 
 The build procedure for Glean is the same as for other GNU software, and
-is not covered here.  Please see the files @file{README} and
+is not covered here in detail.  Please see the files @file{README} and
 @file{INSTALL} in the Glean source tree for additional details.
 
 @menu
 * Requirements::                Software needed to build and run Glean.
-* Setting Up Shop::
+* Setting Up Shop::             Installing, firing up & finding your way.
 @end menu
 
 @node Requirements
 @section Requirements
 
 Glean depends on the following packages:
-
 @itemize
 @item @url{http://gnu.org/software/guile/, GNU Guile}, version 2.0.5 or later;
 @item @url{http://gnupg.org/, GNU libgcrypt}
 @end itemize
 
-In addition, if you want to run the standard Glean web client (UI)
-then you'll need to install Artanis.  A version comes bundled with
-Glean, and it can be installed by simply copying it to the usual
-Guile site directory. See below for getting the web client up and
-running.
+For now we provide an experimental ``library" user interface (UI) called
+the @code{repl-client}.  It is best used from within @code{Emacs},
+through @code{geiser}, but can also be used from a normal Guile REPL.
+
+We also have an experimental, boostrap based web client, which builds on
+the @code{Artanis} web framework for Guile.  If you want to use this
+you'll have to install Artanis manually first.
 
 @c *********************************************************************
 @node Setting Up Shop
 @section Setting Up Shop
 
-Stuff about Artanis, and setting up the web client?
+@subsection Installation
+
+Once you've got your prerequisites covered, installation should be a
+doddle:
+@itemize
+@item
+Download the source code, and unpack.
+@item
+@code{cd} into the source code directory.
+@item
+Run @command{configure && make && sudo make install}.
+@end itemize
+
+If you run into problems regarding libgcrypt then you may to specify its
+location using configure's @code{--with-libgcrypt-prefix} argument.
+
+@subsection Running Glean
+
+After installing Glean you should be able to fire it up.  At present
+starting Glean involves starting its three parts (@pxref{The
+Client}, @pxref{The Lounge}, @pxref{The Library}):
+@itemize
+@item
+Run @command{glean lounge}
+@item
+Run @command{glean library}
+@item
+Load the glean @code{REPL client} module in Guile, by using a REPL
+(Geiser or Guile) and executing @command{,m (glean client components
+repl-client-core)}.
+@item
+In the REPL, execute @command{(help)} to get started.
+@end itemize
+
+@subsection Glean's Configuration & Runtime Files
+Glean's program files are installed in the usual directories on your
+system.
+
+Once Glean has been run for the first time it will also commandeer the
+@code{.glean} subdirectory of your home directory
+(i.e. @file{~/.glean/}).
+
+Within this directory you will find:
+@itemize
+@item
+a log subdirectory containing log files (to the extent that they exist);
+@item
+a run subdirectory containing socket files when the Glean Lounge or
+Library server are running;
+@item
+a subdirectory for each of the servers. Each such subdirectory will
+contain:
+@itemize
+@item
+one meta configuration file for that server
+(e.g. @file{~/.glean/clients/client.conf})
+@item
+a subdirectory for each component part of the relevant server (e.g. one
+subdirectory for each client component in @file{~/.glean/clients/}).
+@end itemize
+@end itemize
 
 
 @c *********************************************************************
-@node Programming Interface
-@chapter Programming Interface
+@node Overview
+@chapter Overview
 
-Glean provides several Scheme programming interfaces (APIs) to
-(build tutorials and subject areas?) …
+@menu
+* Disciplines::                 The mortar of knowledge.
+* Exercises::                   The bricks of knowledge.
+* Problems::                    The stuff of knowledge.
+* Opportunities::               The right place and time.
+@end menu
+
+
+@c *********************************************************************
+@node Disciplines
+@section Disciplines
+
+@cindex disciplines
+In Glean you never study discrete courses, chapters or exercises.
+Instead you merely specify an area of interest, and Glean will guide you
+through that area how it sees fit (@pxref{Opportunities}).
+
+We call such areas of interest @dfn{disciplines}.  A discipline glues
+exercises (@pxref{Exercises}), reference materials and tutorials into a
+cohesive whole.  A discipline could be as small as ``The Alphabet'', or
+as big as ``Physics''.
+
+But disciplines do not merely provide a heading under which we find
+content.  Disciplines are designed recursively: we can define further
+disciplines in terms of already existing disciplines and add new content
+as necessary.  As a result it is possible to ``compose'' disciplines
+into larger wholes.
+
+@c In this section we will only discuss disciplines from the perspective of
+@c the Glean user.  For information on creating new disciplines, see the
+@c hacking manual.
+
+@c @menu
+@c * An Example Discipline::       Learning by seeing.
+@c * Discipline Metadata::         Information about disciplines.
+@c @end menu 
+
+
+@c *********************************************************************
+@node Exercises
+@section Exercises
+
+@cindex exercises
+Disciplines eventually bottom out.  When this happens we find
+@dfn{exercises}: problems on distinct themes grouped as separate units.
+
+In the day to day use of Glean a user solves problems.  Under the
+surface these problems are grouped as an exercise — even though to you
+as the user it may look like you're being asked many different
+questions, from Glean's perspective you may only be working on one or
+two exercises.
+
+The purpose of exercises is to provide you with variety when practising
+a specific problem domain (e.g. the multiplication of the digits of 1 to
+10), whilst providing Glean with a way to measure your progress in this
+particular problem domain.
+
+Think of it this way: when you're solving a specific problem, you're not
+making progress against that problem; you're making progress against
+@emph{the problem domain represented by that problem}. That problem
+domain is represented by an @dfn{exercise}.
+
+
+@c *********************************************************************
+@node Problems
+@section Problems
+
+@cindex problems
+Exercises consist of @dfn{problems} to be worked out by you.
+
+Problems will make use of a rich vocabulary so that we can describe a
+great variety of problem types.
+
+For now Glean supports:
+@itemize
+@item
+open-ended challenges;
+@item
+multiple-choice challenges;
+@item
+information only challenges (you will not have to solve these
+challenges.  As the name suggests, they simply provide information).
+@end itemize
+
+
+@c *********************************************************************
+@node Opportunities
+@section Opportunities
+
+@cindex opportunities
+Glean guides you through disciplines that you have expressed an interest
+in. In Glean parlance, this guiding happens by virtue of
+@dfn{opportunities}: Glean will consider all your currently active
+disciplines and select an opportune exercise (@pxref{Exercises}).
+
+``How does Glean select an exercise out of the many exercises that are
+available?'', I hear you ask!  Glean aims to make use of an algorithm
+assigning weights to different exercises.  After this Glean simply picks
+the heaviest exercise as the one to be engaged with next.
+
+As of now Glean's weighing algorithm only takes your ``score'' against
+the different disciplines into account.  This means that you will always
+be faced with a problem from the currently lowest scoring Exercise.
+
+As a high priority we aim to implement at least the following
+considerations:
+@itemize
+@item
+Spaced repetition: exercises need to be spaced out over time so that the
+knowledge required to solve them can shift from short to long term
+memory.
+@item
+Dependency resolution: a discipline may require you to have reached a
+certain proficiency before allowing you to engage with it.  To achieve
+this we must be able to block certain exercises and force others.
+@item
+User priority: you may be interested in learning about many different
+subjects, but perhaps you have an exam coming up in the very near
+future.  Hence you need to focus on one discipline for the next few
+days.  Glean should allow you to specify this without having to disable
+all other disciplines.
+@item
+Saturation: you may have reached mastery in some of your active
+disciplines, or subparts of those disciplines.  Alternatively, you may
+have reached a ``depth'' in a given discipline beyond which it currently
+makes no sense for you to proceed.  In both cases Glean should switch
+over to @emph{maintenance mode}: you will be asked to solve just enough
+problems for your current level of the relevant discipline so you don't
+lose knowledge, but you also do not advance any further.
+@end itemize
+
+@c *********************************************************************
+@node The Client
+@chapter The Client
+
+@cindex client
+The @dfn{client} part of Glean exposes user interfaces.  At present the
+default user interface is ``client-repl'': it provides a
+commandline-like interface built on top of a Guile prompt.
+
+For now the best way to use it is to fire up a Glean REPL and to load
+the user interface module:
+
+@example
+scheme@@(guile-user)> ,use (glean client components repl-client-core)
+@end example
+
+You can also launch the client from a terminal:
+
+@example
+glean client @var{options}
+@end example
+
+If no options are specified, glean will load the default client
+component, repl-client.  At present this will simply load the component
+and spawn a Guile server that you can connect to.
+
+If you have installed ``Artanis'', and you want to try the experimental
+web client, you can specify that Glean should use this component instead
+by issuing the command as follows:
+
+@example
+glean client -c web-client
+@end example
+
+The web client will by default spawn a web server at
+@code{http://localhost:3000}.
+
+@var{options} can be one of the usual suspects (@code{--help},
+@code{--usage}, @code{version}) or one of the following:
+
+@table @code
+
+@item --client=@var{client-id}
+@itemx -i @var{client-id}
+Start a Glean client using @var{client-id}.
+
+The @var{client-id} specifies the component you would like to use.
+Glean searches available components at startup in its core module
+subdirectories and in the Glean user directory in the @code{clients}
+subdirectory (e.g. @file{~/.glean/clients}).
+
+Core currently provides two client components: repl-client and
+web-client (the web client is currently highly experimental and requires
+you to manually install @code{Artanis} first).
+
+@c FIXME: Explain the search method and naming pattern (i.e. drop
+@c ext/core.scm). Explain how to create components.
+
+@item --listen
+Start the client in listening mode.
+
+Start a Glean client, but provide a server to connect to from
+Guile.  This enables interactive development and is normally only used
+when hacking Glean.
+
+@end table
+
+@c @menu
+@c * Entry 1::                     Description
+@c @end menu
+
+
+@c *********************************************************************
+@node The Lounge
+@chapter The Lounge
+
+@cindex lounge
+The @dfn{lounge} provides all functionality related to user profile
+management: account creation, maintenance and persistent storage;
+discipline selection (@pxref{Disciplines}); exercise selection
+(@pxref{Opportunities}); etc.
+
+Lounge servers listen at a socket in Glean's user directory after
+startup.
+
+To launch the lounge:
+
+@example
+glean lounge @var{options}
+@end example
+
+@var{options} can be one of the usual suspects (@code{--help},
+@code{--usage}, @code{version}) or one of the following:
+
+@table @code
+
+@item --listen
+Start the lounge in listening mode.
+
+Start a Glean lounge, but provide a server to connect to from Guile.
+This enables interactive development and is normally only used when
+hacking Glean.
+
+@end table
+
+@c FIXME: explain about data persistence at present (inefficient model,
+@c data directory), will be component.
+
+@c @menu
+@c * Entry 1::                     Description
+@c @end menu
+
+@c *********************************************************************
+@node The Library
+@chapter The Library
+
+@cindex library
+The @dfn{library} provides all functionality related to discipline
+management: it manages the repository of disciplines as physical files
+on the hard drive; exposes a ``store'' which can be accessed via the
+library's API (or, more typically, by a client) and supplies the actual
+problems (@pxref{Problems}, @pxref{Exercises}) to be resolved by the
+user.
+
+Library servers listen at a socket in Glean's user directory after
+startup.
+
+To fire up the library:
+
+@example
+glean library @var{options}
+@end example
+
+@var{options} can be one of the usual suspects (@code{--help},
+@code{--usage}, @code{version}) or one of the following:
+
+@table @code
+
+@item --listen
+Start the library in listening mode.
+
+Start a Glean library, but provide a server to connect to from Guile.
+This enables interactive development and is normally only used when
+hacking Glean.
+
+@end table
+
+@c FIXME: add stuff about the --install, --remove options once they have
+@c matured. Add information useful to content creators (lint tools etc.)
+@c once available.
+
+@c @menu
+@c * Entry 1::                     Description
+@c @end menu
 
 
 @c *********************************************************************
 @node Contributing
 @chapter Contributing
 
-This project is a cooperative effort, and we need your help to make it
-grow!  Please get in touch with us on @email{glean@@somewhere.org}
-and @code{#glean} on the somewhere? IRC network.  We welcome ideas,
-bug reports, patches, and anything that may be helpful to the project.
+Glean is an experiment in truly self-directed study.  This experiment is
+ongoing and open to your participation!  Get in touch with the project
+on @email{glean@@somewhere.org}and @code{#glean} on the Freenode IRC
+network.  The project welcomes ideas, bug reports, patches, or
+feedback.
 
 Please see the HACKING file that comes with the Glean source code
 for practical details about contributions.
@@ -135,7 +545,17 @@ for practical details about contributions.
 @node Acknowledgments
 @chapter Acknowledgments
 
-Glean is based...
+Glean does what it does in large part by standing on the shoulders of
+giants.  Other learning tools served as a foil for developing concepts
+in use in Glean: Anki, Mnemosyne, Org-Drill, and many more.
+
+The practical implementation of Glean is the product of my ongoing
+engagement with the practices of functional programming, and RESTful
+interfaces.
+
+Finally, in many ways, the developement of Glean has been guided by the
+question of ``What would Guix do?'', or even, can I pinch a Guix file
+as a starting point?
 
 @c *********************************************************************
 @node GNU Free Documentation License
@@ -148,9 +568,9 @@ Glean is based...
 @unnumbered Concept Index
 @printindex cp
 
-@node Function Index
-@unnumbered Function Index
-@printindex fn
+@c @node Function Index
+@c @unnumbered Function Index
+@c @printindex fn
 
 @bye
 
