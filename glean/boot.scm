@@ -90,9 +90,14 @@ or client) you can run that command followed by the `--help' option."))
   (define (client? id) (or (string=? id "client") (string=? id "cln")))
   (define (lounge? id) (or (string=? id "lounge") (string=? id "lng")))
   (define (library? id) (or (string=? id "library") (string=? id "lib")))
-  ;; Central initial configuration
-  (setlocale LC_ALL "")                 ; sets the locale to the system locale
-  (ensure-user-dirs %log-dir% %socket-dir%)
+  (catch 'system-error                  ; Install the locale
+    (lambda _
+      (setlocale LC_ALL ""))
+    (lambda args
+      (format #t (_ "failed to install locale: ~a~%")
+              (strerror (system-error-errno args)))))
+  (textdomain %gettext-domain%)         ; Setup gettext
+  (ensure-user-dirs %log-dir% %socket-dir%) ; Create user dirs.
 
   ;; FIXME: despite the use of #:autoload in the module definition, the use of
   ;; client-, lounge-, and library-boot cause the entire module dependency of

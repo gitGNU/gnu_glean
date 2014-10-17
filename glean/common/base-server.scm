@@ -49,15 +49,10 @@
 ;;; $server-dispatcher), where $server-dispatcher is the procedure actually
 ;;; implemented by the server itself.
 
-(define %gettext-domain "glean")
-
-(define _ (cut gettext <> %gettext-domain))
-(define N_ (cut ngettext <> <> <> %gettext-domain))
-
-(define warning "Encountered an existing socket.
+(define warning (_ "Encountered an existing socket.
 Another instance of this Glean server might be running!
 
-Continue? (y/n)")
+Continue? (y/n)"))
 
 (define (the-server socket-file server-dispatcher)
   "Initiates a server loop, with the server listening at SOCKET-FILE and its

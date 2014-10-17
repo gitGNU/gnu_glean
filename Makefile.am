@@ -94,7 +94,7 @@ AM_SCM_LOG_FLAGS = --no-auto-compile -L "$(top_srcdir)"
 SH_LOG_COMPILER = $(top_builddir)/test-env $(SHELL)
 AM_SH_LOG_FLAGS = -x -e
 
-EXTRA_DIST =					     	\
+EXTRA_DIST =  					     	\
   artanis						\
   www							\
   HACKING						\
@@ -107,6 +107,7 @@ EXTRA_DIST =					     	\
   tests/quickcheck-defs.scm			  	\
   tests/test-utils.scm				 	\
   tests/test-suite.scm				 	\
+  build-aux/config.rpath				\
   $(TESTS)
 
 CLEANFILES =						\
@@ -137,7 +138,7 @@ SUFFIXES = .go
 glean_install_go_files = install-nobase_nodist_guilemoduleDATA
 $(glean_install_go_files): install-nobase_dist_guilemoduleDATA
 
-#SUBDIRS = po
+SUBDIRS = po
 
 include doc.am
 

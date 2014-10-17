@@ -1,0 +1,24 @@
+# List of source files which contain translatable strings.
+# Copyright (C) 2014 Alex Sassmannshausen
+
+# common
+glean/boot.scm
+glean/common/base-server.scm
+glean/common/components.scm
+glean/common/config-utils.scm
+glean/common/utils.scm
+
+# client
+glean/client/boot.scm
+glean/client/components/repl-client-core.scm
+
+# library
+glean/library/boot.scm
+glean/library/core-templates.scm
+glean/library/library-store.scm
+glean/library/server.scm
+
+# lounge
+glean/lounge/boot.scm
+glean/lounge/lounge-filesystem.scm
+glean/lounge/server.scm

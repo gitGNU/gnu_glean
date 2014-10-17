@@ -20,6 +20,9 @@ dnl Verify glean exists in the directory
 dnl that autoconf was pointetd to.
 AC_CONFIG_SRCDIR([scripts/glean.in])
 
+AM_GNU_GETTEXT([external])
+AM_GNU_GETTEXT_VERSION([0.19.2])
+
 dnl Where to find guile modules.
 guilemoduledir="${datarootdir}/guile/site/2.0"
 AC_SUBST([guilemoduledir])
@@ -72,7 +75,7 @@ AC_CACHE_SAVE
 dnl Make these files from their *.ins
 dnl From Manual: "Automake uses these
 dnl to determine which files to create"
-AC_CONFIG_FILES([
+AC_CONFIG_FILES([ po/Makefile.in
   Makefile
   glean/config.scm
 ])

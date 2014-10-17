@@ -52,9 +52,7 @@
     (let ((config '(("prefix"         . "@prefix@")
                     ("datarootdir"    . "@datarootdir@")
                     ("guilemoduledir" . "@guilemoduledir@")
-                    ;; gettext stuff - not used, yet.
-                    ;;("localedir"      . "@localedir@"))
-                  ))
+                    ("localedir"      . "@localedir@")))
           (var-ref-regexp (make-regexp "\\$\\{([a-z]+)\\}")))
       (define (expand-var-ref match)
         (lookup (match:substring match 1)))
@@ -75,8 +73,7 @@
   (define (run-glean-main)
     (let ((glean-main (module-ref (resolve-interface '(glean boot))
                                   'boot)))
-      ;; gettext stuff - not used, yet.
-      ;;(bindtextdomain "glean" (config-lookup "localedir"))
+      (bindtextdomain "glean" (config-lookup "localedir"))
       (glean-main (command-line))))
 
   (maybe-augment-load-paths!)

@@ -1,0 +1,25 @@
+# Makefile variables for PO directory in any package using GNU gettext.
+
+DOMAIN = glean
+
+subdir = po
+top_builddir = ..
+
+XGETTEXT_OPTIONS = --language=Scheme --from-code=UTF-8 \
+                   --keyword=_ --keyword=N_:1,2
+
+COPYRIGHT_HOLDER = Alex Sassmannshausen
+
+PACKAGE_GNU = no
+
+MSGID_BUGS_ADDRESS = alex.sassmannshausen@gmail.com
+
+EXTRA_LOCALE_CATEGORIES =
+
+USE_MSGCTXT = no
+
+MSGMERGE_OPTIONS =
+
+PO_DEPENDS_ON_POT = yes
+
+DIST_DEPENDS_ON_UPDATE_PO = yes

@@ -39,10 +39,14 @@
   #:use-module (rnrs records inspection)
   #:use-module (rnrs records syntactic)
   #:use-module (rnrs records procedural)
+  #:use-module (srfi srfi-26)
   #:export (
+            _
+            N_
             seq
             flatten
             mkdir-p
+            memoize
             clog
             llog
             gmsg
@@ -51,10 +55,15 @@
             display=>
             emit-usage
             emit-version
+            %gettext-domain%
             ))
 
 
 ;;;;; General Functionality
+
+(define %gettext-domain% "glean")
+(define _ (cut gettext <> %gettext-domain%))
+(define N_ (cut ngettext <> <> <> %gettext-domain%))
 
 (define (display=> x)
   "Emit X to stdout, and return it afterwards.  X can be any Scheme object,
@@ -102,6 +111,19 @@ pair or improper list."
                  (loop tail path)
                  (apply throw args))))))
       (() #t))))
+
+(define (memoize proc)
+  "Return a memoizing version of PROC."
+  (let ((cache (make-hash-table)))
+    (lambda args
+      (let ((results (hash-ref cache args)))
+        (if results
+            (apply values results)
+            (let ((results (call-with-values (lambda ()
+                                               (apply proc args))
+                             list)))
+              (hash-set! cache args results)
+              (apply values results)))))))
 
 
 ;;;;; Logging Functions

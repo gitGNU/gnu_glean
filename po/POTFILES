@@ -1,0 +1,14 @@
+     ../glean/boot.scm \
+     ../glean/common/base-server.scm \
+     ../glean/common/components.scm \
+     ../glean/common/config-utils.scm \
+     ../glean/common/utils.scm \
+     ../glean/client/boot.scm \
+     ../glean/client/components/repl-client-core.scm \
+     ../glean/library/boot.scm \
+     ../glean/library/core-templates.scm \
+     ../glean/library/library-store.scm \
+     ../glean/library/server.scm \
+     ../glean/lounge/boot.scm \
+     ../glean/lounge/lounge-filesystem.scm \
+     ../glean/lounge/server.scm
