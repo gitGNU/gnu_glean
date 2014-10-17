@@ -4,12 +4,14 @@
 dnl Require at least autoconf version...
 AC_PREREQ([2.69])
 
-dnl      Official Name Version    Bug-address                   Tarball Name     Website
+dnl      Official Name, Version, Bug-address, Tarball Name, Website
 AC_INIT([Glean],
         [0.1],
         [alex.sassmannshausen@gmail.com],
         [glean],
         [www.glean.org])
+AC_CONFIG_AUX_DIR([build-aux])
+
 dnl Initiate automake, display all warnings
 AM_INIT_AUTOMAKE([-Wall])
 dnl Not sure about this one.

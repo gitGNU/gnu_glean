@@ -1,9 +1,19 @@
 -*- mode: org -*-
 
-Glean is a ...
+The goals of the Glean project are:
 
-It provides [[http://www.gnu.org/software/guile/][Guile]] Scheme APIs, including a high-level embedded
-domain-specific ...
+  - to provide a highly personal learning environment;
+
+  - that is nonetheless capable to build on collaborative content
+    contributions;
+
+  - which provides the means to build hierarchies of content;
+
+  - that is deployable in different ways (web service, self-hosted, single
+    executable…);
+
+  - to provide as core content modules that allow users to grok their GNU
+    system and the core GNU components.
 
 * Requirements
 
@@ -11,7 +21,6 @@ Glean currently depends on the following packages:
 
   - [[http://gnu.org/software/guile/][GNU Guile 2.0.x]], version 2.0.5 or later
   - [[http://gnupg.org/][GNU libgcrypt]]
-  - Artanis, which you will need to install in your Guile site directory.
 
 * Installation
 
@@ -19,20 +28,17 @@ See the manual for the installation instructions, either by running
 
   info -f doc/glean.info "(glean) Installation"
 
-or by checking the [[http://www.gnu.org/software/guix/manual/guix.html#Installation][web copy of the manual]].
-
 For information on installation from a Git checkout, please see the ‘HACKING’
 file.
 
 * Contact
 
-Glean is hosted at http://glean.org.
+To contact the main developer, write to alex.sassmannshausen@gmail.com.
 
 * Related software
 
-  - [[http://nixos.org][Nix, Nixpkgs, and NixOS]], functional package manager and associated
-    software distribution, are the inspiration of Guix
-  - Guide on the Side
-  - Mnemosyne
-  - Wink
-  - Org-Drill
+  - Guide on the Side: a web based tutorial system.
+  - Mnemosyne: a flash-card program using the Leitner box system.
+  - Anki (?)
+  - Wink (?)
+  - Org-Drill: an flash-card system built on top of Emacs’ org-mode.

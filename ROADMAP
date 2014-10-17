@@ -1,72 +1,86 @@
 -*- mode: org; coding: utf-8; -*-
 
-#+TITLE: Tentative GNU Guix Road Map
+#+TITLE: Tentative Glean Road Map
 
-Copyright © 2012, 2013, 2014 Ludovic Courtès <ludo@gnu.org>
+Copyright (C) 2014 Alex Sassmannshausen <alex.sassmannshausen@gmail.com>
 
   Copying and distribution of this file, with or without modification,
   are permitted in any medium without royalty provided the copyright
   notice and this notice are preserved.
 
-The goals of the GNU Guix project are two-fold:
+The goals of the Glean project are:
 
-  - to build a purely functional package manager, based on Nix and
-    Guile;
+  - to provide a highly personal learning environment;
 
-  - to use it to build a practical 100% free software distribution of
-    GNU/Linux and possibly other GNU variants, with a focus on the
-    promotion and tight integration of GNU components–the GNU system.
+  - that is nonetheless capable to build on collaborative content
+    contributions;
+
+  - which provides the means to build hierarchies of content;
+
+  - that is deployable in different ways (web service, self-hosted, single
+    executable…);
+
+  - to provide as core content modules that allow users to grok their GNU
+    system and the core GNU components.
 
 This document lists milestones toward these goals.
 
-The timeline below was written at the end of Dec. 2012.  An updated and more
-detailed list of the remaining milestones was posted at
-https://lists.gnu.org/archive/html/guix-devel/2013-12/msg00120.html .
+This document was first written just before the 0.1 release.  I intend to
+maintain it as the authoritative roadmap for the project at irregular
+intervals.
 
-The actual timeline was of course slightly different than initially
-envisioned, and so was the feature set–things like cross-compilation support
-and the MIPS64 port were not planned back then.  See the news section at
-http://www.gnu.org/software/guix/ and ‘NEWS’ for the release history.
+* Glean 0.1: Nov. 2014
 
-* GNU Guix 0.1: Jan. 2013 (was: Dec. 2012)
+** basic discipline definition capabilities
 
-** basic package management facilities
+   - data-structures
+     + recursion
+     + hierarchies
+     + meta-data
+   - rudimentary DSL
+   - ’installation’, ‘de-installation‘ routines
 
-Including install, upgrade, remove, roll-back, and search.
+** basic Git, Glean and ICAO-spelling alphabet disciplines
 
-** self-contained user-land distribution
+   - examples and proofs of concept
 
-  - GNU/Linux-only, i686 and x86_64; optionally mipsel64
-  - ~100 non-X11 packages
+** independent ’library‘, ‘lounge‘ & ‘client‘ servers
 
-** maybe integrated Nix code
+   - communication via Unix domain sockets
+   - total runtime & namespace independence
 
-* GNU Guix 0.2: Feb./Mar. 2013
+** full compliance with GNU coding standards and conventions
 
-** improved package management features
+   - i18n/l10n
+   - accessibility
+   - commit & change logs
+   - build system
+   - terminology
+   - licensing
 
-  - user-environment hooks
-  - sophisticated handling of collisions when building a union (package
-    priorities, etc.)
+* Glean 0.2
 
-** [[file:TODO::*add%20guix-pull][guix-pull tool]] to quickly update Guix and GNU for normal users
-** support for fetching pre-built binaries
+** improved discipline DSL
 
-  - this is known as the "binary-cache substituter" in Nix parlance
+   - discipline update paths & lounge synchronization
+   - distinct namespacing for complex disciplines and ‘aux‘ files
 
-** auto-update facility available for GNU packages
+** introduce ‘glean maker‘ command line tools
 
-** more packages
+   - lint and review tools
+   - infrastructure tools (code-generators etc.)
+   - installation, de-installation wrappers
+   - independent distribution of Disciplines
 
-  - Xorg
-  - Emacs
+** improved challenge selection algorithms
 
-* GNU Guix 0.9: June 2013
+   - respect more properties:
+     + require
+     + recommend
+     + freeze
+   - spaced repetition (Leitner system?)
 
-** bootable GNU/Linux-Libre distro
-** high-level OS configuration descriptive EDSL, à la NixOS
+** Emacs UI
 
-* GNU Guix 1.0: September 2013 (GNU anniversary release)
-
-** bootable GNU/Linux-Libre distro with non-GUI installer
-** usable for a range of hacker-style uses
+   - communicate via Geiser
+   - use ‘monadic-min‘ library
