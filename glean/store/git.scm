@@ -1,120 +1,226 @@
-;;; glean --- learning the world using Guile.         -*- coding: utf-8 -*-
+;; git.scm --- the git discipline    -*- coding: utf-8 -*-
+;;
+;; Copyright (C) 2014 Alex Sassmannshausen <alex.sassmannshausen@gmail.com>
+;;
+;; Author: Alex Sassmannshausen <alex.sassmannshausen@gmail.com>
+;; Created: 01 January 2014
+;;
+;; This file is part of Glean.
+;;
+;; Glean is free software; you can redistribute it and/or modify it under the
+;; terms of the GNU General Public License as published by the Free Software
+;; Foundation; either version 3 of the License, or (at your option) any later
+;; version.
+;;
+;; Glean is distributed in the hope that it will be useful, but WITHOUT ANY
+;; WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+;; FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more
+;; details.
+;;
+;; You should have received a copy of the GNU General Public License along
+;; with glean; if not, contact:
+;;
+;; Free Software Foundation           Voice:  +1-617-542-5942
+;; 59 Temple Place - Suite 330        Fax:    +1-617-542-2652
+;; Boston, MA  02111-1307,  USA       gnu@gnu.org
+
+;;; Commentary:
+;;
+;; This module defines the git discipline.
+;;
+;;; Code:
 
 (define-module (glean store git)
   #:use-module (glean library core-templates)
   #:export (git-module))
 
+
+;;;; Exercises
+;;;
+;;; For clarity we define the exercises at the top level.  As a result we
+;;; define the discipline itself at the very bottom of the file.
+
+(define tutorial
+  (tutorial 'tutorial
+            #:name "Git Tutorial"
+            #:synopsis "A short introduction to Git."
+            #:chapters
+            `()
+            #:completion
+            (chapter "A short introduction to Git."
+                     '("This discipline will allow you to practise the basic
+usage of some common Git commands: ‘git init’, ’git status’, ‘git add’, ’git
+commit‘, ‘git diff‘, ‘git log‘, ’git branch’ and ‘git checkout‘."))))
+
 (define git-init
   (set 'git-init
         #:contents
         (list
-         (problem (q "What git command would you use to initiate a new project in the current directory?")
+         (problem (q "What Git command would you use to initiate a new project
+in the current directory?")
                   (s "git init"))
-         (problem (q "In order to create a new git repository, would you:")
-                  (s "type git init")
-                  (o "type git test")
-                  (o "type git init")
-                  (o "type rm -r *")))))
+         (problem (q "In order to create a new Git repository, would you type:")
+                  (s "git init")
+                  (o "git start")
+                  (o "git init")
+                  (o "git create"))
+         (problem (q "What is the first command to issue when you want to
+start using Git for a project?")
+                  (s "git init"))
+         (problem (q "What would the command ‘git init‘ do?")
+                  (s "Create a new git project in the current directory.")
+                  (o "Create a new git project in the current directory.")
+                  (o "Check the status of the current git project.")
+                  (o "Show an overview of recent actions.")))))
+
 (define git-status
   (set 'git-status
         #:contents
         (list
-         (problem (q "How would you get a quick overview of the current status of the project in your current directory?")
-                  (s "git status")))))
+         (problem (q "In Git, how would you get an overview of the current
+branch of the project in your working directory?")
+                  (s "git status"))
+         (problem (q "To get a quick overview of the Git project in your
+current directory, you would type ‘git …‘")
+                  (s "status")
+                  (o "init")
+                  (o "status")
+                  (o "log"))
+         (problem (q "What command will list files that have been changed
+since your last commit?")
+                  (s "git status"))
+         (problem (q "’git status’ will show you:")
+                  (s "an overview of your current git branch.")
+                  (o "an overview of your current git branch.")
+                  (o "information about your latest commit.")
+                  (o "a detailed set of change logs since for the files you
+have changed since your last commit..")))))
+
 (define git-add
   (set 'git-add
         #:contents
         (list
-         (problem (q "How would you add all newly created files & folders to the index of your project in the current directory?")
-                  (s "git add ."))
-         (problem (q "How would you add foo to the index of your project in the current directory?")
+         (problem (q "How would you add ’foo’ to the index of your project in
+the current directory?")
                   (s "git add foo"))
-         (problem (q "How would you add foo/bar to index of your project in the current directory?")
-                  (s "git add foo/bar")))))
-;; Many revision control systems provide an add command that tells the system to start
-;; tracking changes to a new file. Git’s add command does something simpler and more
-;; powerful: git add is used both for new and newly modified files, and in both cases it
-;; takes a snapshot of the given files and stages that content in the index, ready for
-;; inclusion in the next commit.
+         (problem (q "You have just changed a file, and you want to make sure
+that the file, as it exists now is commited with your next comit. What command
+would you use?")
+                  (s "git add")
+                  (o "git diff")
+                  (o "git commit")
+                  (o "git add"))
+         (problem (q "How would you add ‘foo/bar‘ to index of your project in
+the current directory?")
+                  (s "git add foo/bar"))
+         (problem (q "To start tracking ‘foo’ with Git, what command would you use?")
+                  (s "git add")
+                  (o "git add")
+                  (o "git init")
+                  (o "git track")))))
 
 (define git-commit
   (set 'git-commit
         #:contents
         (list
-         (problem (q "How would you commit your changes to the git
-repository for your current project?")
+         (problem (q "‘true’ or ’false’: you can commit the changes you have
+added to your Git index using the ’git commit‘ command.")
+                  (s "true")
+                  (o "true")
+                  (o "false"))
+         (problem (q "After having used the ‘git add‘ command, what command
+would you use commit your changes to the repository?")
                   (s "git commit"))
-         (problem (q "What is a git shortcut for both adding your
-recent changes to the index and committing the index to the
-repository? (this will not add any newly createy files in the project
-structure to the repository!)")
-                  (s "git commit -a")))))
-
-;; A note on commit messages: Though not required, it's a good idea to
-;; begin the commit message with a single short (less than 50 character)
-;; line summarizing the change, followed by a blank line and then a more
-;; thorough description. Tools that turn commits into email, for example,
-;; use the first line on the Subject: lin and the rest of the commit in
-;; the body.
+         (problem (q "Will ’git commit‘ commit changes to files in your
+repository even if those changes have not been added to the Git index?")
+                  (s "no")
+                  (o "yes")
+                  (o "no"))
+         (problem (q "Making changes to your files permanent in your
+repository is done by using…")
+                  (s "git commit")
+                  (s "git commit")
+                  (s "git add")
+                  (s "git log")))))
 
 (define git-diff
   (set 'git-diff
         #:contents
         (list
-         (problem (q "How can you tell what you are ready to commit to
-your git repository in the current directory?")
-                  (s "git diff --cached"))
-         (problem (q "How can you tell what changes have been made
-since your last commit/add?")
+         (problem (q "Which of the following commands would you use to obtain
+a detailed report on your work since your last commit?")
+                  (s "git diff")
+                  (o "git show")
+                  (o "git status")
+                  (o "git diff"))
+         (problem (q "How can you tell what changes have been made since your
+last commit?")
+                  (s "git diff"))
+         (problem (q "What command would you use to view a diff-style report
+on the files tracked in your project?")
                   (s "git diff")))))
 
 (define git-log
   (set 'git-log
         #:contents
         (list
-         (problem (q "How can you view the history of your changes?")
+         (problem (q "‘true‘ or ‘false‘: ‘git log’ allows you to see a snapshot of
+the current status of your project")
+                  (s "false")
+                  (o "true")
+                  (o "false"))
+         (problem (q "How can you view the history of your commits?")
                   (s "git log"))
-         (problem (q "How can you vie the complete diffs at each step
-of your history?")
-                  (s "git log -p"))
-         (problem (q "How can you get an overview of the changes of
-each step?")
-                  (s "git log --stat --summary")))))
+         (problem (q "The command ’git log’ allows you to…")
+                  (s "view your commit history.")
+                  (o "view your commit history.")
+                  (o "write a commit message.")
+                  (o "view your last commit.")))))
 
 (define git-branch
   (set 'git-branch
         #:contents
         (list
-         (problem (q "How would you branch your current project to
-create a new branch named 'experimental'?")
+         (problem (q "To list the currently existing branches in your project,
+you would type:")
+                  (s "git branch")
+                  (o "git status")
+                  (o "git checkpoints")
+                  (o "git branch"))
+         (problem (q "How would you create a new branch named ‘experimental‘
+in your current project?")
                   (s "git branch experimental"))
          (problem (q "How can you tell what different branches exist as
 part of the same project?")
                   (s "git branch"))
-         (problem (q "How would you switch to the 'experimental' branch
-in your project?")
-                  (s "git checkout experimental"))
-         (problem (q "How would you merge the changes
-made in 'experimental' branch back into main branch?")
-                  (s "git merge experimental"))
-         (problem (q "How would you delete the 'experimental' branch of
-your project, ensuring that its changes have been committed to the
-'master' branch?")
-                  (s "git branch -d experimental"))
-         (problem (q "How would you delete the 'crazy-idea' branch of
-your project, without adding it to the 'master' branch?")
-                  (s "git branch -D crazy-idea")))))
+         (problem (q "To create a branch called ’feature’, you'd type…")
+                  (s "git branch feature")
+                  (o "git target feature")
+                  (o "git branch feature")
+                  (o "git checkout feature")))))
 
 (define git-checkout
   (set 'git-checkout
         #:contents
         (list
+         (problem (q "Switching to the ‘feature’ branch is done by typing…")
+                  (s "git checkout feature")
+                  (o "git check feature")
+                  (o "git checkout feature")
+                  (o "git branch feature"))
          (problem (q "How would you switch to an existing branch
-called 'experimental'?")
+called ‘experimental’?")
                   (s "git checkout experimental"))
-         (problem (q "How would you create a new branch, 'feature',
-and switch to it?")
-                  (s "git checkout -b feature")))))
+         (problem (q "Can you switch to a different branch whilst you have
+uncommited, but tracked, files in your repository?")
+                  (s "no")
+                  (o "yes")
+                  (o "no")))))
+
+;;;; Discipline
+;;;
+;;; We have defined the exercises above, so we now we can simply define the
+;;; discipline's meta data
 
 (define git-module
   (module
@@ -124,10 +230,14 @@ and switch to it?")
     #:keywords '("programming" "version-control" "project-management"
                 "source-code")
     #:synopsis "Learn to use git to manage your projects."
-    #:description "Git is a free and open source distributed version control system designed to handle everything from small to very large projects with speed and efficiency."
+    #:description "Git is a free and open source distributed version control
+system designed to handle everything from small to very large projects with
+speed and efficiency."
     #:creator "Alex Sassmannshausen"
     #:attribution (list (media #:text "Git man pages & website"))
-    #:contents `(,git-init ,git-status ,git-add ,git-commit ,git-diff
-                           ,git-log ,git-branch ,git-checkout)
+    #:contents `(,tutorial ,git-init ,git-status ,git-add ,git-commit
+                           ,git-diff ,git-log ,git-branch ,git-checkout)
     #:logo "http://www.git-scm.com/images/logo@2x.png"
     #:resources (list (media #:urls '("http://www.git-scm.com")))))
+
+;;; git.scm ends here
