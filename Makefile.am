@@ -108,6 +108,7 @@ EXTRA_DIST =  					     	\
   tests/test-utils.scm				 	\
   tests/test-suite.scm				 	\
   build-aux/config.rpath				\
+  install-aux/glean.scm					\
   $(TESTS)
 
 CLEANFILES =						\
