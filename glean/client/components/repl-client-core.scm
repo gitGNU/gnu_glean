@@ -181,6 +181,22 @@ user.  Then provide suggested next steps."
              (suggest help-next help-available)))
           (else (nothing-handler rsp)))))
 
+(define (deactivate . ids)
+  "Deactivate the disciplines identified by IDS for the currently logged in
+user.  Then provide suggested next steps."
+  (let* ((hashes (map (lambda (id)
+                        (assv-ref mods-assoc id))
+                      ids))
+         (rsp    (add-active-modules hashes id 'negate)))
+    (cond ((stateful? rsp)
+           (begin
+             (set! id (state rsp))
+             (set! data (result rsp))
+             (guide `("~a deactivated."
+                      ,(string-join (map symbol->string ids) ", ")))
+             (suggest help-next help-available)))
+          (else (nothing-handler rsp)))))
+
 (define (next)
   "Provide the next challenge for the currently logged in user.  Then provide
 suggested next steps."
@@ -226,6 +242,22 @@ user.  Then provide suggested next steps."
               (guide `("Incorrect: the solution is:\n  '~a'\n\n" ,solution)))
              (_ (error "SOLVE -- unexpected result" (result rsp))))
            (next))
+          (else (nothing-handler rsp)))))
+
+(define* (account)
+  "Retrieve details about your account.  Then provide suggested next steps."
+  (let ((rsp (view-player id)))
+    (cond ((stateful? rsp)
+           (set! id (state rsp))
+           (set! data (result rsp))
+           (match (result rsp)
+             ((username lng-port lib-port active-modules)
+              (guide `("Username: ~a\n" ,username)
+                     `("Lounge Port: ~a\n" ,lng-port)
+                     `("Library Port: ~a\n" ,lib-port)
+                     `("Active Modules: ~a\n\n" ,active-modules)))
+             (_ (guide `("Unexpected Response: ~a\n\n" ,(result rsp)))))
+           (suggest help-next help-detail help-available))
           (else (nothing-handler rsp)))))
 
 
