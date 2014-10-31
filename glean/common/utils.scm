@@ -230,7 +230,7 @@ For more information about these matters, see the file named COPYING.
           package-name version package-name))
 
 (define* (emit-usage command synopsis description options messages
-                     #:key subcommand)
+                     #:key (subcommand ""))
   "Return a usage message formatted in the following fashion:
 Usage: COMMAND [--LONG-OPT | -SHORT-OPT]
                ...
@@ -238,7 +238,9 @@ Usage: COMMAND [--LONG-OPT | -SHORT-OPT]
 "
   (define (name-char-pair option)
     (match option
-      ((name ('single-char char) value)
+      ((name ('single-char char) ('value #t))
+       `(,(symbol->string name) ,(make-string 1 char) . ,#t))
+      ((name ('single-char char) ('value #f))
        (cons (symbol->string name) (make-string 1 char)))
       ((name . _)
        (list (symbol->string name)))
@@ -246,6 +248,7 @@ Usage: COMMAND [--LONG-OPT | -SHORT-OPT]
   (define (info-line pair)
     (match pair
       ((name . ()) (string-append "[--" name "]"))
+      ((name char . #t) (string-append "[--" name "=VALUE | -" char " VALUE]"))
       ((name . char) (string-append "[--" name " | -" char "]"))
       (_ (error "USAGE -- Should be impossible:" pair))))
   (define (spaces length)
