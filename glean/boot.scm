@@ -34,6 +34,7 @@
   #:autoload (glean library boot) (library-boot)
   #:autoload (glean lounge boot) (lounge-boot)
   #:autoload (glean librarian boot) (librarian-boot)
+  #:autoload (glean maker boot) (maker-boot)
   #:use-module (glean config)
   #:use-module (glean common config-utils)
   #:use-module (glean common utils)
@@ -51,7 +52,7 @@
   (string-append
    "Run " %glean-package-name% ", the extensible auto-didact's swiss army \
 knife.
-You normally want to specifiy 'lounge', 'library' or 'client' as the
+You normally want to specifiy 'lounge', 'library', 'client' or 'maker' as the
 first option to launch one of its components.
 "))
 
@@ -62,8 +63,8 @@ it as the first option.
 This command allows you to get some general information, or to launch one of
 the subcommands.
 
-To obtain further information about one of the subcommands (lounge, library
-or client) you can run that command followed by the `--help' option."))
+To obtain further information about one of the subcommands (lounge, library,
+client or maker) you can run that command followed by the `--help' option."))
 
 (define *option-grammar*
   '((help       (single-char #\h) (value #f))
@@ -84,16 +85,17 @@ or client) you can run that command followed by the `--help' option."))
 
 (define (boot args)
   "Set the locale, parse the options, drop into the main loop."
-  (define (client? id) (or (string=? id "client") (string=? id "cln")))
-  (define (lounge? id) (or (string=? id "lounge") (string=? id "lng")))
+  (define (client? id)  (or (string=? id "client") (string=? id "cln")))
+  (define (lounge? id)  (or (string=? id "lounge") (string=? id "lng")))
   (define (library? id) (or (string=? id "library") (string=? id "lib")))
   (define (librarian? id) (or (string=? id "librarian") (string=? id "lbr")))
+  (define (maker? id)   (or (string=? id "maker") (string=? id "mkr")))
   (catch 'system-error                  ; Install the locale
     (lambda _
       (setlocale LC_ALL ""))
     (lambda args
-      (format #t (_ "failed to install locale: ~a~%")
-              (strerror (system-error-errno args)))))
+      (warning (_ "failed to install locale: ~a~%")
+               (strerror (system-error-errno args)))))
   (textdomain %gettext-domain%)         ; Setup gettext
   (ensure-user-dirs %log-dir% %socket-dir%) ; Create user dirs.
 
@@ -104,14 +106,21 @@ or client) you can run that command followed by the `--help' option."))
   ;;
   ;; Perhaps this is due to the use of match instead of if statements?
   (match args
-    ((path (? client?) . rest)                   ; launch client
-     (client-boot (cons path rest)))
-    ((path (? lounge?) . rest)                   ; launch lounge
-     (lounge-boot (cons path rest)))
-    ((path (? library?) . rest)                  ; launch library
-     (library-boot (cons path rest)))
+    ((path (? client?) . rest)          ; launch client
+     (parameterize ((program-name "client"))
+       (client-boot (cons path rest))))
+    ((path (? lounge?) . rest)          ; launch lounge
+     (parameterize ((program-name "lounge"))
+       (lounge-boot (cons path rest))))
+    ((path (? library?) . rest)         ; launch library
+     (parameterize ((program-name "library"))
+       (library-boot (cons path rest))))
     ((path (? librarian?) . rest)
-     (librarian-boot (cons path rest)))
+     (parameterize ((program-name "librarian"))
+       (librarian-boot (cons path rest))))
+    ((path (? maker?) . rest)           ; launch maker
+     (parameterize ((program-name "maker"))
+       (maker-boot (cons path rest))))
     (_
      (let ((opts (getopt-long args *option-grammar*)))
        (cond ((option-ref opts 'version #f)      ; --version
