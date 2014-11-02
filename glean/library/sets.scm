@@ -509,6 +509,10 @@ seem to be the case with at least one of the media records in this
 record set.
 
 Please check your media records' audio field(s).")
+          ((eqv? current 'err-set-lineage)
+           "The lineage contents of a set record should consist of a pair,
+after the '#:lineage' keyword.  Please consult the manual for details on its
+content.")
           (else (string-append "Unknown error: "
                                (object->string current)))))
   
@@ -533,34 +537,36 @@ Please check your media records' audio field(s).")
 (define* (module id #:key (contents '()) (name "") (version "")
            (synopsis "") (description "") (keywords '())
            (creator "") (attribution '()) (resources '()) (logo "")
-           (properties '()))
+           (properties '()) (lineage '(inherit . #f)))
   "High level convenenience interface to make-set, for the
 creation of modules."
   (make-set id contents name version synopsis description keywords
             creator attribution resources logo
             (if (assoc 'module properties)
                 properties
-                (acons 'module #t properties))))
+                (acons 'module #t properties))
+            lineage))
 
 (define* (set id #:key (contents '()) (name "") (version "")
               (synopsis "") (description "") (keywords '())
               (creator "") (attribution '()) (resources '())
-              (logo "") (properties '()))
+              (logo "") (properties '()) (lineage '(inherit . #f)))
   "High level convenenience interface to make-set, for the
 creation of sets."
   (make-set id contents name version synopsis description keywords
-            creator attribution resources logo properties))
+            creator attribution resources logo properties lineage))
 
 (define* (tutorial id #:key (contents '()) (name "") (version "")
                    (synopsis "") (description "") (keywords '())
                    (creator "") (attribution '()) (resources '())
-                   (logo "") (properties '()))
+                   (logo "") (properties '()) (lineage '(inherit . #f)))
   "High level convenenience interface to make-set, for the
 creation of tutorials."
   (make-set id contents name version synopsis description keywords
             creator attribution resources logo
             (if (assoc 'tutorial properties)
                 properties
-                (acons 'tutorial #t properties))))
+                (acons 'tutorial #t properties))
+            lineage))
 
 ;;; sets.scm ends here
