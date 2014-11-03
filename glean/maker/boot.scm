@@ -38,6 +38,7 @@
   #:use-module (glean common config-utils)
   #:use-module (glean common utils)
   #:use-module (glean maker source)
+  #:use-module (glean maker engrave)
   #:use-module (ice-9 getopt-long)
   #:export (maker-boot))
 
@@ -63,7 +64,7 @@ Maker is used primarily by content authors and maintainers.
     (usage      (single-char #\u) (value #f))
     (version    (single-char #\v) (value #f))
     (cast       (single-char #\c) (value #f))
-    (engrave    (single-char #\e) (value #f))
+    (engrave    (single-char #\e) (value optional))
     (source     (single-char #\s) (value #t))))
 
 (define *messages*
@@ -100,9 +101,11 @@ Maker is used primarily by content authors and maintainers.
                (option-ref opts 'help #f))
            (help))
           (else                               ; launch maker
-           (if (option-ref opts 'source #f)
-               (source (option-ref opts 'source #f)
-                       (option-ref opts 'force #f))
-               (help))))))
+           (cond ((option-ref opts 'source #f)
+                  (source (option-ref opts 'source #f)
+                          (option-ref opts 'force #f)))
+                 ((option-ref opts 'engrave #f)
+                  (engrave (option-ref opts 'engrave #f)))
+                 (else (help)))))))
 
 ;;; boot.scm ends here

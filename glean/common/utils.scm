@@ -48,6 +48,7 @@
             emit-usage
             emit-version
             %gettext-domain%
+            advice
             warning
             report-error
             leave
