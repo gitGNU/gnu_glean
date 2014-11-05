@@ -140,7 +140,7 @@ seem relevant to your use case.
 @chapter Installation & First Use
 
 Glean is available for download from its website at
-@url{http://glean.somewhere/}.  In this section you'll find the
+@url{http://www.glean.eu/}.  In this section you'll find the
 prerequisites of Glean, as well as instructions for installing it.
 
 The build procedure for Glean is the same as for other GNU software, and
@@ -533,9 +533,8 @@ hacking Glean.
 
 Glean is an experiment in truly self-directed study.  This experiment is
 ongoing and open to your participation!  Get in touch with the project
-on @email{glean@@somewhere.org}and @code{#glean} on the Freenode IRC
-network.  The project welcomes ideas, bug reports, patches, or
-feedback.
+on @email{alex.sassmannshausen@@gmail.com}.  The project welcomes ideas,
+bug reports, patches, or feedback.
 
 Please see the HACKING file that comes with the Glean source code
 for practical details about contributions.

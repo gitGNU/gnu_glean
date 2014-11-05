@@ -39,7 +39,7 @@
     (version "0.1")
     (source (origin
               (method url-fetch)
-              (uri (string-append "http://www.glean.org/glean-" version
+              (uri (string-append "http://www.glean.eu/glean-" version
                                   ".tar.gz"))
               (sha256
                (base32
@@ -55,7 +55,7 @@
     (synopsis "Glean test package.")
     (description
      "Glean is a...")
-    (home-page "http://glean.org")
+    (home-page "http://glean.eu")
     (license gpl3+)))
 
 ;;; glean.scm ends here

@@ -9,7 +9,7 @@ AC_INIT([Glean],
         [0.1],
         [alex.sassmannshausen@gmail.com],
         [glean],
-        [www.glean.org])
+        [www.glean.eu])
 AC_CONFIG_AUX_DIR([build-aux])
 
 dnl Initiate automake, display all warnings
