@@ -49,11 +49,6 @@
 ;;; $server-dispatcher), where $server-dispatcher is the procedure actually
 ;;; implemented by the server itself.
 
-(define warning (_ "Encountered an existing socket.
-Another instance of this Glean server might be running!
-
-Continue? (y/n)"))
-
 (define (the-server socket-file server-dispatcher)
   "Initiates a server loop, with the server listening at SOCKET-FILE and its
 actions defined by SERVER-DISPATCHER.
@@ -61,12 +56,15 @@ actions defined by SERVER-DISPATCHER.
 SERVER-DISPATCHER should be a procedure of one argument. That argument will
 normally be a request but has not been parsed yet."
   ;; Check for existing socket files
-  (if (file-exists? socket-file)
-      (begin (format #t "~a\n" warning)
-             (match (read)
-               ((or 'y 'Y 'yes 'Yes 'YES)
-                (delete-file socket-file))
-               (_ (exit 1)))))
+  (when (file-exists? socket-file)
+    (warning (_ "Encountered an existing socket.
+Another instance of this Glean server might be running!
+
+Continue? (y/n)"))
+    (match (read)
+      ((or 'y 'Y 'yes 'Yes 'YES)
+       (delete-file socket-file))
+      (_ (exit 1))))
   ;; Create socket
   (let ((socket    (socket PF_UNIX SOCK_STREAM 0))
         (sock-addr (make-socket-address AF_UNIX socket-file)))

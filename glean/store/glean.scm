@@ -37,7 +37,7 @@
 
 ;;;; Tutorial
 
-(define tutorial
+(define tutorial-part
   (tutorial 'tutorial
             #:name "Glean Tutorial"
             #:version "0.1"
@@ -62,64 +62,64 @@ to Glean.")
 ;;; For clarity we define the exercises at the top level.  As a result we
 ;;; define the discipline itself at the very bottom of the file.
 
-(define library
+(define library-part
   (set 'library
-        #:contents
-        (list
-         (problem (q "Where are disciplines stored?")
-                  (s "the library")
-                  (o "the lounge")
-                  (o "the client")
-                  (o "the library"))
-         (problem (q "‘true’ or ’false’: the library tracks the user's
+       #:contents
+       (list
+        (problem (q "Where are disciplines stored?")
+                 (s "the library")
+                 (o "the lounge")
+                 (o "the client")
+                 (o "the library"))
+        (problem (q "‘true’ or ’false’: the library tracks the user's
 progress in their chosen disciplines.")
-                  (s "false")
-                  (o "true")
-                  (o "false"))
-         (problem (q "What is the name for glean's subject areas?")
-                  (s "disciplines")
-                  (o "disciplines")
-                  (o "subjects")
-                  (o "modules"))
-         (problem (q "‘true’ or ’false’: a discipline can consist of
+                 (s "false")
+                 (o "true")
+                 (o "false"))
+        (problem (q "What is the name for glean's subject areas?")
+                 (s "disciplines")
+                 (o "disciplines")
+                 (o "subjects")
+                 (o "modules"))
+        (problem (q "‘true’ or ’false’: a discipline can consist of
 references to further disciplines.")
-                  (s "true")
-                  (o "true")
-                  (o "false")))))
+                 (s "true")
+                 (o "true")
+                 (o "false")))))
 
-(define lounge
+(define lounge-part
   (set 'lounge
-        #:contents
-        (list
-         (problem (q "User data is managed by…")
-                  (s "the lounge")
-                  (o "the client")
-                  (o "the library")
-                  (o "the lounge"))
-         (problem (q "‘true‘ or ‘false‘: the lounge tracks progress of a user
+       #:contents
+       (list
+        (problem (q "User data is managed by…")
+                 (s "the lounge")
+                 (o "the client")
+                 (o "the library")
+                 (o "the lounge"))
+        (problem (q "‘true‘ or ‘false‘: the lounge tracks progress of a user
 across their selected disciplines.")
-                  (s "true")
-                  (o "false")
-                  (o "true"))
-         (problem (q "What part of glean is responsible for profile management?")
-                  (s "the lounge")))))
+                 (s "true")
+                 (o "false")
+                 (o "true"))
+        (problem (q "What part of glean is responsible for profile management?")
+                 (s "the lounge")))))
 
-(define client
+(define client-part
   (set 'client
-        #:contents
-        (list
-         (problem (q "User interfaces are provided by…")
-                  (s "the client")
-                  (o "the lounge")
-                  (o "the client")
-                  (o "the library"))
-         (problem (q "The user is provided with challenges by…")
-                  (s "the client"))
-         (problem (q "‘true‘ or ‘false': the client communicates with both,
+       #:contents
+       (list
+        (problem (q "User interfaces are provided by…")
+                 (s "the client")
+                 (o "the lounge")
+                 (o "the client")
+                 (o "the library"))
+        (problem (q "The user is provided with challenges by…")
+                 (s "the client"))
+        (problem (q "‘true‘ or ‘false': the client communicates with both,
 the library and the lounge.")
-                  (s "true")
-                  (o "false")
-                  (o "true")))))
+                 (s "true")
+                 (o "false")
+                 (o "true")))))
 
 
 ;;;; Discipline
@@ -129,15 +129,15 @@ the library and the lounge.")
 
 (define glean-discipline
   (module
-   'glean
-   #:name "An introduction to Glean"
-   #:version "0.1"
-   #:keywords '("education" "code" "glean")
-   #:synopsis "Learn how Glean fits together."
-   #:description "The aim of this discipline is to introduce you to the
+    'glean
+    #:name "An introduction to Glean"
+    #:version "0.1"
+    #:keywords '("education" "code" "glean")
+    #:synopsis "Learn how Glean fits together."
+    #:description "The aim of this discipline is to introduce you to the
 different moving parts and concepts in Glean, to make it easier to contribute,
 hack, or use it."
-   #:creator "Alex Sassmannshausen"
-   #:contents `(,tutorial ,library ,lounge ,client)))
+    #:creator "Alex Sassmannshausen"
+    #:contents `(,tutorial-part ,library-part ,lounge-part ,client-part)))
 
 ;;; glean.scm ends here
