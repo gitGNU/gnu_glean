@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: glean 0.1\n"
 "Report-Msgid-Bugs-To: alex.sassmannshausen@gmail.com\n"
-"POT-Creation-Date: 2014-10-17 15:53+0200\n"
+"POT-Creation-Date: 2014-11-05 15:48+0100\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -22,7 +22,7 @@ msgstr ""
 msgid "failed to install locale: ~a~%"
 msgstr ""
 
-#: glean/common/base-server.scm:52
+#: glean/common/base-server.scm:60
 msgid ""
 "Encountered an existing socket.\n"
 "Another instance of this Glean server might be running!\n"
