@@ -29,6 +29,9 @@ config.sub
 configure
 doc/.dirstamp
 doc/glean.info
+doc/glean.html
+_cache
+tests
 doc/stamp-vti
 doc/version.texi
 install-sh
