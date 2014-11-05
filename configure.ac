@@ -27,6 +27,10 @@ dnl Where to find guile modules.
 guilemoduledir="${datarootdir}/guile/site/2.0"
 AC_SUBST([guilemoduledir])
 
+dnl We require the pkg.m4 set of macros from pkg-config.
+dnl Make sure it's available.
+m4_pattern_forbid([PKG_CHECK_MODULES])
+
 dnl Test installed Guile version.
 PKG_CHECK_MODULES([GUILE], [guile-2.0 >= 2.0.5])
 AC_PATH_PROG([GUILE], [guile])
