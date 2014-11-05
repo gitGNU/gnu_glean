@@ -94,7 +94,7 @@
 (define %glean-dir%       (getenv "CORE_ROOT"))
 
 ;;;; Library Configuration
-(define %ignore-keywords% '("test"))
+(define %ignore-keywords% '())
 (define %library-root-dir% (string-append %user-dir%   "/library"))
 (define %library-dir%      (string-append %library-root-dir% "/store"))
 (define %bak-library-dir%  (string-append %library-root-dir% "/store-bak"))
