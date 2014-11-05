@@ -15,6 +15,17 @@ The goals of the Glean project are:
   - to provide as core content modules that allow users to grok their GNU
     system and the core GNU components.
 
+* Warning
+
+Glean 0.1 must very much be considered a technology preview, and highly
+experimental. Whilst it is possible to use this version to create basic
+disciplines, and to practise these, I make no guarantees for backward
+compatibility of either your progress or the discipline format for version
+0.2.
+
+To avoid disappointment I would recommend waiting for 0.2.  If you feel
+adventurous — please go ahead and contact me if you run into trouble!
+
 * Requirements
 
 Glean currently depends on the following packages:

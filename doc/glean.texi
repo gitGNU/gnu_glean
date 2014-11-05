@@ -77,14 +77,13 @@ Let's try to define Glean by what it is not:
 @item
 Glean does not provide you with ``courses'', ``lessons'' or any other
 in-depth guidance.  We've got @emph{simple} introductions, and links to
-extra materials, but other than that — go do your own reading you lazy
-sod!
+extra materials, but other than that — I'm afraid you're on your own!
 
 @item
 Glean is not a study panacaea: if you're looking for ``learn foo in
 fixnum days'' you'll be disappointed.  I believe most acquired skills
 are patently @emph{not} like bicycling: you will lose the skills unless
-you regularly keep practising.  Tough luck.
+you regularly keep practising.
 @end itemize
 
 On the bright side, Glean…
