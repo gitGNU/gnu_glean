@@ -348,16 +348,17 @@ simply return result."
       (if (regexp-match? match)
           (let* ((ext-name (basename (match:prefix match)))
                  (mod-name (module-name path base-dir)))
-            (format #t "Found component ~s: [add]\n" ext-name)
+            (insist (_ "Found component ~s: [add]~%") ext-name)
             (vhash-cons ext-name
                         (cons mod-name
                               (delay (module-ref (resolve-interface mod-name)
                                                  'component)))
                         result))
-          (begin (format #t "Found non-component ~s: [skip]\n" (basename path))
-                 result))))
+          (begin
+            (insist (_ "Found non-component ~s: [skip]~%") (basename path))
+            result))))
 
-  (format #t "Scanning for ~s...\n" pattern)
+  (insist (_ "Scanning for ~s...~%") pattern)
   (component-walk scan-dir ext-so-far leaf))
 
 (define (component-walk scan-dir ext-so-far leaf-proc)
@@ -369,8 +370,8 @@ leaf procedure in a file-system-fold starting at SCAN-DIR."
                     (lambda (path stat result) result) ; up
                     (const #f)                         ; skip
                     (lambda (path stat errno result)   ; error
-                      (error (format #t "cannot access `~a': ~a~%"
-                                     path (strerror errno)))
+                      (caution (_ "cannot access `~a': ~a.~%")
+                               path (strerror errno))
                       result)
                     ext-so-far
                     scan-dir))

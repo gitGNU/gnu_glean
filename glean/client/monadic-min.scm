@@ -81,24 +81,14 @@
                                 (string-append message base)))
                 (cadr state)))))
       (stateful (echos-message rs) (list (echos-token   rs)
-                                           (echos-lounge  rs)
-                                           (echos-library rs))))))
+                                         (echos-lounge  rs)
+                                         (echos-library rs))))))
 
 
 ;;;;; Client Monad
 ;;;
 ;;; A monad specialised for client stateful tasks. It provides state
 ;;; management, exception handling and logging.
-;;;
-;;; As in other places in Glean, logging is… ugly, at best.
-
-(define (logger st8ful)
-  (if (relevant? 'debug)
-      (let ((port (if (string? %log-file%)
-                      (open-file %log-file% "a")
-                      (current-output-port))))
-        (format port "~a.\n" (object->string st8ful))
-        (if (string? %log-file%) (close-output-port port)))))
 
 (define (state-lesser state)
   "Return token and the lounge connection from STATE."
@@ -116,7 +106,8 @@ applying MVALUE to MPROC."
   (lambda (st8)
     ;; Generate new-state-pair by passing state into mvalue.
     (let ((new-stateful (mvalue st8)))
-      (logger new-stateful)         ; Use logging mechanism
+      ;; Should be replaced to use mlogger.
+      (inform "Stateful: ~s.~%" new-stateful) ; Use logging mechanism
       ;; Return the state-pair resulting from applying the new
       ;; state to mproc seeded with the new result.
       (if (nothing? new-stateful)

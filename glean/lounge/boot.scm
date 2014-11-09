@@ -61,14 +61,18 @@ with user accounts and profiles.
   '((help       (single-char #\h) (value #f))
     (usage      (single-char #\u) (value #f))
     (version    (single-char #\v) (value #f))
-    (listen                       (value #f))))
+    (listen                       (value #f))
+    (log        (single-char #\l) (value optional))
+    (verbose    (single-char #\V) (value #f))))
 
 (define *messages*
   `("Show this help message and exit."
     "Show this help message and exit."
     ,(string-append "Show the version of " %glean-package-name%
                     " you are using and exit.")
-    "Run the lounge and listen at Guile's standard port."))
+    "Run the lounge and listen at Guile's standard port."
+    "Start logging & log to VALUE or the default log file."
+    "Start logging & log to stdout."))
 
 
 ;;;; Logic
@@ -91,11 +95,16 @@ with user accounts and profiles.
                        *messages*
                        #:subcommand "lounge | lng"))
           (else                               ; launch Lounge
-           (if (option-ref opts 'listen #f)   ; and listen?
-               ((@ (system repl server) spawn-server)))
+           (when (option-ref opts 'listen #f)   ; and listen?
+             ((@ (system repl server) spawn-server)))
            (ensure-user-dirs %lounge-dir%)
            (ensure-config %lounge-config%)
            (load-config %lounge.conf%)
-           (lounge-server %lounge-port%)))))
+           
+           (parameterize ((log-level %log-level%)
+                          (logger (make-logger (option-ref opts 'verbose #f)
+                                               (option-ref opts 'log #f)
+                                               %log-file%)))
+             (lounge-server %lounge-port%))))))
 
 ;;; boot.scm ends here

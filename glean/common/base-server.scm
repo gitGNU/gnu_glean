@@ -75,8 +75,6 @@ Continue? (y/n)"))
     (sigaction SIGTERM (lambda args (clean-exit socket socket-file args)))
     (sigaction SIGINT  (lambda args (clean-exit socket socket-file args)))
     ;; Start Server
-    (gmsg #:priority 5
-          "server-loop: listening for clients as pid:" (getpid))
     (server-loop socket server-dispatcher)
     ;; Close Server
     (clean-exit socket socket-file)))
@@ -87,17 +85,17 @@ Continue? (y/n)"))
 (define (clean-exit socket socket-file . args)
   "Remove sockets, if they exist, and exit."
   (close socket)
-  (if (file-exists? socket-file)
-      (begin (format #t "Deleting existing socket...")
-             (delete-file socket-file)
-             (format #t "[DONE]\n")))
+  (when (file-exists? socket-file)
+    (inform "Deleting existing socket...")
+    (delete-file socket-file)
+    (inform "[DONE]~%"))
   (exit))
 
 (define (server-loop socket server-dispatcher)
   "Process requests arriving at SOCKET until a quit request is received.
 Requests are processed by passing them to SERVER-DISPATCHER."
   (define (loop iter)
-    (gmsg #:priority 5 "loop: now processing request number " iter)
+    (inform "Request ~a.~%" iter)
 
     (if (match (accept socket)
           ((client . info)
@@ -106,22 +104,22 @@ Requests are processed by passing them to SERVER-DISPATCHER."
               (gwrite (record->list* #f) client)
               (close client))
              ((? request? rq)
-              (format #t "Request: ~a\n" (rq-content rq))
+              (inform "Content: ~a.~%" (rq-content rq))
               (match (server-dispatcher rq)
                 ((? record? resp)
-                 (format #t "Response: ~a\n" resp)
+                 (inform "Response: ~a.~%" resp)
                  (gwrite (record->list* (response resp)) client)
                  (close client)
                  ;; Return #f if quitq
                  (not (and (acks? resp) (quitq? (ack-orig resp)))))
-                (_ (error "SERVER-LOOP -- Unexpected dispatch response" _))))
+                (otherwise
+                 (error "SERVER-LOOP -- Unexpected dispatch response"
+                        otherwise))))
              (unknown (gwrite (record->list* (unks unknown)) client)
                       (close client)))))
-        (begin (gmsg #:priority 5 "loop: processed request number " iter)
-               (loop (1+ iter)))
-        (begin (gmsg #:priority 1 "Quit request: quitting.\n")
+        (loop (1+ iter))
+        (begin (inform "Quitting: quitq received.~%")
                #f)))
-
   (loop 1))
 
 ;;; base-server.scm ends here

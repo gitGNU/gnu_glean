@@ -125,13 +125,13 @@
 the server or #f if the communication fails."
   (guard (err ((eqv? err 'alive?) #f)
               (err
-               (begin (clog err)
+               (begin (exclaim "EXCHANGE: error:~%  ~s.~%" err)
                       (raise (list 'exchange err)))))
-         (let ((s (server socket-path)))
-           (gwrite (record->list* request) s)
-           (let ((result (list->record* (gread s))))
-             (close s)
-             result))))
+    (let ((s (server socket-path)))
+      (gwrite (record->list* request) s)
+      (let ((result (list->record* (gread s))))
+        (close s)
+        result))))
 
 (define (alive? socket-path)
   "Return #t if a Glean server exists at SOCKET-PATH, otherwise #f.
@@ -211,7 +211,9 @@ symbols plain symbols."
       (match (read port)
         ((? string? in) (decode-symbol in))
         (in in)))
-    (lambda (k . a) (clog "gread: Port closed prematurely: " k a) #f)))
+    (lambda (k . a)
+      (exclaim "GREAD: error:~%  port closed prematurely:~%  ~s~%  ~s.~%" k a)
+      #f)))
 
 (define (gwrite object port)
   "Return #t on success, #f on failure. write OBJECT to PORT, catching write
@@ -234,7 +236,9 @@ symbols plain symbols."
                (obj obj))
              port)
       #t)
-    (lambda (k . a) (clog "gwrite: Port closed prematurely: " k a) #f)))
+    (lambda (k . a)
+      (exclaim "GWRITE: error:~%  port closed prematurely:~%  ~s~%  ~s.~%" k a)
+      $f)))
 
 ;;;; Support Functions
 

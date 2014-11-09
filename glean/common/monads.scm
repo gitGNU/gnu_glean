@@ -43,6 +43,7 @@
 ;;; Code:
 
 (define-module (glean common monads)
+  #:use-module (glean common utils)
   #:use-module (ice-9 match)
   #:use-module (srfi srfi-1)
   #:use-module (srfi srfi-9)
@@ -383,12 +384,13 @@ patterns looked up against DICTIONARY-PROC."
   (lambda* (obj #:optional (level 1))
     "Print a meaningful log message derived from the context of the monadic
 stateful."
-    (if (> level 9) (format #t "\n-- Detailed Log --\n~a\n\n" obj))
+    (when (> level 9) (exclaim "MLOGGER: detailed log:%  ~s~%~%" obj))
     (if (predicate obj)
         (match (dictionary-proc obj level)
-          ((src msg val) (format #t "[~a]\t~a ~a.\n" src msg val)))
-        (format #t
-                "MLOGGER: obj does not conform to expected predicate.\n"))))
+          ((src msg val)
+           (inform "[~a]\t~a ~a.~%"  src msg val)))
+        (exclaim "MLOGGER: object does not conform to predicate:~%  ~s."
+                 obj))))
 
 
 ;;;; Monad Tests

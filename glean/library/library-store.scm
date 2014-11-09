@@ -158,20 +158,16 @@
 (define (spill shill)
   (let ((urgency (shill-urgency shill))
         (beans   (shill-beans   shill)))
-    (if (and beans (relevant? urgency))
+    (if (beans)
         (let ((msg    (if (boolean? beans)
                           (string-append "We have: "
-                                         (object->string (shill-value shill)))
+                                         (object->string
+                                          (shill-value shill)))
                           beans))
               (source (if (shill-source shill)
                           (shill-source shill)
-                          "NOT PROVIDED"))
-              (port   (if (string? %log-file%)
-                          (open-file %log-file% "a")
-                          (current-output-port))))
-          (format port "[~a]: ~a. Its source was '~a'.\n"
-                  urgency msg source)
-          (if (string? %log-file%) (close-output-port port))))))
+                          "NOT PROVIDED")))
+          (inform "[~a]: ~a. Its source was '~a'" urgency msg source)))))
 
 ;;;; Actual
 ;;; A specialised monad providing logging, exception (FIXME: and file
@@ -633,18 +629,18 @@ Should module not export any bindings, raise an error."
                          (if (plain-module? set)
                              set
                              (begin
-                               (format #t "~a: not a module, eliminating."
-                                       (cond ((set? set) (set-name set))
-                                             ((nothing? set) 'nothing)
-                                             (else set)))
+                               (caution "~a: not a module, eliminating.~%"
+                                        (cond ((set? set) (set-name set))
+                                              ((nothing? set) 'nothing)
+                                              (else set)))
                                #f)))
                        (module-map
                         (lambda (name value)
-                          (format #t "Loading ~a..." name)
+                          (inform "Loading ~a..." name)
                           (let ((maybe (resolve-set (variable-ref value))))
                             (if (set? maybe)
-                                (format #t "[success]\n")
-                                (format #t "[failure]\n"))
+                                (inform "[success]~%")
+                                (caution "[failure]~%"))
                             maybe))
                         mod-interface))))
       (error "SETS-FROM-MODULE -- module did not resolve:" module)))

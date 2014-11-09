@@ -61,14 +61,18 @@ exercises and disciplines for study.
   '((help       (single-char #\h) (value #f))
     (usage      (single-char #\u) (value #f))
     (version    (single-char #\v) (value #f))
-    (listen                       (value #f))))
+    (listen                       (value #f))
+    (log        (single-char #\l) (value optional))
+    (verbose    (single-char #\V) (value #f))))
 
 (define *messages*
   `("Show this help message and exit."
     "Show this help message and exit."
     ,(string-append "Show the version of " %glean-package-name%
                     " you are using and exit.")
-    "Run the library and listen at Guile's standard port."))
+    "Run the library and listen at Guile's standard port."
+    "Start logging & log to VALUE or the default log file."
+    "Start logging & log to stdout."))
 
 
 ;;;; Logic
@@ -91,12 +95,16 @@ exercises and disciplines for study.
                        *messages*
                        #:subcommand "library | lib"))
           (else                               ; launch Library
-           (if (option-ref opts 'listen #f)   ; and listen?
-               ((@ (system repl server) spawn-server)))
+           (when (option-ref opts 'listen #f)   ; and listen?
+             ((@ (system repl server) spawn-server)))
            (ensure-user-dirs %library-dir% %bak-library-dir%
                              %wip-library-dir%)
            (ensure-config %library-config%)
            (load-config %library.conf%)
-           (library-server %library-port%)))))
+           (parameterize ((log-level %log-level%)
+                          (logger (make-logger (option-ref opts 'verbose #f)
+                                               (option-ref opts 'log #f)
+                                               %log-file%)))
+             (library-server %library-port%))))))
 
 ;;; boot.scm ends here

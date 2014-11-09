@@ -47,11 +47,7 @@
             flatten
             mkdir-p
             memoize
-            clog
-            llog
-            gmsg
             rprinter
-            relevant?
             display=>
             emit-usage
             emit-version
@@ -61,6 +57,13 @@
             leave
             part-ways
             program-name
+            logger
+            log-level
+            make-logger
+            inform
+            caution
+            insist
+            exclaim
             ))
 
 
@@ -73,7 +76,7 @@
 (define (display=> x)
   "Emit X to stdout, and return it afterwards.  X can be any Scheme object,
 and will simply be printed as format's '~a' would interpret it."
-(format #t "~a\n" x) x)
+  (format #t "~a\n" x) x)
 
 (define (seq a b)
   "Return a list, counting upwards, from A to B (inclusive)."
@@ -132,21 +135,52 @@ pair or improper list."
 
 
 ;;;;; Logging Functions
-;;; Some more or less half-baked logging functions.
 
-(define (llog . args)
-  "Returns #undefined. Provide logic-warning log abstraction:
-a gmsg call with ARGS defaulting to #:priority 1."
-  (gmsg #:priority 1 args))
+(define (make-logger verbose log default-log-file)
+  "Return a logging procedure that, if VERBOSE is #t logs to stdout, if LOG is
+#t logs to a log file identified by DEFAULT-LOG-FILE.  If neither are #t, do
+not log."
+  (define (logger port)
+    (lambda (priority msg)
+      (when (relevant? priority #:level (log-level))
+        (if (string? port)
+            (let ((port (open-file port "a")))
+              (apply format port msg)
+              (close-port port))
+            (apply format port msg)))))
+  (cond (verbose                       (logger (current-output-port)))
+        ((and log default-log-file)    (logger default-log-file))
+        (else                          (const #f))))
 
-(define (clog . args)
-  "Returns #undefined. Provide communications-warning log abstraction:
-a gmsg call with ARGS defaulting to #:priority 3."
-  (gmsg #:priority 3 args))
+(define logger
+  ;; Identify default behaviour for logging purposes
+  ;; Defaults to a constant that simply returns #f.
+  (make-parameter (make-logger #f #f #f)))
+
+(define log-level
+  ;; Identify the default log-level.
+  (make-parameter 'debug))
+
+(define (inform . msg)
+  "Log a message that should only be useful in debug/dev context."
+  ((logger) 'inform msg))
+
+(define (insist . msg)
+  "Log a message that might be useful during normal operation."
+  ((logger) 'insist msg))
+
+(define (caution . msg)
+  "Log a message indicating an unexpected situation which is not critical."
+  ((logger) 'caution msg))
+
+(define (exclaim . msg)
+  "Log a high-priority message, usually just before throwing an error."
+  ((logger) 'exclaim msg))
 
 (define (rprinter record)
   "Returns #f if RECORD is not a record, #t otherwise. Recursively
-prints RECORD and its fields as a side-effect if #t."
+prints RECORD and its fields as a side-effect if #t. This is a debugging
+tool."
 
   (if (record? record)
       (let* ((rtd (record-rtd record))
@@ -180,40 +214,18 @@ prints RECORD and its fields as a side-effect if #t."
         (format port ":end:\n"))
       #f))
 
-(define* (gmsg #:key (priority 4) . args)
-  "Provide a simple debugging message system. Prints ARGS with Format
-if PRIORITY is lower than %DEBUG% set in config.scm."
-  (define (indent length)
-    (define (i l s)
-      (if (zero? l)
-          s
-          (i (1- l) (string-append " " s))))
-    
-    (if (zero? length)
-        ""
-        (i (1- length) " ")))
-  (define (gm args format-string)
-    (cond ((null? args) format-string)
-          (else (gm (cdr args) (string-append format-string " ~S")))))
-  (if (relevant? 'debug)
-      (let ((port (current-output-port)))
-        (format port "~a* Debug:" (indent (1- priority)))
-        (apply format port (gm args " ") args)
-        (newline port))))
-
-(define* (relevant? priority #:key (%log-level% 'debug))
+(define* (relevant? urgency #:key (level 'all))
   "Return #t if PRIORITY is higher than %LOG-LEVEL%. PRIORITY should be one of
-the symbols (in increasing order of importance) 'debug, 'inform, 'warning,
-'important or 'critical."
+the symbols (in increasing order of importance) 'all, 'inform, 'insist,
+'caution or 'exclaim."
   (define (weigh rating)
-    (cond ((eqv? rating 'critical)  0)
-          ((eqv? rating 'important) 1)
-          ((eqv? rating 'warning)   2)
-          ((eqv? rating 'inform)    3)
-          (else rating 4)))           ; 'debug
-  (let ((urgency (weigh priority))
-        (filter  (weigh %log-level%)))
-    (<= urgency filter)))
+    (match rating
+      ('exclaim   0)
+      ('caution   1)
+      ('insist    2)
+      ('inform    3)
+      (_          4)))
+  (<= (weigh urgency) (weigh level)))
 
 
 ;;;;; Package Procedures

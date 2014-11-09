@@ -63,16 +63,20 @@ specified in the main configuration file.
   '((help       (single-char #\h) (value #f))
     (usage      (single-char #\u) (value #f))
     (version    (single-char #\v) (value #f))
-    (client     (single-char #\c) (value optional))
-    (listen                       (value #f))))
+    (client     (single-char #\c) (value #t))
+    (listen                       (value #f))
+    (log        (single-char #\l) (value optional))
+    (verbose    (single-char #\V) (value #f))))
 
 (define *messages*
   `("Show this help message and exit."
     "Show this help message and exit."
     ,(string-append "Show the version of " %glean-package-name%
                     " you are using and exit.")
-    "Run the client specified as this option."
-    "Run the default client and listen at Guile's standard port."))
+    "Run the client specified by VALUE instead of the default."
+    "Listen at Guile's standard port after launching the client."
+    "Start logging & log to VALUE or the default log file."
+    "Start logging & log to stdout."))
 
 
 ;;;; Logic
@@ -102,11 +106,15 @@ actions requested."
            (ensure-user-dirs %client-dir%)
            (ensure-config    %client-config%)
            (load-config      %client.conf%)
-           ;; Simply apply the thunk returned by client.
-           ((get-client %glean-dir% %user-dir%
-                        (if (option-ref opts 'client #f)
-                            (option-ref opts 'client #f)
-                            %default-client%)))))))
+           (parameterize ((log-level %log-level%)
+                          (logger (make-logger (option-ref opts 'verbose #f)
+                                               (option-ref opts 'log #f)
+                                               %log-file%)))
+             ;; Simply apply the thunk returned by client.
+             ((get-client %glean-dir% %user-dir%
+                          (if (option-ref opts 'client #f)
+                              (option-ref opts 'client #f)
+                              %default-client%))))))))
 
 (define (get-client core-root extensions-root default)
   "Return the procedure defined by client that specified by DEFAULT after

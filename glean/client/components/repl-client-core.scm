@@ -302,7 +302,7 @@ user.  Then provide suggested next steps."
          (guide '("We got a negative response from the server.\n")
                 '("It is:\n"))
          (rprinter (nothing-context rsp)))
-        (else (inform rsp))))
+        (else (confess rsp))))
 
 (define (guide . output)
   "Use format to print each argument in OUTPUT to
@@ -311,9 +311,10 @@ Example: (guide `(\"hello ~a\" ,name))."
   (for-each (lambda (out) (apply format #t out))
             output))
 
-(define (inform rsp)
-  "Inform user of unexpected result in the form of RSP.\n
-Example: (inform rsp)."
+(define (confess rsp)
+  "Inform user of unexpected result in the form of RSP.
+
+Example: (confess rsp)."
   (guide `("I got an unexpected result: ~a.\n" ,rsp)
          `("Please report this issue to ~a.\n"
            ,%glean-bug-report-address%)))
