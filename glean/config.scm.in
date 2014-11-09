@@ -85,7 +85,7 @@
 
 ;;;; General configuration
 (define user-homedir      (getenv "HOME"))
-(define %log-level%       'critical)
+(define %log-level%       'inform)
 (define %user-dir%        (string-append user-homedir "/.glean"))
 (define %socket-dir%      (string-append %user-dir%    "/run"))
 (define %log-dir%         (string-append %user-dir%    "/log"))
@@ -123,10 +123,9 @@
 (define %libgcrypt% "@LIBGCRYPT@")
 
 (define log-setting
-  (make-setting "%log-level%" %log-level%
-                (string-append
-                 "Log verbosity: choose from 'critical, 'important,"
-                 " 'warning, 'inform or 'debug")))
+  (make-setting
+   "%log-level%" %log-level%
+   "Log verbosity: 'exclaim, 'caution, 'insist, 'inform or 'all."))
 
 
 ;;;; Specific Configurations
