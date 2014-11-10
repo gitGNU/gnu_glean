@@ -64,9 +64,6 @@
   #:use-module (srfi srfi-1)
   #:use-module (srfi srfi-9)
   #:export (
-            import-module
-            export-module
-            remove-module
             compile-library
             store-hash
 
@@ -128,70 +125,11 @@
                vlist))
   (format #t "~a\n*Catalogue*:\n~a\n*Catalogue End*
 *Reference*:\n~a\n*Reference End*\n"
-        lib
-        (string-join (vlist->list (comp-string (library-cat lib) #t))
-                     "\n")
-        (string-join (vlist->list (comp-string (library-ref lib)))
-                     "\n")))
-
-
-;;;;; Store Monad
-;;; A shill is a talkative value: it either grants logger premission to
-;;; interrogate its contents (value) or it provides a custom
-;;; informative message. Occasionally a programmer may not wish a shill
-;;; to “Spill the beans” — it won't if beans is #f.
-;;;
-;;; FIXME: intermediate monadic logging experiment. Will be phased out.
-(define-record-type <shill>
-  (mecha-shill value source urgency beans)
-  shill?
-  (value   shill-value)
-  (source  shill-source)
-  (urgency shill-urgency)
-  (beans   shill-beans))
-(define* (shill value #:optional (source #f)
-                (urgency 'debug) (beans #t))
-  "Return a <shill> with beans set to #t, source to #f, and urgency to
-'debug by default."
-  (mecha-shill value source urgency beans))
-
-(define (spill shill)
-  (let ((urgency (shill-urgency shill))
-        (beans   (shill-beans   shill)))
-    (if (beans)
-        (let ((msg    (if (boolean? beans)
-                          (string-append "We have: "
-                                         (object->string
-                                          (shill-value shill)))
-                          beans))
-              (source (if (shill-source shill)
-                          (shill-source shill)
-                          "NOT PROVIDED")))
-          (inform "[~a]: ~a. Its source was '~a'" urgency msg source)))))
-
-;;;; Actual
-;;; A specialised monad providing logging, exception (FIXME: and file
-;;; locking?) management.
-
-(define (store-return . args)
-  "Return a store mvalue seeded with ARGS."
-  (lambda ()
-    "Return a shill created using args."
-    (apply shill args)))
-
-(define (store-bind mvalue mproc)
-  "Return a store mvalue, in turn capable of returning the result of
-applying MVALUE to MPROC."
-  (lambda ()
-    (let ((shill (mvalue)))             ; extract shill
-      (spill shill)
-      (if (nothing? (shill-value shill))
-          shill
-          ((mproc (shill-value shill)))))))
-
-(define-monad store-monad
-  (bind   store-bind)
-  (return store-return))
+          lib
+          (string-join (vlist->list (comp-string (library-cat lib) #t))
+                       "\n")
+          (string-join (vlist->list (comp-string (library-ref lib)))
+                       "\n")))
 
 
 ;;;;; Store API
@@ -281,15 +219,15 @@ to us before, return the previously computed library.  Else, re-compute."
                      (if (lib-assoc (car hash-set-pair) cat-so-far)
                          cat-so-far
                          (lib-cons (car hash-set-pair)
-                                    (cdr hash-set-pair)
-                                    cat-so-far)))
+                                   (cdr hash-set-pair)
+                                   cat-so-far)))
                    cat
                    (crownset-hash-index set))
-             (if (lib-assoc minhash ref) ; if minhash exists, append
-                 (let ((kv-pair (lib-assoc minhash ref)))
-                   (lib-cons minhash (cons fullhash (cdr kv-pair))
-                              (lib-delete minhash ref)))
-                 (lib-cons minhash (list fullhash) ref)))))
+      (if (lib-assoc minhash ref) ; if minhash exists, append
+          (let ((kv-pair (lib-assoc minhash ref)))
+            (lib-cons minhash (cons fullhash (cdr kv-pair))
+                      (lib-delete minhash ref)))
+          (lib-cons minhash (list fullhash) ref)))))
 
 (define (lib-cat library-pair)
   "Return the catalogue of sets derived from LIBRARY-PAIR."
@@ -422,186 +360,6 @@ it is known in LIBRARY-PAIR."
                (cons minhash fullhash)    ; valid hashpair
                (cons #f      fullhash)))) ; invalid fullhash
        fullhashes))
-
-
-;;;;; Composite Transactions
-;;;
-;;; A first draft of high-level procedures for manipulating the user store
-;;; directories.
-;;;
-;;; FIXME: These procedures probably do not work at present due to the
-;;; significant changes to the underlying library/store architecture.
-
-(define (import-module filename)
-  "Install the Glean module identified by FILENAME in the user store,
-reporting the result of the procedure, or the failure."
-  (define (import)
-    ((mlet* store-monad
-            ((path         (get-path filename))
-             (valid-module (verify path))
-             (backed-up    (move path #t #t)) ; side-effects
-             (result       (install path)))
-            (return result))))
-  (not (nothing? (shill-value (import)))))
-
-(define (remove-module filename)
-  "Remove the Glean module identified by FILENAME from the user store,
-reporting the result of the procedure, or the failure.  The module should be
-backed up in the user store backup directory."
-  (define (remove)
-    ((mlet store-monad
-           ((result (move filename #t)))
-           (return result))))
-  (not (nothing? (shill-value (remove)))))
-
-(define* (export-module filename
-                        #:optional (target %wip-library-dir%))
-  "Export the Glean module identified by FILENAME from the user store,
-reporting the result of the procedure, or the failure.
-
-The module will be exported to the user wip store directory by default or
-TARGET if provided."
-  (let ((target (if (string=? target "./")
-                    (getenv "PWD")
-                    target)))
-    (define (export)
-      ((mlet store-monad
-             ((result (move filename #:target target)))
-             (return result))))
-    (not (nothing? (shill-value (export))))))
-
-
-;;;;; Atomic Transactions / Monadic Transactions
-;;;
-;;; Monadic Procedures to be used within the store-monad.
-;;;
-;;; FIXME: I'm surprised these procedures use store-return. This should
-;;; normally be implicit to the calling procedurs. This is probably a mistake
-;;; in the implementation of the store-monad.
-
-(define (get-path filename)
-  "Return a monadic value which when resolved returns FILENAME converted to an
-absolute path pointing to the desired file, or a nothing indicating the
-non-existance of the file identified by FILENAME.
-
-GET-PATH will first check whether FILENAME is an absolute path, then handle
-relative paths, and finally paths relative to the WIP directory."
-  (apply store-return
-   (cond
-    ;; FILENAME is an absolute path to file
-    ((and (char=? (string-ref filename 0) #\/)
-          (test-file filename))
-     (list filename))
-    ;; FILENAME is a relative path to file
-    ((test-file filename)
-     (list (string-format "~a/~a" (getenv "PWD") filename)))
-    ;; FILENAME is a path to file relative to the WIP-LIBRARY-DIR
-    ((test-file (string-format "~a/~a"
-                               %wip-library-dir% filename))
-     (list (string-format "~a/~a" %wip-library-dir% filename)))
-    ;; File does not exist.
-    (else
-     (list (nothing 'import-error filename) 'get-path 'error
-           (string-format
-            "~a is not a regular file or does not exist"
-            filename))))))
-
-(define* (move filename #:optional deletion? backup?
-               #:key (target %bak-library-dir%))
-  "Return a monadic value which when resolved returns a report indicating
-whether the file indicated by FILENAME was successfully moved to TARGET.
-
-If DELETION? is #t, remove the file identified by FILENAME.
-
-If BACKUP? is #t, make a backup of the file at FILENAME in TARGET.
-
-The move of the file at FILENAME is a side-effect of this procedure.
-
-The intention of this procedure is to provide a general low-level interface to
-shifting modules around %LIBRARY-DIR%.  Currently the workings of this
-procedure are not entirely clear."
-  (apply store-return
-         (let* ((name   (basename filename))
-                (module (string-format "~a/~a" %library-dir% name))
-                (proc   (if deletion? rename-file copy-file)))
-           (if (test-file module)
-               (catch 'system-error
-                 (lambda ()
-                   (proc module (string-format "~a/~a" target name))
-                   (list filename 'move 'inform
-                         (cond ((not (string=? target
-                                               %bak-library-dir%))
-                                (string-format "~a: exported to ~a"
-                                               name target))
-                               ((and deletion? (not backup?))
-                                (string-format "~a: deleted" name))
-                               (else (string-format "~a: backed up"
-                                                    name)))))
-                 (lambda (k . a)
-                   (list (nothing k name) 'move 'error
-                         (cond ((not (string=? target
-                                               %bak-library-dir%))
-                                (string-format
-                                 "~a: error exporting to ~a" name
-                                 target))
-                               ((and deletion? (not backup?))
-                                (string-format "~a: error deleting"
-                                               name))
-                               (else (string-format
-                                      "~a: error backing up"
-                                      name))))))
-               (cond ((not (string=? target %bak-library-dir%))
-                      (list (nothing 'export-error '(name target))
-                            'move 'error
-                            (string-format
-                             "~a:  error exporting to ~a" name
-                             target)))
-                     ((and deletion? (not backup?))
-                      (list (nothing 'deletion-error name)
-                            'move 'error
-                            (string-format "~a: file not found"
-                                           name)))
-                     (else (list filename 'move 'inform
-                                 (string-format
-                                  "~a: ~a, ~a"
-                                  name "file not found"
-                                  "hence not backed up"))))))))
-
-(define (verify filename)
-  "Return a monadic value which when resolved returns a report on the validity
-of the Glean module definitions contained in the file identified by FILENAME.
-
-The verification process is carried out as a side-effect of this procedure."
-  (apply store-return
-         (let ((name (basename filename)))
-           (catch 'system-error
-             (lambda ()
-               (load filename)
-               (list filename 'verify 'inform
-                     (string-format "~a: has been verified" name)))
-             (lambda (k . a)
-               `(,(nothing k name) verify error
-                 ,(string-format "~a: could not be verified"
-                                 name)))))))
-
-(define (install filename)
-  "Return a monadic value which when resolved returns a report on the success
-of moving the Glean module identified by FILENAME into the store at
-%LIBRARY-DIR%.
-
-The installation of the Glean module is carried out as a side-effect."
-  (apply store-return
-         (let ((name (basename filename)))
-           (catch 'system-error
-             (lambda ()
-               (copy-file filename
-                          (string-format "~a/~a" %library-dir% name))
-               (list filename 'install 'inform
-                     (string-format "~a: has been installed" name)))
-             (lambda (k . a)
-               `(,(nothing k name) install error
-                 ,(string-format "~a: could not be installed"
-                                 name)))))))
 
 
 ;;;;; Helpers
