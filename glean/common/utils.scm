@@ -135,6 +135,66 @@ pair or improper list."
               (apply values results)))))))
 
 
+;;;; UI Convenience
+;;; The procedures defined in this section are primarily taken from Guix.
+;;; Their intended role is to provide unified message formats for use in UI
+;;; situations.
+
+(define glean-warning-port
+  (make-parameter (current-warning-port)))
+
+(define program-name
+  ;; Name of the command-line program currently executing, or #f.
+  (make-parameter #f))
+
+(define-syntax-rule (define-diagnostic name prefix)
+  "Create a diagnostic macro (i.e., NAME), which will prepend PREFIX to all
+messages."
+  (define-syntax name
+    (lambda (x)
+      (define (augmented-format-string fmt)
+        (string-append "~:[~*~;glean ~a: ~]~a" (syntax->datum fmt)))
+
+      (syntax-case x ()
+        ((name (underscore fmt) args (... ...))
+         (and (string? (syntax->datum #'fmt))
+              (free-identifier=? #'underscore #'_))
+         (with-syntax ((fmt*   (augmented-format-string #'fmt))
+                       (prefix (datum->syntax x prefix)))
+           #'(format (glean-warning-port) (gettext fmt*)
+                     (program-name) (program-name) prefix
+                     args (... ...))))
+        ((name (N-underscore singular plural n) args (... ...))
+         (and (string? (syntax->datum #'singular))
+              (string? (syntax->datum #'plural))
+              (free-identifier=? #'N-underscore #'N_))
+         (with-syntax ((s      (augmented-format-string #'singular))
+                       (p      (augmented-format-string #'plural))
+                       (prefix (datum->syntax x prefix)))
+           #'(format (glean-warning-port)
+                     (ngettext s p n %gettext-domain)
+                     (program-name) (program-name) prefix
+                     args (... ...))))))))
+
+(define-diagnostic warning "warning: ") ; emit a warning
+
+(define-diagnostic advice "info: ")
+
+(define-diagnostic report-error "error: ")
+
+(define-syntax-rule (leave args ...)
+  "Emit an error message and exit."
+  (begin
+    (report-error args ...)
+    (exit 1)))
+
+(define-syntax-rule (part-ways args ...)
+  "Emit advice message and exit with success."
+  (begin
+    (advice args ...)
+    (exit 0)))
+
+
 ;;;;; Logging Functions
 
 (define log-levels (const '(exclaim caution insist inform all)))
@@ -147,9 +207,14 @@ not log."
     (lambda (priority msg)
       (when (relevant? priority (log-level))
         (if (string? port)
-            (let ((port (open-file port "a")))
-              (apply format port msg)
-              (close-port port))
+            (catch 'system-error
+              (lambda ()
+                (let ((port (open-file port "a")))
+                  (apply format port msg)
+                  (close-port port)))
+              (lambda (key . args)
+                (leave (_ "logging failure: ~a.~%")
+                       (string-join (caddr args) " "))))
             (apply format port msg)))))
   (cond (verbose                       (logger (current-output-port)))
         ((and log (string? log))       (logger log))
@@ -305,65 +370,5 @@ Usage: COMMAND [--LONG-OPT | -SHORT-OPT]
                            message))))
               pairs messages)
     (format #t "\n~a\n" description)))
-
-
-;;;; UI Convenience
-;;; The procedures defined in this section are primarily taken from Guix.
-;;; Their intended role is to provide unified message formats for use in UI
-;;; situations.
-
-(define glean-warning-port
-  (make-parameter (current-warning-port)))
-
-(define program-name
-  ;; Name of the command-line program currently executing, or #f.
-  (make-parameter #f))
-
-(define-syntax-rule (define-diagnostic name prefix)
-  "Create a diagnostic macro (i.e., NAME), which will prepend PREFIX to all
-messages."
-  (define-syntax name
-    (lambda (x)
-      (define (augmented-format-string fmt)
-        (string-append "~:[~*~;glean ~a: ~]~a" (syntax->datum fmt)))
-      
-      (syntax-case x ()
-        ((name (underscore fmt) args (... ...))
-         (and (string? (syntax->datum #'fmt))
-              (free-identifier=? #'underscore #'_))
-         (with-syntax ((fmt*   (augmented-format-string #'fmt))
-                       (prefix (datum->syntax x prefix)))
-           #'(format (glean-warning-port) (gettext fmt*)
-                     (program-name) (program-name) prefix
-                     args (... ...))))
-        ((name (N-underscore singular plural n) args (... ...))
-         (and (string? (syntax->datum #'singular))
-              (string? (syntax->datum #'plural))
-              (free-identifier=? #'N-underscore #'N_))
-         (with-syntax ((s      (augmented-format-string #'singular))
-                       (p      (augmented-format-string #'plural))
-                       (prefix (datum->syntax x prefix)))
-           #'(format (glean-warning-port)
-                     (ngettext s p n %gettext-domain)
-                     (program-name) (program-name) prefix
-                     args (... ...))))))))
-
-(define-diagnostic warning "warning: ") ; emit a warning
-
-(define-diagnostic advice "info: ")
-
-(define-diagnostic report-error "error: ")
-
-(define-syntax-rule (leave args ...)
-  "Emit an error message and exit."
-  (begin
-    (report-error args ...)
-    (exit 1)))
-
-(define-syntax-rule (part-ways args ...)
-  "Emit advice message and exit with success."
-  (begin
-    (advice args ...)
-    (exit 0)))
 
 ;;; utils.scm ends here
