@@ -41,6 +41,7 @@
   #:use-module (glean common lounge-requests)
   #:use-module (glean common monads)
   #:use-module (glean common utils)
+  #:use-module (ice-9 match)
   #:use-module (srfi srfi-26)
   #:export (
             ;; state generating transactions
@@ -106,8 +107,9 @@ applying MVALUE to MPROC."
   (lambda (st8)
     ;; Generate new-state-pair by passing state into mvalue.
     (let ((new-stateful (mvalue st8)))
-      ;; Should be replaced to use mlogger.
-      (inform "Stateful: ~s.~%" new-stateful) ; Use logging mechanism
+      ((mlogger (lambda (obj)
+                  (or (nothing? obj) (stateful? obj)))
+                client-monad-dict) new-stateful)
       ;; Return the state-pair resulting from applying the new
       ;; state to mproc seeded with the new result.
       (if (nothing? new-stateful)
@@ -117,6 +119,61 @@ applying MVALUE to MPROC."
 (define-monad client-monad
   (bind   client-bind)
   (return client-return))
+
+(define (client-monad-dict object level)
+  "Interpret OBJECT with regard to LEVEL, and return a list suitable for
+interpretation by mlogger, to emit meaningful lounge-monad message."
+  (define (shorten obj)
+    (if (symbol? obj)
+        (string->symbol
+         (string-append (string-take (symbol->string obj) 5) "..."))
+        (string-append (string-take obj 5) "...")))
+  (match object
+    ((? stateful? sf)
+     (match (result sf)
+       (('test)                         ; test-servers
+        `(test-servers "Status:" success))
+       (('unimportant)                  ; push-{eval,prf,score} #t
+        `(push-evaluation,profile,scorecard "Status:" success))
+       ('unimportant                    ; push-actives #t
+        `(push-active-modules "Status:" success))
+       ((hash id name vers keyw syn desc auth res attr prop cont logo)
+        `(fetch-detail "Set:" ,name))   ; fetch-detail
+       (((name lng lib actives))        ; fetch-profile
+        `(fetch-profile "Profile:" ,name))
+       ((name lng lib actives)          ; det->full-det
+        `(details->full-details "Full Profile:" ,name))
+       ((#t)                            ; push-deletion
+        `(push-deletion "Result:" #t))
+       ((? string? challenge)           ; fetch-challenge
+        `(fetch-challenge "Challenge:" ,challenge))
+       (((? boolean? res) solution)     ; fetch-evaluation
+        `(fetch-evaluation "Result:" ,res))
+       ((hash (? number? counter))      ; fetch-challenge-id #t
+        `(fetch-challenge-id "Hash/Counter:"
+                             ,(list (shorten hash) counter)))
+       ((set!s-field set!s-value)       ; fetch-challenge-id #f
+        `(fetch-challenge-id "Update Required:"
+                             ,(list set!s-field set!s-value)))
+       ((((hash props) ...))            ; fetch-hashmap
+        `(fetch-hashmap "Hashmap:" (((,(shorten (car (car hash))))))))
+       ((((hash . fullhash)))           ; fetch-hashpairs
+        `(fetch-hashpairs "Hash/Fullhash:" ,(cons (shorten hash)
+                                                  (shorten fullhash))))
+       ((set!s-value)                   ; push-score,actives #f
+        `(push-scorecard,active-modules "Value:" set!s-value))
+       (res
+        `(unknown "Stateful?:" ,res))))
+    ((? nothing? noth)
+     (let* ((id  (nothing-id noth))   ; Nothing msg
+            (src (match id            ; Deduce src from id
+                   ('library-down 'test-servers)
+                   ('lounge-down  'test-servers)
+                   (_ 'unknown))))
+       `(,src "Nothing:" ,(if (> level 5)
+                              (cons id (nothing-context noth))
+                              id))))               ; -> log msg.
+    (_ `(unknown "Result:" ,object))))
 
 
 ;;;;; Communication Wrappers
@@ -272,7 +329,7 @@ server."
                     (not server))
                 (not (alive? (state-lng state))))
            (nothing 'lounge-down (state-lng state)))
-          (else (stateful '(unimportant)
+          (else (stateful '(test)
                           state)))))
 
 (define (fetch-known-modules)
