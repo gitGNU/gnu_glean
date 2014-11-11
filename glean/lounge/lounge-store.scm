@@ -128,20 +128,21 @@
 (define (lounge-bind mvalue mproc)
   "Return a lounge mvalue, in turn capable of returning the result of
 applying MVALUE to MPROC."
-  (lambda (lng-dir)
-    (let* ((new-stateful (mvalue lng-dir)) ; generate next stateful
-           (reslt        (result new-stateful)))
-      ((mlogger stateful? lounge-monad-dict) new-stateful)
-      (cond ((nothing? (car reslt)) (car reslt))
-            ;; As lounge should never be modified by mvalue (that
-            ;; would mean that lounge logic would be carrying out
-            ;; state updates — these should be done at monad level),
-            ;; the LNG passed to lounge-bind will be identical to LNG
-            ;; coming out of new-stateful.
-            (else (let ((next (apply mproc reslt)))
-                    (if (procedure? next)
-                        (next lng-dir)
-                        next)))))))
+  (let ((log (mlogger stateful? lounge-monad-dict)))
+    (lambda (lng-dir)
+      (let* ((new-stateful (mvalue lng-dir)) ; generate next stateful
+             (reslt        (result new-stateful)))
+        (log new-stateful)
+        (cond ((nothing? (car reslt)) (car reslt))
+              ;; As lounge should never be modified by mvalue (that
+              ;; would mean that lounge logic would be carrying out
+              ;; state updates — these should be done at monad level),
+              ;; the LNG passed to lounge-bind will be identical to LNG
+              ;; coming out of new-stateful.
+              (else (let ((next (apply mproc reslt)))
+                      (if (procedure? next)
+                          (next lng-dir)
+                          next))))))))
 
 (define-monad lounge-monad
   (bind   lounge-bind)

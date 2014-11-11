@@ -104,17 +104,18 @@
 (define (client-bind mvalue mproc)
   "Return a state mvalue, in turn capable of returning the result of
 applying MVALUE to MPROC."
-  (lambda (st8)
-    ;; Generate new-state-pair by passing state into mvalue.
-    (let ((new-stateful (mvalue st8)))
-      ((mlogger (lambda (obj)
-                  (or (nothing? obj) (stateful? obj)))
-                client-monad-dict) new-stateful)
-      ;; Return the state-pair resulting from applying the new
-      ;; state to mproc seeded with the new result.
-      (if (nothing? new-stateful)
-          new-stateful
-          ((mproc (result new-stateful)) (state new-stateful))))))
+  (let ((log (mlogger (lambda (obj)
+                        (or (nothing? obj) (stateful? obj)))
+                      client-monad-dict)))
+    (lambda (st8)
+      ;; Generate new-state-pair by passing state into mvalue.
+      (let ((new-stateful (mvalue st8)))
+        (log new-stateful)
+        ;; Return the state-pair resulting from applying the new
+        ;; state to mproc seeded with the new result.
+        (if (nothing? new-stateful)
+            new-stateful
+            ((mproc (result new-stateful)) (state new-stateful)))))))
 
 (define-monad client-monad
   (bind   client-bind)

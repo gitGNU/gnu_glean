@@ -381,16 +381,20 @@ applying MVALUE to MPROC."
 (define (mlogger predicate dictionary-proc)
   "Return a procedure which, when invoked, will return messages according to
 patterns looked up against DICTIONARY-PROC."
-  (lambda* (obj #:optional (level 1))
-    "Print a meaningful log message derived from the context of the monadic
-stateful."
-    (when (> level 9) (exclaim "MLOGGER: detailed log:%  ~s~%~%" obj))
-    (if (predicate obj)
-        (match (dictionary-proc obj level)
-          ((src msg val)
-           (inform "[~a]\t~a ~a.~%"  src msg val)))
-        (exclaim "MLOGGER: object does not conform to predicate:~%  ~s."
-                 obj))))
+  ;; logger's proc returns #f when logging's disabled: no need to compose nice
+  ;; messages if logging is disabled anyway.
+  (if ((logger) 'test '(""))
+      (lambda* (obj #:optional (level 1))
+        "Print a meaningful log message derived from the context of the
+monadic stateful."
+        (when (> level 9) (exclaim "MLOGGER: detailed log:%  ~s~%~%" obj))
+        (if (predicate obj)
+            (match (dictionary-proc obj level)
+              ((src msg val)
+               (inform "[~a]\t~a ~a.~%"  src msg val)))
+            (exclaim "MLOGGER: object does not conform to predicate:~%  ~s."
+                     obj)))
+      (const #f)))
 
 
 ;;;; Monad Tests
