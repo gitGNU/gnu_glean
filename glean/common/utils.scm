@@ -59,6 +59,7 @@
             program-name
             logger
             log-level
+            log-levels
             make-logger
             inform
             caution
@@ -135,6 +136,8 @@ pair or improper list."
 
 
 ;;;;; Logging Functions
+
+(define log-levels (const '(exclaim caution insist inform all)))
 
 (define (make-logger verbose log default-log-file)
   "Return a logging procedure that, if VERBOSE is #t logs to stdout, if LOG is

@@ -60,12 +60,17 @@ specified in the main configuration file.
    ""))
 
 (define *option-grammar*
-  '((help       (single-char #\h) (value #f))
+  `((help       (single-char #\h) (value #f))
     (usage      (single-char #\u) (value #f))
     (version    (single-char #\v) (value #f))
     (client     (single-char #\c) (value #t))
     (listen                       (value #f))
     (log        (single-char #\l) (value optional))
+    (log-level  (single-char #\L) (value #t)
+                (predicate ,(lambda (value)
+                              (or (boolean? value)
+                                  (member (string->symbol value)
+                                          (log-levels))))))
     (verbose    (single-char #\V) (value #f))))
 
 (define *messages*
@@ -75,8 +80,10 @@ specified in the main configuration file.
                     " you are using and exit.")
     "Run the client specified by VALUE instead of the default."
     "Listen at Guile's standard port after launching the client."
-    "Start logging & log to VALUE or the default log file."
-    "Start logging & log to stdout."))
+    "Set log file to VALUE or default and enable logging."
+    ,(string-append "Set log-level to VALUE (choose from:"
+                    (string-join (map symbol->string (log-levels)) ", ") ").")
+    "Enable logging to stdout."))
 
 
 ;;;; Logic
@@ -88,32 +95,31 @@ specified in the main configuration file.
   "Parse command line options and execute the client procedure or other
 actions requested."
   (let ((opts (getopt-long args *option-grammar*)))
-    (cond ((option-ref opts 'version #f)      ; --version
-           (emit-version %glean-package-name%
-                         %glean-version%))
-          ((or (option-ref opts 'usage #f) ; --help or --usage
-               (option-ref opts 'help #f))
+    (define (get-opt what) (option-ref opts what #f))
+    (cond ((get-opt 'version)
+           (emit-version %glean-package-name% %glean-version%))
+          ((or (get-opt 'usage) (get-opt 'help))
            (emit-usage (string-downcase %glean-package-name%)
                        *synopsis*
                        *description*
                        *option-grammar*
                        *messages*
                        #:subcommand "client | cln"))
-          (else                               ; launch client
-           (if (option-ref opts 'listen #f)   ; and listen?
-               ((@ (system repl server) spawn-server)))
-           ;; Global client features
+          (else                         ; launch client
+           (when (get-opt 'listen) ((@ (system repl server) spawn-server)))
            (ensure-user-dirs %client-dir%)
            (ensure-config    %client-config%)
            (load-config      %client.conf%)
-           (parameterize ((log-level %log-level%)
-                          (logger (make-logger (option-ref opts 'verbose #f)
-                                               (option-ref opts 'log #f)
-                                               %log-file%)))
+           (parameterize ((log-level (if (string? (get-opt 'log-level))
+                                         (string->symbol (get-opt 'log-level))
+                                         %log-level%))
+                          (logger    (make-logger (get-opt 'verbose)
+                                                  (get-opt 'log)
+                                                  %log-file%)))
              ;; Simply apply the thunk returned by client.
              ((get-client %glean-dir% %user-dir%
-                          (if (option-ref opts 'client #f)
-                              (option-ref opts 'client #f)
+                          (if (get-opt 'client)
+                              (get-opt 'client)
                               %default-client%))))))))
 
 (define (get-client core-root extensions-root default)

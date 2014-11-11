@@ -58,12 +58,17 @@ exercises and disciplines for study.
    ""))
 
 (define *option-grammar*
-  '((help       (single-char #\h) (value #f))
+  `((help       (single-char #\h) (value #f))
     (usage      (single-char #\u) (value #f))
     (version    (single-char #\v) (value #f))
     (listen                       (value #f))
     (log        (single-char #\l) (value optional))
-    (verbose    (single-char #\V) (value #f))))
+    (verbose    (single-char #\V) (value #f))
+    (log-level  (single-char #\L) (value #t)
+                (predicate ,(lambda (value)
+                              (or (boolean? value)
+                                  (memv (string->symbol value)
+                                        (log-levels))))))))
 
 (define *messages*
   `("Show this help message and exit."
@@ -71,8 +76,10 @@ exercises and disciplines for study.
     ,(string-append "Show the version of " %glean-package-name%
                     " you are using and exit.")
     "Run the library and listen at Guile's standard port."
-    "Start logging & log to VALUE or the default log file."
-    "Start logging & log to stdout."))
+    "Set log file to VALUE or default and enable logging."
+    ,(string-append "Set log-level to VALUE (choose from:"
+                    (string-join (map symbol->string (log-levels)) ", ") ").")
+    "Enable logging to stdout."))
 
 
 ;;;; Logic
@@ -83,28 +90,28 @@ exercises and disciplines for study.
 (define (library-boot args)
   "Parse command line options and execute the library procedure."
   (let ((opts (getopt-long args *option-grammar*)))
-    (cond ((option-ref opts 'version #f)      ; --version
-           (emit-version %glean-package-name%
-                         %glean-version%))
-          ((or (option-ref opts 'usage #f) ; --help or --usage
-               (option-ref opts 'help #f))
+    (define (get-opt what) (option-ref opts what #f))
+    (cond ((get-opt 'version)
+           (emit-version %glean-package-name% %glean-version%))
+          ((or (get-opt 'usage) (get-opt 'help))
            (emit-usage (string-downcase %glean-package-name%)
                        *synopsis*
                        *description*
                        *option-grammar*
                        *messages*
                        #:subcommand "library | lib"))
-          (else                               ; launch Library
-           (when (option-ref opts 'listen #f)   ; and listen?
-             ((@ (system repl server) spawn-server)))
+          (else                         ; launch Library
+           (when (get-opt 'listen) ((@ (system repl server) spawn-server)))
            (ensure-user-dirs %library-dir% %bak-library-dir%
                              %wip-library-dir%)
            (ensure-config %library-config%)
            (load-config %library.conf%)
-           (parameterize ((log-level %log-level%)
-                          (logger (make-logger (option-ref opts 'verbose #f)
-                                               (option-ref opts 'log #f)
-                                               %log-file%)))
+           (parameterize ((log-level (if (string? (get-opt 'log-level))
+                                         (string->symbol (get-opt 'log-level))
+                                         %log-level%))
+                          (logger    (make-logger (get-opt 'verbose)
+                                                  (get-opt 'log)
+                                                  %log-file%)))
              (library-server %library-port%))))))
 
 ;;; boot.scm ends here
