@@ -145,13 +145,14 @@ pair or improper list."
 not log."
   (define (logger port)
     (lambda (priority msg)
-      (when (relevant? priority #:level (log-level))
+      (when (relevant? priority (log-level))
         (if (string? port)
             (let ((port (open-file port "a")))
               (apply format port msg)
               (close-port port))
             (apply format port msg)))))
   (cond (verbose                       (logger (current-output-port)))
+        ((and log (string? log))       (logger log))
         ((and log default-log-file)    (logger default-log-file))
         (else                          (const #f))))
 
@@ -217,11 +218,12 @@ tool."
         (format port ":end:\n"))
       #f))
 
-(define* (relevant? urgency #:key (level 'all))
+(define (relevant? urgency level)
   "Return #t if PRIORITY is higher than %LOG-LEVEL%. PRIORITY should be one of
 the symbols (in increasing order of importance) 'all, 'inform, 'insist,
 'caution or 'exclaim."
   (define (weigh rating)
+    ;; Should use log-levels to create this list, but that seems ugly for now…
     (match rating
       ('exclaim   0)
       ('caution   1)
