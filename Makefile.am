@@ -80,6 +80,9 @@ SCM_TESTS =						\
   tests/lounge-server.scm			    	\
   tests/library-store.scm			    	\
   tests/library-server.scm			   	\
+  tests/monads.scm					\
+  tests/monadic-min.scm					\
+  tests/utils.scm					\
   tests/comtools-offline.scm
 
 TESTS = $(SCM_TESTS)
