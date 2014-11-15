@@ -384,14 +384,14 @@ patterns looked up against DICTIONARY-PROC."
   ;; logger's proc returns #f when logging's disabled: no need to compose nice
   ;; messages if logging is disabled anyway.
   (if ((logger) 'test '(""))
-      (lambda* (obj #:optional (level 1))
+      (lambda (obj level)
         "Print a meaningful log message derived from the context of the
 monadic stateful."
-        (when (> level 9) (exclaim "MLOGGER: detailed log:%  ~s~%~%" obj))
         (if (predicate obj)
             (match (dictionary-proc obj level)
               ((src msg val)
-               (inform "[~a]\t~a ~a.~%"  src msg val)))
+               (inform "[~a]\t~a ~a.~%"  src msg val))
+              (_ (exclaim "MLOGGER: dictionary returned invalid message.")))
             (exclaim "MLOGGER: object does not conform to predicate:~%  ~s."
                      obj)))
       (const #f)))

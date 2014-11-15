@@ -136,9 +136,14 @@ pair or improper list."
 
 
 ;;;; UI Convenience
+;;;
 ;;; The procedures defined in this section are primarily taken from Guix.
 ;;; Their intended role is to provide unified message formats for use in UI
 ;;; situations.
+;;;
+;;; There is a strict difference between logging and UI messages: the latter
+;;; should always be i18nised, and are aimed at the end-user; the former don't
+;;; need to be i18nised, and are aimed at curious users and hackers.
 
 (define glean-warning-port
   (make-parameter (current-warning-port)))
@@ -196,6 +201,23 @@ messages."
 
 
 ;;;;; Logging Functions
+;;;
+;;; Logging in Glean is handled by 2 parameters: log-level and logger.
+;;;
+;;; - log-level identifies desired verbosity, but its levels also specify the
+;;;   urgency of individual log messages. For instance, a user may indicate
+;;;   that they are interested in log messages of level 'insist or higher: as
+;;;   a result, any messages passed to logger with a priority of 'insist or
+;;;   higher will be emitted for the user (if logging is switched on).
+;;; - logger returns a procedure that will handle the actual logging. That is,
+;;;   logging messages will always take the form of:
+;;;   ((logger) 'priority '(message))
+;;;   where '(message is a list of format-string and arguments.
+;;;   logger is, normally generated using the 'make-logger' procedure.
+;;;
+;;; Monadic logging operates at a higher level: it uses an intermediate
+;;; construct called mlogger, defined in (glean common monads).  Look there
+;;; for more information.
 
 (define log-levels (const '(exclaim caution insist inform all)))
 

@@ -110,7 +110,7 @@ applying MVALUE to MPROC."
     (lambda (st8)
       ;; Generate new-state-pair by passing state into mvalue.
       (let ((new-stateful (mvalue st8)))
-        (log new-stateful)
+        (log new-stateful (log-level))
         ;; Return the state-pair resulting from applying the new
         ;; state to mproc seeded with the new result.
         (if (nothing? new-stateful)
@@ -124,7 +124,7 @@ applying MVALUE to MPROC."
 (define (client-monad-dict object level)
   "Interpret OBJECT with regard to LEVEL, and return a list suitable for
 interpretation by mlogger, to emit meaningful lounge-monad message."
-  (let ((long? (eqv? (log-level) 'all)))
+  (let ((long? (eqv? level 'all)))
     (define (shorten obj)
       (if (symbol? obj)
           (string->symbol
@@ -171,7 +171,8 @@ interpretation by mlogger, to emit meaningful lounge-monad message."
           `(fetch-hashpairs "Hash/Fullhash:"
                             ,(if long?
                                  (result sf)
-                                 (cons (shorten hash) (shorten fullhash)))))
+                                 `(((,(shorten hash) .
+                                     ,(shorten fullhash)))))))
          ((set!s-value)                   ; push-score,actives #f
           `(push-scorecard,active-modules "Value:" set!s-value))
          (res
@@ -182,7 +183,7 @@ interpretation by mlogger, to emit meaningful lounge-monad message."
                      ('library-down 'test-servers)
                      ('lounge-down  'test-servers)
                      (_ 'unknown))))
-         `(,src "Nothing:" ,(if (> level 5)
+         `(,src "Nothing:" ,(if long?
                                 (cons id (nothing-context noth))
                                 id))))               ; -> log msg.
       (_ `(unknown "Result:" ,object)))))
