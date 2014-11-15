@@ -14,6 +14,7 @@ scripts/glean
 /session.scm
 /wip-modules/
 /tests/concurrency.scm
+/tests/*.trs
 reports.scm
 pre-inst-env
 test-env
@@ -31,7 +32,6 @@ doc/.dirstamp
 doc/glean.info
 doc/glean.html
 _cache
-tests
 doc/stamp-vti
 doc/version.texi
 install-sh
