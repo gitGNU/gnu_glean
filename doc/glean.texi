@@ -413,7 +413,7 @@ The web client will by default spawn a web server at
 @table @code
 
 @item --client=@var{client-id}
-@itemx -i @var{client-id}
+@itemx -c @var{client-id}
 Start a Glean client using @var{client-id}.
 
 The @var{client-id} specifies the component you would like to use.
@@ -434,6 +434,30 @@ Start the client in listening mode.
 Start a Glean client, but provide a server to connect to from
 Guile.  This enables interactive development and is normally only used
 when hacking Glean.
+
+@item --log=@var{log-file}
+@itemx -l @var{log-file}
+Start a Glean client and log to @var{log-file}.
+
+@var{log-file} does not have to exist. Either way we will append to
+it. If it is not specified then we log to the default location, which
+normally is defined in the client configuration file.
+
+@item --log-level=@var{level}
+@itemx -L @var{level}
+Start a Glean client, logging at @var{level} verbosity.
+
+@var{level} can be @code{exclaim}, @code{caution}, @code{insist},
+@code{inform} or @code{all}.  The latter is normally only used for
+debugging and will be very verbose.  The first on the other hand will
+only log minimally (generally when encountering significant unexpected
+situations).  Most log messages are set to @code{inform}.
+
+@item --verbose
+@itemx -V
+Start a Glean client and log to @code{stdout}.
+
+This option is also compatible with @code{--log-level} option.
 
 @end table
 
@@ -472,6 +496,30 @@ Start the lounge in listening mode.
 Start a Glean lounge, but provide a server to connect to from Guile.
 This enables interactive development and is normally only used when
 hacking Glean.
+
+@item --log=@var{log-file}
+@itemx -l @var{log-file}
+Start a Glean client and log to @var{log-file}.
+
+@var{log-file} does not have to exist. Either way we will append to
+it. If it is not specified then we log to the default location, which
+normally is defined in the client configuration file.
+
+@item --log-level=@var{level}
+@itemx -L @var{level}
+Start a Glean client, logging at @var{level} verbosity.
+
+@var{level} can be @code{exclaim}, @code{caution}, @code{insist},
+@code{inform} or @code{all}.  The latter is normally only used for
+debugging and will be very verbose.  The first on the other hand will
+only log minimally (generally when encountering significant unexpected
+situations).  Most log messages are set to @code{inform}.
+
+@item --verbose
+@itemx -V
+Start a Glean client and log to @code{stdout}.
+
+This option is also compatible with @code{--log-level} option.
 
 @end table
 
@@ -514,6 +562,30 @@ Start the library in listening mode.
 Start a Glean library, but provide a server to connect to from Guile.
 This enables interactive development and is normally only used when
 hacking Glean.
+
+@item --log=@var{log-file}
+@itemx -l @var{log-file}
+Start a Glean client and log to @var{log-file}.
+
+@var{log-file} does not have to exist. Either way we will append to
+it. If it is not specified then we log to the default location, which
+normally is defined in the client configuration file.
+
+@item --log-level=@var{level}
+@itemx -L @var{level}
+Start a Glean client, logging at @var{level} verbosity.
+
+@var{level} can be @code{exclaim}, @code{caution}, @code{insist},
+@code{inform} or @code{all}.  The latter is normally only used for
+debugging and will be very verbose.  The first on the other hand will
+only log minimally (generally when encountering significant unexpected
+situations).  Most log messages are set to @code{inform}.
+
+@item --verbose
+@itemx -V
+Start a Glean client and log to @code{stdout}.
+
+This option is also compatible with @code{--log-level} option.
 
 @end table
 

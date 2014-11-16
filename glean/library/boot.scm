@@ -63,12 +63,12 @@ exercises and disciplines for study.
     (version    (single-char #\v) (value #f))
     (listen                       (value #f))
     (log        (single-char #\l) (value optional))
-    (verbose    (single-char #\V) (value #f))
     (log-level  (single-char #\L) (value #t)
                 (predicate ,(lambda (value)
                               (or (boolean? value)
                                   (memv (string->symbol value)
-                                        (log-levels))))))))
+                                        (log-levels))))))
+    (verbose    (single-char #\V) (value #f))))
 
 (define *messages*
   `("Show this help message and exit."

@@ -349,6 +349,8 @@ Usage: COMMAND [--LONG-OPT | -SHORT-OPT]
     (match option
       ((name ('single-char char) ('value id))
        `(,(symbol->string name) ,(make-string 1 char) . ,id))
+      ((name ('single-char char) ('value id) predicate)
+       `(,(symbol->string name) ,(make-string 1 char) . ,id))
       ((name . _)
        `(,(symbol->string name) . #f))
       (_ (error "USAGE -- Unexpected option:" option))))
