@@ -30,7 +30,7 @@
 ;;
 ;;; Code:
 
-(define-module (glean store git)
+(define-module (glean store git discipline)
   #:use-module (glean library core-templates)
   #:export (git-module))
 

@@ -33,7 +33,7 @@
 ;;
 ;;; Code:
 
-(define-module (glean store greek-alphabet)
+(define-module (glean store greek-alphabet discipline)
   #:use-module (glean library core-templates)
   #:export     (greek-alphabet))
 

@@ -1,6 +1,6 @@
 ;;; glean --- learning the world using Guile.         -*- coding: utf-8 -*-
 
-(define-module (glean store gov-uk)
+(define-module (glean store gov-uk discipline)
   #:use-module (glean library core-templates)
   #:export (gov-uk-module))
 

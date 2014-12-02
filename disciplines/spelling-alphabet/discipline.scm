@@ -31,7 +31,7 @@
 ;;
 ;;; Code:
 
-(define-module (glean store spelling-alphabet)
+(define-module (glean store spelling-alphabet discipline)
   #:use-module (glean library core-templates)
   #:export (icao-module))
 
