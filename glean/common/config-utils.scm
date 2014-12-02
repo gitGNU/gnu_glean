@@ -119,7 +119,7 @@
   (for-each mkdir-p dirs))
 
 (define (ensure-config config)
-  "Check config exists, creating it if it does not. Currently always returns
+  "Check CONFIG exists, creating it if it does not. Currently always returns
 #t."
   (if (access? (config-target config) R_OK)
       (inform "The ~a configuration exists. [ok]~%" (config-name config))
