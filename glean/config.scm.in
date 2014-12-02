@@ -60,8 +60,9 @@
             %library-config%
             %library-log%
             %library-dir%
-            %wip-library-dir%
-            %bak-library-dir%
+            %catalogue-dir%
+            %catalogue-counter%
+            %current-catalogue%
             %library-port%
             %library.conf%
             ;; Lounge configuration
@@ -97,8 +98,10 @@
 (define %ignore-keywords% '())
 (define %library-root-dir% (string-append %user-dir%   "/library"))
 (define %library-dir%      (string-append %library-root-dir% "/store"))
-(define %bak-library-dir%  (string-append %library-root-dir% "/store-bak"))
-(define %wip-library-dir%  (string-append %library-root-dir% "/store-wip"))
+(define %catalogue-dir%    (string-append %library-root-dir% "/catalogues"))
+(define %catalogue-counter% 0)
+(define %current-catalogue% (string-append %library-root-dir%
+                                           "/current-catalogue"))
 (define %library.conf%     (string-append %library-root-dir% "/library.conf"))
 (define %library-port%     (string-append %socket-dir% "/library.sock"))
 (define %library-log%      (string-append %log-dir%    "/library.log"))

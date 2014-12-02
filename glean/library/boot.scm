@@ -102,8 +102,7 @@ exercises and disciplines for study.
                        #:subcommand "library | lib"))
           (else                         ; launch Library
            (when (get-opt 'listen) ((@ (system repl server) spawn-server)))
-           (ensure-user-dirs %library-dir% %bak-library-dir%
-                             %wip-library-dir%)
+           (ensure-user-dirs %library-dir% %catalogue-dir%)
            (ensure-config %library-config%)
            (load-config %library.conf%)
            (parameterize ((log-level (if (string? (get-opt 'log-level))

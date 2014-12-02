@@ -37,6 +37,7 @@
   #:autoload (glean client boot) (client-boot)
   #:autoload (glean library boot) (library-boot)
   #:autoload (glean lounge boot) (lounge-boot)
+  #:autoload (glean librarian boot) (librarian-boot)
   #:use-module (glean config)
   #:use-module (glean common config-utils)
   #:use-module (glean common utils)
@@ -90,6 +91,7 @@ or client) you can run that command followed by the `--help' option."))
   (define (client? id) (or (string=? id "client") (string=? id "cln")))
   (define (lounge? id) (or (string=? id "lounge") (string=? id "lng")))
   (define (library? id) (or (string=? id "library") (string=? id "lib")))
+  (define (librarian? id) (or (string=? id "librarian") (string=? id "lbr")))
   (catch 'system-error                  ; Install the locale
     (lambda _
       (setlocale LC_ALL ""))
@@ -103,6 +105,8 @@ or client) you can run that command followed by the `--help' option."))
   ;; client-, lounge-, and library-boot cause the entire module dependency of
   ;; Glean to be loaded when this boot is first executed.  It seem to me, at
   ;; present, that this is an implementation error in Guile?
+  ;;
+  ;; Perhaps this is due to the use of match instead of if statements?
   (match args
     ((path (? client?) . rest)                   ; launch client
      (client-boot (cons path rest)))
@@ -110,6 +114,8 @@ or client) you can run that command followed by the `--help' option."))
      (lounge-boot (cons path rest)))
     ((path (? library?) . rest)                  ; launch library
      (library-boot (cons path rest)))
+    ((path (? librarian?) . rest)
+     (librarian-boot (cons path rest)))
     (_
      (let ((opts (getopt-long args *option-grammar*)))
        (cond ((option-ref opts 'version #f)      ; --version
