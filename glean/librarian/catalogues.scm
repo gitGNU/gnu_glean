@@ -233,9 +233,7 @@ record; DIR would normally be the default catalogue-dir."
       (if (journey? result) (get-log result) result))))
 
 
-;;;; Porcelain File System Procedures
-;;;
-;;; These procedures are exported and used by Librarian's boot.
+;;;; Monadic File System Procedures
 
 ;;;;; Catalogue Listings
 
@@ -246,8 +244,7 @@ directory, or null."
   (define (local-enter? path stat journey)
     "Return #t if we're not too deep, raise an error otherwise."
     (or (ok-depth? journey)
-        (error "ENTER?: Invalid Catalogues store found at ~a.~%"
-               catalogue-dir)))
+        (error "ENTER?: Invalid catalogue found at ~a.~%" path)))
   (define (local-down path stat journey)
     "Upon descending in dir we want to create the template for a new
 catalogue: we cons (name '()) to the front of journey."
@@ -266,11 +263,10 @@ catalogue: we cons (name '()) to the front of journey."
   "Return a procedure of one argument, a string identifying a catalogue
 directory, which when applied, returns a list containing the catalogue record
 identified by the string CATALOGUE-ID in the catalogue directory, or '() if
-that catalogue does not exist."
+that catalogue does not exist, or if catalogue-id is #f."
   (define (local-enter? path stat journey)
     (or (ok-depth? journey)
-        (error "ENTER?: Invalid Catalogues store found at ~a.~%"
-               catalogue-dir)))
+        (error "ENTER?: Invalid catalogue found at ~a.~%" path)))
   (define (local-down path stat journey)
     "Upon descending in dir we want to create the template for a new
 catalogue: we cons (name '()) to the front of journey."
@@ -403,7 +399,7 @@ JOURNEY as is."
 summary message for each catalogue encountered there."
   (match ((catalogue-lister) catalogue-dir)
     (()
-     (format #t "No catalogues found at ~a.~%" %catalogue-dir%))
+     (format #t "No catalogues found at ~a.~%" catalogue-dir))
     (((? catalogue? cat) ...)
      (for-each (lambda (cat) (emit-catalogue cat #:full? #f)) cat))))
 
