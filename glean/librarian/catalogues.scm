@@ -127,15 +127,31 @@ bare catalogue."
 ;;; The Catalogue system maps to a filesystem structure.  This section maps
 ;;; that structure to predicates, accessors etc.
 
+;;; Catalogues contain disciplines which will be loaded by the library.
+;;; Disciplines are loaded as normal Guile modules.  As such they want to be
+;;; loaded in a namespace.  To avoid unexpected name clashes we should
+;;; maintain a disciplines name space.  This namespace needs to exist as an
+;;; actual directory structure in each catalogue.  The following provides
+;;; such a name space for use in catalogues.
+(define load-path-suffix (const (string-append "glean" "/" "disciplines")))
+
 (define (discipline? stat)
   "Disciplines in catalogue stores are identified by them being a
 symlink.  Return #t if so, #f otherwise."
   (eqv? (stat:type stat) 'symlink))
 
-(define (catalogue-directory catalogues-dir catalogue-id)
+(define (catalogue-directory catalogue-dir catalogue-id)
   "Return a catalogue directory string; a string pointing towards the
-catalogue named by CATALOGUE-ID in CATALOGUES-DIR."
-  (string-append catalogues-dir "/" catalogue-id))
+catalogue named by CATALOGUE-ID in CATALOGUE-DIR."
+  (string-append catalogue-dir "/" catalogue-id))
+
+(define (discipline-directory catalogue-dir catalogue-id)
+  "Return a catalogue directory string which includes the standard glean
+load-path-suffix for disciplines; a string pointing towards the catalogue
+disciplines in the catalogue identified by CATALOGUE-ID in CATALOGUE-DIR."
+  (string-append (catalogue-directory catalogue-dir catalogue-id)
+                 "/"
+                 (load-path-suffix)))
 
 (define (discipline-filename catalogue-dir discipline-id)
   "Return a discipline file name: a string pointing towards the discipline
@@ -146,13 +162,23 @@ named by DISCIPLINE-ID in the catalogue identified by CATALOGUE-DIR."
   "Return a new catalogue-name of the form `catalogue-COUNTER'."
   (string-append "catalogue-" (number->string counter)))
 
-;;; The catalogue folder contains catalogues, which in turn contain symlinks
-;;; to the disciplines in the store.  As a result, any folder recursion
-;;; starting at %catalogue-dir% should have a maximum depth of 1 (0 indexed).
+(define (cataloguename path)
+  "Return the string identifying the catalogue portion of PATH or raise an
+error.  This procedure works similar to basename, except it does not return
+the filename part of PATH, but the part that would identify the catalogue."
+  (basename (string-drop-right path (string-length (load-path-suffix)))))
+
+;;; The catalogue folder contains catalogues, which in turn contains the
+;;; LOAD-PATH-SUFFIX, and finally symlinks to the disciplines in the store.
+;;; As a result, any folder recursion starting at %catalogue-dir% should have
+;;; a maximum depth of 3 (0 indexed).
+;;;
+;;; Despite the above reasoning, there are a number of hard-coded bits
+;;; relating to depth & catalogue path which displease me.
 
 (define (ok-depth? journey)
   "Return #t if the gauge in JOURNEY indicates an acceptable depth."
-  (< (get-depth journey) 2))
+  (< (get-depth journey) 4))
 
 (define (go-deeper depth)
   "Increase the depth of the gauge in JOURNEY."
@@ -183,7 +209,7 @@ named by DISCIPLINE-ID in the catalogue identified by CATALOGUE-DIR."
 
 (define (catalogue-leaf path stat journey)
   "Add the discipline to the skeleton and return journey, or throw an
-error — if it is not a symlink we have an invalide Catalogues store."
+error — if it is not a symlink we have an invalid Catalogues store."
   (if (discipline? stat)
       (set-log journey (add-discipline path
                                        (get-log journey)))
@@ -247,11 +273,12 @@ directory, or null."
         (error "ENTER?: Invalid catalogue found at ~a.~%" path)))
   (define (local-down path stat journey)
     "Upon descending in dir we want to create the template for a new
-catalogue: we cons (name '()) to the front of journey."
-    (if (= (get-depth journey) 0)
+catalogue, if we find ourselves at the appropriate depth."
+    (if (< (get-depth journey) 3)       ; depth inc. load-path-suffix.
         (set-depth journey (go-deeper (get-depth journey)))
         (make-journey (go-deeper (get-depth journey))
-                      (add-catalogue (basename path) (get-log journey)))))
+                      (add-catalogue (cataloguename path)
+                                     (get-log journey)))))
   
   (lambda (catalogue-dir)
     (catalogue-system-fold local-enter? local-down (make-bare-journey 0)
@@ -271,13 +298,13 @@ that catalogue does not exist, or if catalogue-id is #f."
     "Upon descending in dir we want to create the template for a new
 catalogue: we cons (name '()) to the front of journey."
     (make-journey (go-deeper (get-depth journey))
-                  (add-catalogue (basename path) (get-log journey))))
+                  (add-catalogue (cataloguename path) (get-log journey))))
 
   (lambda (catalogue-dir)
     (if catalogue-id
         (catalogue-system-fold local-enter? local-down (make-bare-journey 1)
-                               (catalogue-directory catalogue-dir
-                                                    catalogue-id))
+                               (discipline-directory catalogue-dir
+                                                     catalogue-id))
         '())))
 
 
@@ -319,8 +346,8 @@ discipline."
 catalogue in the directory pointed to by its argument, based on CURR-CAT, and
 returns this newly created catalogue or #f."
   (lambda (catalogue-dir)
-    (let ((target-dir (catalogue-directory catalogue-dir
-                                           (get-catalogue-id catalogue))))
+    (let ((target-dir (discipline-directory catalogue-dir
+                                            (get-catalogue-id catalogue))))
       (mkdir-p target-dir)
       (catch 'system-error
         (lambda ()
@@ -385,7 +412,8 @@ JOURNEY as is."
 
   (lambda (catalogue-dir)
     (1+ (catalogue-system-fold local-enter? local-down
-                               (make-bare-journey 1 #:state 0)
+                               (make-bare-journey 3 ; Allow exactly 1 descent.
+                                                  #:state 0)
                                catalogue-dir
                                #:local-skip local-skip
                                #:local-leaf local-leaf))))
