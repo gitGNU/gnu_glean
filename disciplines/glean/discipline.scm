@@ -30,7 +30,7 @@
 ;;
 ;;; Code:
 
-(define-module (glean store glean discipline)
+(define-module (glean disciplines glean discipline)
   #:use-module (glean library core-templates)
   #:export (glean-discipline))
 

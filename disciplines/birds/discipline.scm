@@ -1,6 +1,6 @@
 ;;; guilecraft --- learning the world using Guile.         -*- coding: utf-8 -*-
 
-(define-module (glean store birds discipline)
+(define-module (glean disciplines birds discipline)
   #:use-module (glean library core-templates)
   #:export (birds-module))
 
