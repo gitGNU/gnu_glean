@@ -390,6 +390,15 @@ JOURNEY as is."
                                #:local-skip local-skip
                                #:local-leaf local-leaf))))
 
+(define (current-catalogue-namer curr-cat-link)
+  "Return a procedure of one argument, a string identifying a catalouge
+directory, which when applied, returns the name of the catalogue current
+pointed to by CURR-CAT-LINK, or #f if an error occurs."
+  (lambda (catalogue-dir)
+    (catch 'system-error
+      (lambda () (basename (readlink curr-cat-link)))
+      (lambda (key . args) #f))))
+
 
 ;;;; User Interface
 ;;;
@@ -432,23 +441,24 @@ STORE-DIR, and activate the newly created catalogue at CATALOGUE-DIR."
        (#f
         (leave (_ "A problem occured creating a new counter.")))
        ((? number? counter)
-        (match ((catalogue-detailer (basename (readlink curr-cat-link)))
-                catalogue-dir)
-          (curr-cat
-           (match ((catalogue-installer (augment-catalogue curr-cat counter
-                                                           store-path))
-                   catalogue-dir)
-             (#f
-              (leave
-               (_ "We encountered a problem creating the new catalogue.\n")))
-             ((? catalogue? new-curr-cat)
-              (match ((current-catalogue-setter new-curr-cat curr-cat-link)
+        (match ((current-catalogue-namer curr-cat-link) catalogue-dir)
+          (name
+           (match ((catalogue-detailer name) catalogue-dir)
+             (curr-cat
+              (match ((catalogue-installer (augment-catalogue curr-cat counter
+                                                              store-path))
                       catalogue-dir)
                 (#f
                  (leave
-                  (_ "A problem occured switching to the new catalogue.\n")))
-                ((? catalogue? cat)
-                 (emit-catalogue cat))))))))))))
+                  (_ "A problem occured creating the new catalogue.\n")))
+                ((? catalogue? new-curr-cat)
+                 (match ((current-catalogue-setter new-curr-cat curr-cat-link)
+                         catalogue-dir)
+                   (#f
+                    (leave
+                     (_ "A problem occured switching to the catalogue.\n")))
+                   ((? catalogue? cat)
+                    (emit-catalogue cat))))))))))))))
 
 (define* (emit-catalogue cat #:key (full? #t))
   "Emit a summary of the catalogue CAT, listing CAT's id and the id of each
