@@ -274,9 +274,11 @@ catalogue: we cons (name '()) to the front of journey."
                   (add-catalogue (basename path) (get-log journey))))
 
   (lambda (catalogue-dir)
-    (catalogue-system-fold local-enter? local-down (make-bare-journey 1)
-                           (catalogue-directory catalogue-dir
-                                                catalogue-id))))
+    (if catalogue-id
+        (catalogue-system-fold local-enter? local-down (make-bare-journey 1)
+                               (catalogue-directory catalogue-dir
+                                                    catalogue-id))
+        '())))
 
 
 ;;;; Install Discipline
