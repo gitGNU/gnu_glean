@@ -426,12 +426,15 @@ catalogue: we cons (name '()) to the front of journey."
                   (log-add-catalogue (cataloguename path) (get-log journey))))
 
   (lambda (catalogue-dir)
-    (match (catalogue-system-fold local-enter? local-down
-                                  (make-bare-journey 1)
-                                  (discipline-directory catalogue-dir
-                                                        catalogue-id))
-      (() (nothing 'catalogue-detailer (cons catalogue-id catalogue-dir)))
-      (otherwise otherwise))))
+    (if catalogue-id
+        (match (catalogue-system-fold local-enter? local-down
+                                      (make-bare-journey 1)
+                                      (discipline-directory catalogue-dir
+                                                            catalogue-id))
+          (() (nothing 'catalogue-detailer (cons catalogue-id catalogue-dir)))
+          (otherwise otherwise))
+        ;; catalogue-id is #f if current-catalogue does not yet exist.
+        '())))
 
 
 ;;;; Install Discipline
@@ -562,7 +565,11 @@ pointed to by CURR-CAT-LINK, or a nothing with id 'current-catalogue-namer."
     (catch 'system-error
       (lambda () (basename (readlink curr-cat-link)))
       (lambda (key . args)
-        (nothing 'current-catalogue-namer `(,key ,args))))))
+        ;; This normally means that current-catalogue does not yet exist.  For
+        ;; now we return #f in this case, to allow catalogue-detailer to
+        ;; return '().
+        ;; (nothing 'current-catalogue-namer `(,key ,args))))))
+        #f))))
 
 
 ;;;; IO Catalogues Monad
