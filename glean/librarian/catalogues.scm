@@ -52,6 +52,7 @@
 
 (define-module (glean librarian catalogues)
   #:use-module (glean common config-utils)
+  #:use-module (glean common monads)
   #:use-module (glean common utils)
   #:use-module (ice-9 ftw)
   #:use-module (ice-9 match)
@@ -78,6 +79,84 @@
   journey?
   (depth-gauge get-depth set-depth)
   (journey-log get-log   set-log))
+
+
+;;;; UI
+;;;
+;;; High level UI procedures.  These should be the only emitting output.
+
+(define (catalogue-install cat-dir curr-cat lib-dir target)
+  "Attempt to install TARGET in the store at LIB-DIR, create a new catalogue
+in CAT-DIR and update CURR-CAT.  We will exit with an error if we encounter a
+problem."
+  (match (mcatalogue-install cat-dir curr-cat lib-dir target)
+    ((? nothing? nothing)
+     (emit-error (nothing-id nothing) (nothing-context nothing)))
+    ((? catalogue? catalogue)
+     (emit-catalogue catalogue))))
+
+(define (catalogue-show cat-dir cat-id)
+  "Attempt to show details about catalogue CAT-ID stored in CAT-DIR.  Exit
+with an error if we encounter a problem."
+  (match (mcatalogue-show cat-dir cat-id)
+    ((? nothing? nothing)
+     (emit-error (nothing-id nothing) (nothing-context nothing)))
+    (((? catalogue? catalogue))
+     (emit-catalogue catalogue))))
+
+(define (catalogue-list cat-dir)
+  "Attempt to list all catalogues stored in CAT-DIR.  Exit with an error if we
+encounter a problem."
+  (match (mcatalogue-list cat-dir)
+    ((? nothing? nothing)
+     (emit-error (nothing-id nothing) (nothing-context nothing)))
+    (((? catalogue? catalogue) ...)
+     (for-each (lambda (cat) (emit-catalogue cat #:full? #f))
+               catalogue))))
+
+(define* (emit-error id #:optional (context #f))
+  "Emit an error message corresponding to ID and exit."
+  (match id
+    ('catalogue-detailer
+     (match context ((cat-id . cat-dir)
+                     (leave (_ "Catalogue ~a could not be found in ~a.~%")
+                            cat-id cat-dir))))
+    ('catalogue-installer
+     (leave (_ "A problem occured creating the new catalogue.\n")))
+    ('catalogue-lister
+     (match context
+       ((cat-dir . #f) (leave (_ "No catalogues found at ~a.~%") cat-dir))))
+    ('current-catalogue-setter
+     (leave (_ "A problem occured switching to the catalogue.\n")))
+    ('current-catalogue-namer
+     (leave (_ "Unable to establish current catalogue's name.\n")))
+    ('discipline-installer
+     (leave (_ "We encountered a problem installing the discipline.\n")))
+    ('invalid-catalogue-store
+     (match context
+       ((path) (leave (_ "Invalid catalogue found at ~a.~%") path))))
+    ('next-catalogue-counter-maker
+     (leave (_ "A problem occured creating a new counter.")))))
+
+(define* (emit-catalogue cat #:key (full? #t))
+  "Emit a summary of the catalogue CAT, listing CAT's id and the id of each
+discipline linked in it.  If FULL? is #t, also emit the mapping for each
+discipline id to the discipline in the store."
+  (match cat
+    (($ catalogue id disciplines)
+     (format #t "~a (~a)~%"
+             id
+             (string-join
+              (vlist->list
+               (vlist-map (lambda (discipline)
+                            (match discipline
+                              ((name . target)
+                               (if full?
+                                   (string-append name " => "
+                                                  target)
+                                   name))))
+                          disciplines))
+              ", ")))))
 
 
 ;;;; Atomic Catalogue Operations
@@ -127,13 +206,18 @@ bare catalogue."
 ;;; The Catalogue system maps to a filesystem structure.  This section maps
 ;;; that structure to predicates, accessors etc.
 
+(define (relative-filename . components)
+  "Return the string which consists of COMPONENTS, joined by this operating
+system's filename separator."
+  (string-join components file-name-separator-string))
+
 ;;; Catalogues contain disciplines which will be loaded by the library.
 ;;; Disciplines are loaded as normal Guile modules.  As such they want to be
 ;;; loaded in a namespace.  To avoid unexpected name clashes we should
 ;;; maintain a disciplines name space.  This namespace needs to exist as an
 ;;; actual directory structure in each catalogue.  The following provides
 ;;; such a name space for use in catalogues.
-(define load-path-suffix (const (string-append "glean" "/" "disciplines")))
+(define load-path-suffix (const (relative-filename "glean" "disciplines")))
 
 (define (discipline? stat)
   "Disciplines in catalogue stores are identified by them being a
@@ -143,20 +227,23 @@ symlink.  Return #t if so, #f otherwise."
 (define (catalogue-directory catalogue-dir catalogue-id)
   "Return a catalogue directory string; a string pointing towards the
 catalogue named by CATALOGUE-ID in CATALOGUE-DIR."
-  (string-append catalogue-dir "/" catalogue-id))
+  (relative-filename catalogue-dir catalogue-id))
 
 (define (discipline-directory catalogue-dir catalogue-id)
   "Return a catalogue directory string which includes the standard glean
 load-path-suffix for disciplines; a string pointing towards the catalogue
-disciplines in the catalogue identified by CATALOGUE-ID in CATALOGUE-DIR."
-  (string-append (catalogue-directory catalogue-dir catalogue-id)
-                 "/"
-                 (load-path-suffix)))
+disciplines in the catalogue identified by CATALOGUE-ID in CATALOGUE-DIR.
+
+In contrast to `catalogue-directory', this points to the folder, within a
+specific catalogue, which contains disciplines.  `catalogue-directory' points
+to the catalogue itself within the catalogue store."
+  (relative-filename (catalogue-directory catalogue-dir catalogue-id)
+                     (load-path-suffix)))
 
 (define (discipline-filename catalogue-dir discipline-id)
   "Return a discipline file name: a string pointing towards the discipline
 named by DISCIPLINE-ID in the catalogue identified by CATALOGUE-DIR."
-  (string-append catalogue-dir "/" discipline-id))
+  (relative-filename catalogue-dir discipline-id))
 
 (define (make-catalogue-name counter)
   "Return a new catalogue-name of the form `catalogue-COUNTER'."
@@ -188,18 +275,22 @@ the filename part of PATH, but the part that would identify the catalogue."
   "Decrease the depth of the gauge in JOURNEY."
   (1- depth))
 
-;;;; Catalogues Operations
+;;;; Journey/Filesystem Traversal Operations
 
 (define* (make-bare-journey depth #:key (state '()))
   "Return a fresh journey."
   (make-journey depth state))
 
-(define (add-catalogue catalogue-id log)
+(define (log-add-catalogue catalogue-id log)
   "Return JOURNEY-LOG augmented by a fresh catalogue for CATALOGUE-ID."
   (cons (make-bare-catalogue catalogue-id) log))
 
-(define (add-discipline discipline-filename log)
+(define (log-add-discipline discipline-filename log)
   "Return LOG with the first catalogue in it augmented by DISCIPLINE."
+  ;; XXX: We have an ugly readlink call here, which is direct IO.  As
+  ;; file-system fold is IO anyway, and as it is always embedded in the
+  ;; catalogue-monad, this is not a problem, but it does escape this module's
+  ;; naming pattern.
   (match log
     ((incomplete-catalogue . rest)
      (cons (catalogue-add-discipline incomplete-catalogue
@@ -211,9 +302,9 @@ the filename part of PATH, but the part that would identify the catalogue."
   "Add the discipline to the skeleton and return journey, or throw an
 error — if it is not a symlink we have an invalid Catalogues store."
   (if (discipline? stat)
-      (set-log journey (add-discipline path
-                                       (get-log journey)))
-      (error "LEAF: Invalid Catalogues store found at ~a.~%" path)))
+      (set-log journey (log-add-discipline path
+                                           (get-log journey)))
+      (throw 'invalid-catalogue-store path)))
 
 (define (catalogue-up path stat journey)
   "Simply return JOURNEY unchanged."
@@ -242,21 +333,22 @@ and where other procedures (LOCAL-LEAF, LOCAL-SKIP) default to such that make
 sense.  LOCAL-ENTER? and LOCAL-DOWN should be procedures corresponding to
 `enter?' and `down' in `file-system-fold'.  INIT would normally be a journey
 record; DIR would normally be the default catalogue-dir."
-  (call-with-values
-      (lambda ()
-        ;; Catch here is because file-system-fold returns values if
-        ;; successful, but will return null? if it cannot find the starting
-        ;; dir.
-        (catch 'unknown-catalogue
+  (catch #t
+    (lambda ()
+      (call-with-values
           (lambda ()
+            ;; Catch here is because file-system-fold returns values if
+            ;; successful, but will return null? if it cannot find the starting
+            ;; dir.
             (catch 'vm-error
               (lambda ()
                 (file-system-fold local-enter? local-leaf local-down catalogue-up
                                   local-skip catalogue-error init dir))
               (lambda args (values '() '()))))
-          (lambda args (values '() '()))))
-    (lambda (result vhash)
-      (if (journey? result) (get-log result) result))))
+        (lambda (result vhash)
+          (if (journey? result) (get-log result) result))))
+    (lambda (key . args)
+      (nothing key args))))
 
 
 ;;;; Monadic File System Procedures
@@ -270,42 +362,46 @@ directory, or null."
   (define (local-enter? path stat journey)
     "Return #t if we're not too deep, raise an error otherwise."
     (or (ok-depth? journey)
-        (error "ENTER?: Invalid catalogue found at ~a.~%" path)))
+        (throw 'invalid-catalogue-store path)))
   (define (local-down path stat journey)
     "Upon descending in dir we want to create the template for a new
 catalogue, if we find ourselves at the appropriate depth."
     (if (< (get-depth journey) 3)       ; depth inc. load-path-suffix.
         (set-depth journey (go-deeper (get-depth journey)))
         (make-journey (go-deeper (get-depth journey))
-                      (add-catalogue (cataloguename path)
-                                     (get-log journey)))))
+                      (log-add-catalogue (cataloguename path)
+                                         (get-log journey)))))
   
   (lambda (catalogue-dir)
-    (catalogue-system-fold local-enter? local-down (make-bare-journey 0)
-                           catalogue-dir)))
+    (match (catalogue-system-fold local-enter? local-down
+                                  (make-bare-journey 0) catalogue-dir)
+      (() (nothing 'catalogue-lister (cons catalogue-dir #f)))
+      (otherwise otherwise))))
 
 ;;;;; Catalogue Detail
 
 (define (catalogue-detailer catalogue-id)
   "Return a procedure of one argument, a string identifying a catalogue
 directory, which when applied, returns a list containing the catalogue record
-identified by the string CATALOGUE-ID in the catalogue directory, or '() if
-that catalogue does not exist, or if catalogue-id is #f."
+identified by the string CATALOGUE-ID in the catalogue directory, or a nothing
+value with the id catalogue-detailer if that catalogue cannot be found or if
+CATALOGUE-ID is #f."
   (define (local-enter? path stat journey)
     (or (ok-depth? journey)
-        (error "ENTER?: Invalid catalogue found at ~a.~%" path)))
+        (throw 'invalid-catalogue-store path)))
   (define (local-down path stat journey)
     "Upon descending in dir we want to create the template for a new
 catalogue: we cons (name '()) to the front of journey."
     (make-journey (go-deeper (get-depth journey))
-                  (add-catalogue (cataloguename path) (get-log journey))))
+                  (log-add-catalogue (cataloguename path) (get-log journey))))
 
   (lambda (catalogue-dir)
-    (if catalogue-id
-        (catalogue-system-fold local-enter? local-down (make-bare-journey 1)
-                               (discipline-directory catalogue-dir
-                                                     catalogue-id))
-        '())))
+    (match (catalogue-system-fold local-enter? local-down
+                                  (make-bare-journey 1)
+                                  (discipline-directory catalogue-dir
+                                                        catalogue-id))
+      (() (nothing 'catalogue-detailer (cons catalogue-id catalogue-dir)))
+      (otherwise otherwise))))
 
 
 ;;;; Install Discipline
@@ -323,14 +419,18 @@ procedure's argument, which contains a pointer to the newly installed
 discipline."
   (define (write-discipline store-dir source-dir)
     "Copy the discipline located at SOURCE-DIR into the store at STORE-DIR."
-    ;; Should we be doing this in Scheme?
+    ;; XXX: Should we be doing this in Scheme?
     (system* "cp" "-r" source-dir store-dir))
 
   (lambda (catalogue-dir)
-    ;; We need to check source-dir in all imaginable ways to ensure it is a
-    ;; real and safe discipline.
-    (write-discipline store-dir source-dir)
-    (string-append store-dir "/" (basename source-dir))))
+    ;; XXX: We need to check source-dir in all imaginable ways to ensure it is
+    ;; a real and safe discipline.
+    (catch #t
+      (lambda ()
+        (write-discipline store-dir source-dir)
+        (relative-filename store-dir (basename source-dir)))
+      (lambda (key . args)
+        (nothing 'discipline-installer `(,key ,args))))))
 
 ;;;; Install Catalogue
 ;;;
@@ -344,7 +444,8 @@ discipline."
 (define (catalogue-installer catalogue)
   "Return a procedure of one argument, which when applied, installs a new
 catalogue in the directory pointed to by its argument, based on CURR-CAT, and
-returns this newly created catalogue or #f."
+returns this newly created catalogue or a nothing value with id
+'catalogue-installer."
   (lambda (catalogue-dir)
     (let ((target-dir (discipline-directory catalogue-dir
                                             (get-catalogue-id catalogue))))
@@ -358,7 +459,8 @@ returns this newly created catalogue or #f."
                                                     target-dir name)))))
                           (get-disciplines catalogue))
           catalogue)                    ; Return the catalogue
-        (lambda (key . args) #f)))))
+        (lambda (key . args)
+          (nothing 'catalogue-installer `(,key ,args)))))))
 
 
 ;;;; Catalogue Store Helpers
@@ -370,8 +472,8 @@ returns this newly created catalogue or #f."
   "Return a procedure of one argument, a string identifying a catalogue
 directory, which when applied returns NEW-CATALOGUE after ensuring that the
 filesystem symlink to `current-catalogue' identified by the string
-CURRENT-CATALOGUE-LINK has been updated to point to NEW-CATALOGUE.  Return #f
-if we run into trouble."
+CURRENT-CATALOGUE-LINK has been updated to point to NEW-CATALOGUE.  Return a
+nothing value with id 'current-catalogue-setter if we run into trouble."
   (lambda (catalogue-dir)
     (catch 'system-error
       (lambda ()
@@ -381,12 +483,14 @@ if we run into trouble."
                                       (get-catalogue-id new-catalogue))
                  current-catalogue-link)
         new-catalogue)                  ; Return new-catalogue.
-      (lambda (key . args) #f))))
+      (lambda (key . args)
+        (nothing 'current-catalogue-setter `(,key ,args))))))
 
 (define (next-catalogue-counter-maker)
   "Return a procedure of one argument, a string identifying a catalogue
 directory, which when applied, returns a counter which can be used to name the
-next catalogue.  If we run into problems we will throw an error."
+next catalogue.  If we run into problems we will return a nothing value with
+id 'next-catalogue-counter-maker."
   (define re (make-regexp "^catalogue-([0-9]+)$"))
   (define (local-enter? path stat journey) ; only descend root dir.
     (ok-depth? journey))
@@ -411,101 +515,79 @@ JOURNEY as is."
              journey)))))
 
   (lambda (catalogue-dir)
-    (1+ (catalogue-system-fold local-enter? local-down
-                               (make-bare-journey 3 ; Allow exactly 1 descent.
-                                                  #:state 0)
-                               catalogue-dir
-                               #:local-skip local-skip
-                               #:local-leaf local-leaf))))
+    (match (catalogue-system-fold local-enter? local-down
+                                  (make-bare-journey 3 ; Allow exactly 1 descent.
+                                                     #:state 0)
+                                  catalogue-dir
+                                  #:local-skip local-skip
+                                  #:local-leaf local-leaf)
+      ((? number? counter) (1+ counter))
+      (otherwise (nothing 'next-catalogue-counter-maker `(,otherwise))))))
 
 (define (current-catalogue-namer curr-cat-link)
   "Return a procedure of one argument, a string identifying a catalouge
 directory, which when applied, returns the name of the catalogue current
-pointed to by CURR-CAT-LINK, or #f if an error occurs."
+pointed to by CURR-CAT-LINK, or a nothing with id 'current-catalogue-namer."
   (lambda (catalogue-dir)
     (catch 'system-error
       (lambda () (basename (readlink curr-cat-link)))
-      (lambda (key . args) #f))))
+      (lambda (key . args)
+        (nothing 'current-catalogue-namer `(,key ,args))))))
 
 
-;;;; User Interface
+;;;; IO Catalogues Monad
 ;;;
-;;; These procedures are exported for use by boot.
-;;; They will be rewritten to work with the catalogue IO/State monad.
+;;; A specialized monad for handling UI & IO in relation to Catalogues.
 
-(define (catalogue-list catalogue-dir)
+(define (catalogue-return value)
+  (lambda (catalogue-dir)
+    value))
+
+(define (catalogue-bind mvalue mproc)
+  (lambda (catalogue-dir)
+    (let ((value (mvalue catalogue-dir)))
+      (if (nothing? value)
+          value                         ; value is an error!
+          ((mproc value) catalogue-dir)))))
+
+(define-monad catalogue-monad
+  (bind   catalogue-bind)
+  (return catalogue-return))
+
+
+;;;; Composite procedures
+;;;
+;;; These procedures use the catalogue monad to delay IO operations and handle
+;;; nothing return values.
+
+(define (mcatalogue-list catalogue-dir)
   "Analyze the directory identified by the string CATALOGUE-DIR and emit a
 summary message for each catalogue encountered there."
-  (match ((catalogue-lister) catalogue-dir)
-    (()
-     (format #t "No catalogues found at ~a.~%" catalogue-dir))
-    (((? catalogue? cat) ...)
-     (for-each (lambda (cat) (emit-catalogue cat #:full? #f)) cat))))
+  ((mlet* catalogue-monad
+       ((catalogues (catalogue-lister)))
+     (return catalogues))
+   catalogue-dir))
 
-(define (catalogue-show catalogue-dir catalogue-id)
+(define (mcatalogue-show catalogue-dir catalogue-id)
   "Analyze the directory identified by the string CATALOGUE-DIR and emit an
 overview of the catalogue identified by the string CATALOGUE-ID."
-  (match ((catalogue-detailer catalogue-id) catalogue-dir)
-    (()
-     (format #t "Catalogue ~a could not be found in ~a.~%"
-             catalogue-id catalogue-dir))
-    (((? catalogue? cat)) (emit-catalogue cat))))
+  ((mlet* catalogue-monad
+       ((catalogue (catalogue-detailer catalogue-id)))
+     (return catalogue))
+   catalogue-dir))
 
-;; XXX: Following problems:
-;; catalogue-dir path is volatile: we need to augment the path by at least
-;; glean/symlinks, if not glean/store/symlinks, rather than the current
-;; catalogue-n/symlinks.
-;; We need to ensure passed new-discipline is valid input, points to a file,
-;; is a discipline etc (this could possibly wait until after next commit,
-;; which changes the format of disciplines to $discipline-name/discipline.scm)
-(define (catalogue-install catalogue-dir curr-cat-link store-dir source-dir)
+(define (mcatalogue-install catalogue-dir curr-cat-link store-dir source-dir)
   "Generate a procedure to install the discipline SOURCE-DIR in the store at
 STORE-DIR, and activate the newly created catalogue at CATALOGUE-DIR."
-  (match ((discipline-installer store-dir source-dir) catalogue-dir)
-    (#f
-     (leave (_ "We encountered a problem installing the discipline.\n")))
-    ((? string? store-path)
-     (match ((next-catalogue-counter-maker) catalogue-dir)
-       (#f
-        (leave (_ "A problem occured creating a new counter.")))
-       ((? number? counter)
-        (match ((current-catalogue-namer curr-cat-link) catalogue-dir)
-          (name
-           (match ((catalogue-detailer name) catalogue-dir)
-             (curr-cat
-              (match ((catalogue-installer (augment-catalogue curr-cat counter
-                                                              store-path))
-                      catalogue-dir)
-                (#f
-                 (leave
-                  (_ "A problem occured creating the new catalogue.\n")))
-                ((? catalogue? new-curr-cat)
-                 (match ((current-catalogue-setter new-curr-cat curr-cat-link)
-                         catalogue-dir)
-                   (#f
-                    (leave
-                     (_ "A problem occured switching to the catalogue.\n")))
-                   ((? catalogue? cat)
-                    (emit-catalogue cat))))))))))))))
-
-(define* (emit-catalogue cat #:key (full? #t))
-  "Emit a summary of the catalogue CAT, listing CAT's id and the id of each
-discipline linked in it.  If FULL? is #t, also emit the mapping for each
-discipline id to the discipline in the store."
-  (match cat
-    (($ catalogue id disciplines)
-     (format #t "~a (~a)~%"
-             id
-             (string-join
-              (vlist->list
-               (vlist-map (lambda (discipline)
-                            (match discipline
-                              ((name . target)
-                               (if full?
-                                   (string-append name " => "
-                                                  target)
-                                   name))))
-                          disciplines))
-              ", ")))))
+  ((mlet* catalogue-monad
+       ((store-path (discipline-installer store-dir source-dir))
+        (counter    (next-catalogue-counter-maker))
+        (name       (current-catalogue-namer curr-cat-link))
+        (curr-cat   (catalogue-detailer name))
+        (new-cat -> (augment-catalogue curr-cat counter store-path))
+        (new-curr   (catalogue-installer new-cat))
+        (catalogue  (current-catalogue-setter new-curr curr-cat-link)))
+     (return catalogue))
+   catalogue-dir))
 
 ;;; catalogues ends here

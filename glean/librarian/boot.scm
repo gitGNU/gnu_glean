@@ -67,40 +67,34 @@ versions of the same discipline)."))
 ;;;;; Install
 ;;; value should be either a path to a 'discipline file' or a name in the
 ;;; store.  We either add the discipline file to the store, then create a new
-;;; profile including it, or activate the discipline from the store and create
-;;; a new profile linking to it.
+;;; catalogue including it, or activate the discipline from the store and
+;;; create a new catalogue linking to it.
 ;;;;; Remove
-;;; value should be a name in the store or in the current profile.  We create
-;;; a new profile, with the named discipline removed from it.
-;;;;; Show
-;;; value should be a name in the store or in the current profile.  We display
-;;; detailed information about the discipline.
-;;;;; Scan
-;;; show a list of all discipline paths / names in the store, with synopsis.
+;;; value should be a name in the store or in the current catalogue.  We
+;;; create a new catalogue, with the named discipline removed from it.
+;;;;; Store-Show
+;;; value should be a name in the store or in the current catalogue.  We
+;;; display detailed information about the discipline.  If no value is
+;;; provided, list summaries of all installed disciplines.
 ;;;;; Clean
-;;; scan all existing profiles, then remove all disciplines from the store
-;;; that are currently not linked in any profile.
-;;; If value is given, it should be a profile name: delete all prior profiles
-;;; and then perform the clean.
-;;;;; Profile
-;;; list all profiles currently in existence with a summary of the enabled
-;;; disciplines.
-;;; If value is given it should be a profile name: activate that profile.
+;;; scan all existing catalogues, then remove all disciplines from the store
+;;; that are currently not linked in any catalogue.  If value is given, it
+;;; should be a catalogue name: delete all prior catalogues and then perform
+;;; the clean.
+;;;;; Catalogue-Show
+;;; value should be a catalogue name in the catalogues directory.  We display
+;;; detailed information about that catalogue.  If no value is provided, show
+;;; a summary of all existing catalogues.
 (define *option-grammar*          
   '((help       (single-char #\h) (value #f))
     (usage      (single-char #\u) (value #f))
     (version    (single-char #\v) (value #f))
-    (install    (single-char #\i) (value #t)) ; activate from or add to store
-    ;; (remove     (single-char #\r) (value #t)) ; deactivate from store
-    ;; (store-show    (single-char #\S) (value optional)) ; show discipline detail if
-                                        ; value provided or
-                                        ; scan store.
-    ;; (clean    (single-char #\c) (value optional)) ; remove unused
-                                        ; disciplines/profiles
-    (catalogue (single-char #\s) (value optional)) ; list or select a
-                                        ; catalogue(s)
-    ;; (pick-catalogue (single-char #\p) (value optional)) ; show discipline or
-                                        ; catalogue contents.
+    (install    (single-char #\i) (value #t))
+    ;; (remove (single-char #\r) (value #t))
+    ;; (store-show (single-char #\S) (value optional))
+    ;; (clean    (single-char #\c) (value optional))
+    (catalogue-show (single-char #\s) (value optional))
+    ;; (pick-catalogue (single-char #\p) (value optional))
     ))
 
 (define *messages*
@@ -148,10 +142,11 @@ versions of the same discipline)."))
              (cond ((get-opt 'install)
                     (catalogue-install %catalogue-dir% %current-catalogue%
                                        %library-dir% (get-opt 'install)))
-                   ((and=> (get-opt 'catalogue) boolean?)
+                   ((and=> (get-opt 'catalogue-show) boolean?)
                     (catalogue-list %catalogue-dir%))
-                   ((get-opt 'catalogue)
-                    (catalogue-show %catalogue-dir% (get-opt 'catalogue)))
+                   ((get-opt 'catalogue-show)
+                    (catalogue-show %catalogue-dir%
+                                    (get-opt 'catalogue-show)))
                    (else (help))))))))
 
 ;;; boot.scm ends here
