@@ -53,6 +53,7 @@ This document describes Glean version @value{VERSION}.
 * The Client::                  User Interfaces in-depth.
 * The Lounge::                  User data storage in-depth.
 * The Library::                 Discipline storage in-depth.
+* Librarian::                   Administering the library.
 
 * Contributing::                Contributing to the Glean project.
 * Acknowledgments::             Thanks!
@@ -187,6 +188,14 @@ Run @command{configure && make && sudo make install}.
 
 If you run into problems regarding libgcrypt then you may to specify its
 location using configure's @code{--with-libgcrypt-prefix} argument.
+
+For now you will need to install the core disciplines manually.  You can
+do this using the new @code{Librarian} command (@pxref{Librarian}).
+Once installation has completed, from the top source directory, run:
+
+@code{for i in `ls disciplines/`; do glean lbr -i disciplines/$i; done }
+
+You should get confirmation of each discipline being installed.
 
 @subsection Running Glean
 
@@ -535,12 +544,12 @@ This option is also compatible with @code{--log-level} option.
 @chapter The Library
 
 @cindex library
-The @dfn{library} provides all functionality related to discipline
-management: it manages the repository of disciplines as physical files
-on the hard drive; exposes a ``store'' which can be accessed via the
-library's API (or, more typically, by a client) and supplies the actual
-problems (@pxref{Problems}, @pxref{Exercises}) to be resolved by the
-user.
+The @dfn{library} provides high-level access to disciplines: it acts as
+the interface to disciplines installed on the hard drive, and exposes a
+``store'' which can be accessed via the library's API (or, more
+typically, by a client).  Through this it, for instance, supplies the
+actual problems (@pxref{Problems}, @pxref{Exercises}) to be resolved by
+the user during Glean play.
 
 Library servers listen at a socket in Glean's user directory after
 startup.
@@ -589,9 +598,78 @@ This option is also compatible with @code{--log-level} option.
 
 @end table
 
-@c FIXME: add stuff about the --install, --remove options once they have
-@c matured. Add information useful to content creators (lint tools etc.)
-@c once available.
+@c @menu
+@c * Entry 1::                     Description
+@c @end menu
+
+@c *********************************************************************
+@node Librarian
+@chapter Librarian
+
+@cindex librarian
+The @dfn{librarian} command allows you to manage the disciplines which
+are currently active in your library component.  Thus you can use it to
+add new disciplines, to switch back and forth between previous versions
+of disciplines and previous instances of the library's store.
+
+If the library manages disciplines for use by Glean, then the librarian
+allows you to catalogue disciplines in such a way that the library can
+use them.
+
+The underlying model used by the librarian to provide disciplines for
+the library is as follows:
+
+@itemize
+@item
+the store contains individual disciplines;
+@item
+each time a discipline in the store is manipulated by librarian, a new
+catalogue is created;
+@item
+catalogues are snapshots of the store implemented as symlink forests:
+they contain all disciplines from the previously active catalogue, plus
+the result of the current store manipulation (e.g. a link to a new
+discipline;
+@item
+finally, the library simply uses the catalogue named
+@emph{current-catalogue}: this catalogue always points to the
+most-recently selected catalogue;
+@end itemize
+
+To use librarian:
+
+@example
+glean librarian @var{options}
+@end example
+
+@var{options} should not be empty and @var{options} can be one of the
+usual suspects (@code{--help}, @code{--usage}, @code{version}) or one of
+the following:
+
+@table @code
+
+@item --catalogue-show=@var{catalogue-name}
+@item -s @var{catalogue-name}
+Browse or read detail on one or more catalogues.
+
+When @var{catalogue-name} is specified, output detailed information on
+that catalogue.  When it is not specified, emit summaries for all known
+catalogues.
+
+@item --install=@var{filename}
+@item -i @var{filename}
+Install a new discipline in the library.
+
+@var{filename} is mandatory.  It should be a string pointing to a
+directory containing a discipline definition.  @code{librarian} will
+try to install the discipline in the store and to create & activate a
+new catalogue which includes the disciplines active in the previous
+catalogue and the discipline just installed.
+
+@end table
+
+@c Add information useful to content creators (lint tools etc.)  once
+@c available.
 
 @c @menu
 @c * Entry 1::                     Description
