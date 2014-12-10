@@ -43,6 +43,8 @@ MODULES =						\
   glean/common/hash.scm					\
   glean/common/monads.scm				\
   glean/common/utils.scm				\
+  glean/librarian/boot.scm				\
+  glean/librarian/catalogues.scm			\
   glean/library/core-templates.scm			\
   glean/library/sets.scm			  	\
   glean/library/boot.scm			     	\
@@ -53,14 +55,7 @@ MODULES =						\
   glean/lounge/boot.scm					\
   glean/lounge/lounge-filesystem.scm			\
   glean/lounge/lounge-store.scm				\
-  glean/lounge/server.scm                               \
-  glean/store/birds.scm                                 \
-  glean/store/git.scm                                   \
-  glean/store/glean.scm                                 \
-  glean/store/gov-uk.scm                                \
-  glean/store/koha.scm                                  \
-  glean/store/meta.scm                                  \
-  glean/store/test.scm
+  glean/lounge/server.scm
 
 GOBJECTS = $(MODULES:%.scm=%.go) glean/config.go
 
@@ -75,6 +70,7 @@ SCM_TESTS =						\
   tests/sets.scm					\
   tests/scorecards.scm				 	\
   tests/base32.scm				     	\
+  tests/catalogues.scm					\
   tests/hash.scm					\
   tests/lounge-store.scm			     	\
   tests/lounge-server.scm			    	\
@@ -104,6 +100,7 @@ EXTRA_DIST =  					     	\
   ROADMAP						\
   TODO						     	\
   .dir-locals.el					\
+  disciplines						\
   srfi/srfi-64.scm				     	\
   srfi/srfi-64.upstream.scm			  	\
   quickcheck/quickcheck.scm			  	\
