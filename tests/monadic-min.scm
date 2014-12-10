@@ -42,7 +42,7 @@
 
 ;;;; Tests
 
-(test-begin "client-monad-dict")
+(test-begin "monadic-min")
 
 (let ((proc (@@ (glean client monadic-min) client-monad-dict)))
   ;; test basic monad-dict functionality:

@@ -41,7 +41,7 @@
 
 ;;;; Tests
 
-(test-begin "mlogger")
+(test-begin "monads")
 ;;; Test whether `mlogger' indeed switches on and off, depending on `logger',
 ;;; and whether `mlogger' handles bogus messages.
 (parameterize ((logger (const #t)))

@@ -55,7 +55,7 @@
 (define hashmap->blobs
   (@@ (glean lounge lounge-store) hashmap->blobs))
 
-(test-begin "lounge-monad-dict")
+(test-begin "lounge-store")
 
 (let ((proc (@@ (glean lounge lounge-store) lounge-monad-dict)))
   ;; test basic monad-dict functionality:
@@ -94,10 +94,6 @@
       (test-equal "nothing-long"
         `(unknown "Nothing:" (,id . ,context))
         (proc (stateful `(,(nothing id context)) 'state) (log-level))))))
-
-(test-end)
-
-(test-begin "lounge-store")
 
 (test-assert "hashtree->blobs"
   (quickcheck (lambda (_)

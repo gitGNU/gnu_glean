@@ -40,7 +40,7 @@
 
 ;;;; Tests
 
-(test-begin "make-logger")
+(test-begin "utils")
 ;;; Test whether `make-logger' respects logging instructions.
 (test-assert "logger-off"
   (not ((make-logger #f #f #f) 'message)))
