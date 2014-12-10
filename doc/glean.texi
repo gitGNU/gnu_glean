@@ -666,6 +666,12 @@ try to install the discipline in the store and to create & activate a
 new catalogue which includes the disciplines active in the previous
 catalogue and the discipline just installed.
 
+@item --remove=@var{disc-id}
+@item -r @var{disc-id}
+De-activate a discipline from your active catalogue.
+
+@var{disc-id} is mandatory.  It should be a string identifying a discipline currenty active in your catalogue.  @code{librarian} will try to create a new current catalogue without this discipline in it.  If the discipline named cannot be found we'll simply create a new catalogue that is identical to the current catalogue.
+
 @end table
 
 @c Add information useful to content creators (lint tools etc.)  once

@@ -90,7 +90,7 @@ versions of the same discipline)."))
     (usage      (single-char #\u) (value #f))
     (version    (single-char #\v) (value #f))
     (install    (single-char #\i) (value #t))
-    ;; (remove (single-char #\r) (value #t))
+    (remove     (single-char #\r) (value #t))
     ;; (store-show (single-char #\S) (value optional))
     ;; (clean    (single-char #\c) (value optional))
     (catalogue-show (single-char #\s) (value optional))
@@ -103,6 +103,7 @@ versions of the same discipline)."))
     ,(string-append "Show the version of " %glean-package-name%
                     " you are using and exit.")
     "Install the discipline located at VALUE into the store."
+    "Remove the discipline identified by VALUE from your active catalogue."
     "Show information about the catalogue VALUE, or list all catalogues."))
 
 
@@ -142,6 +143,9 @@ versions of the same discipline)."))
              (cond ((get-opt 'install)
                     (catalogue-install %catalogue-dir% %current-catalogue%
                                        %library-dir% (get-opt 'install)))
+                   ((get-opt 'remove)
+                    (catalogue-remove %catalogue-dir% %current-catalogue%
+                                      (get-opt 'remove)))
                    ((and=> (get-opt 'catalogue-show) boolean?)
                     (catalogue-list %catalogue-dir%))
                    ((get-opt 'catalogue-show)

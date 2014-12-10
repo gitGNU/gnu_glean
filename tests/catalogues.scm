@@ -74,6 +74,19 @@
             (equal? (vlist->list disciplines)
                     '(("path" . "/tmp/test/path"))))))))
 
+(test-assert "impair-catalogue"
+  (let ((proc (@@ (glean librarian catalogues) impair-catalogue))
+        (aug  (@@ (glean librarian catalogues) augment-catalogue)))
+    (and
+     (match (proc (list (make-bare-catalogue "catalogue-1")) 5 "test-disc")
+       (($ catalogue "catalogue-5" disciplines)
+        (null? (vlist->list disciplines))))
+     (match (proc (list (aug (list (make-bare-catalogue "catalogue-1"))
+                             5 "/tmp/test/path"))
+                  6 "path")
+       (($ catalogue "catalogue-6" disciplines)
+        (null? (vlist->list disciplines)))))))
+
 (test-assert "log-add-catalogue"
   (let ((proc (@@ (glean librarian catalogues) log-add-catalogue))
         (bare-cat (@@ (glean librarian catalogues) make-bare-catalogue)))

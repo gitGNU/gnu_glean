@@ -60,6 +60,7 @@
   #:use-module (ice-9 vlist)
   #:use-module (srfi srfi-9 gnu)
   #:export     (catalogue-list
+                catalogue-remove
                 catalogue-show
                 catalogue-install))
 
@@ -90,6 +91,16 @@
 in CAT-DIR and update CURR-CAT.  We will exit with an error if we encounter a
 problem."
   (match (mcatalogue-install cat-dir curr-cat lib-dir target)
+    ((? nothing? nothing)
+     (emit-error (nothing-id nothing) (nothing-context nothing)))
+    ((? catalogue? catalogue)
+     (emit-catalogue catalogue))))
+
+(define (catalogue-remove cat-dir curr-cat disc-id)
+  "Attempt to create and activate a new catalogue with the discipline
+identified by DISC-ID removed from it.  We will exit with an error if we
+encounter a problem."
+  (match (mcatalogue-remove cat-dir curr-cat disc-id)
     ((? nothing? nothing)
      (emit-error (nothing-id nothing) (nothing-context nothing)))
     ((? catalogue? catalogue)
@@ -187,6 +198,14 @@ one provided by NEW-DISCIPLINE."
             (set-disciplines old-catalogue
                              (vhash-cons name target disciplines))))))))
 
+(define (catalogue-remove-discipline old-catalogue discipline-id)
+  "Generate a new catalogue based on the catalogue OLD-CATALOGUE, which now
+no longer containes the discipline identified by DISCIPLINE-ID."
+  (match old-catalogue
+    (($ catalogue id disciplines)
+     (set-disciplines old-catalogue
+                      (vhash-delete discipline-id disciplines)))))
+
 (define (augment-catalogue old-catalogue counter new-discipline)
   "Return a new catalogue, incorporating the disciplines of OLD-CATALOGUE,
 named with COUNTER, and augmented by NEW-DISCIPLINE.  OLD-CATALOGUE should be
@@ -200,6 +219,17 @@ bare catalogue."
                                  (get-disciplines (car old-catalogue))))
                             (cons (basename new-discipline) new-discipline)))
 
+(define (impair-catalogue old-catalogue counter old-id)
+  "Return a new catalogue, incorporating all disciplines of OLD-CATALOGUE,
+except for the one identified by OLD-ID.  This catalogue will be named using
+COUNTER.  If OLD-CATALOGUE is '(), create a new, empty catalogue."
+  (catalogue-remove-discipline (if (null? old-catalogue)
+                                   (make-bare-catalogue
+                                    (make-catalogue-name counter))
+                                   (make-catalogue
+                                    (make-catalogue-name counter)
+                                    (get-disciplines (car old-catalogue))))
+                               old-id))
 
 ;;;; Catalogue File System Semantics
 ;;;
@@ -585,6 +615,19 @@ STORE-DIR, and activate the newly created catalogue at CATALOGUE-DIR."
         (name       (current-catalogue-namer curr-cat-link))
         (curr-cat   (catalogue-detailer name))
         (new-cat -> (augment-catalogue curr-cat counter store-path))
+        (new-curr   (catalogue-installer new-cat))
+        (catalogue  (current-catalogue-setter new-curr curr-cat-link)))
+     (return catalogue))
+   catalogue-dir))
+
+(define (mcatalogue-remove catalogue-dir curr-cat-link disc-id)
+  "Create and activate a new revision of current catalogue, with the
+discipline identified by DISC-ID removed."
+  ((mlet* catalogue-monad
+       ((name       (current-catalogue-namer curr-cat-link))
+        (curr-cat   (catalogue-detailer name))
+        (counter    (next-catalogue-counter-maker))
+        (new-cat -> (impair-catalogue curr-cat counter disc-id))
         (new-curr   (catalogue-installer new-cat))
         (catalogue  (current-catalogue-setter new-curr curr-cat-link)))
      (return catalogue))
