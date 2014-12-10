@@ -40,17 +40,19 @@
 ;;; For clarity we define the exercises at the top level.  As a result we
 ;;; define the discipline itself at the very bottom of the file.
 
-(define tutorial
-  (tutorial 'tutorial
-            #:name "Git Tutorial"
-            #:synopsis "A short introduction to Git."
-            #:chapters
-            `()
-            #:completion
-            (chapter "A short introduction to Git."
-                     '("This discipline will allow you to practise the basic
-usage of some common Git commands: ‘git init’, ’git status’, ‘git add’, ’git
-commit‘, ‘git diff‘, ‘git log‘, ’git branch’ and ‘git checkout‘."))))
+;;; It is unclear why, bit in this discipline, tutorial causes failure.  In
+;;; other disciplines this exact invocation works...
+;; (define tutorial
+;;   (tutorial 'tutorial
+;;             #:name "Git Tutorial"
+;;             #:synopsis "A short introduction to Git."
+;;             #:chapters
+;;             `()
+;;             #:completion
+;;             (chapter "A short introduction to Git."
+;;                      '("This discipline will allow you to practise the basic
+;; usage of some common Git commands: ‘git init’, ’git status’, ‘git add’, ’git
+;; commit‘, ‘git diff‘, ‘git log‘, ’git branch’ and ‘git checkout‘."))))
 
 (define git-init
   (set 'git-init
@@ -228,15 +230,15 @@ uncommited, but tracked, files in your repository?")
     #:name "Git: fast version control"
     #:version "0.1"
     #:keywords '("programming" "version-control" "project-management"
-                "source-code")
+                 "source-code")
     #:synopsis "Learn to use git to manage your projects."
     #:description "Git is a free and open source distributed version control
 system designed to handle everything from small to very large projects with
 speed and efficiency."
     #:creator "Alex Sassmannshausen"
     #:attribution (list (media #:text "Git man pages & website"))
-    #:contents `(,tutorial ,git-init ,git-status ,git-add ,git-commit
-                           ,git-diff ,git-log ,git-branch ,git-checkout)
+    #:contents `(,git-init ,git-status ,git-add ,git-commit ,git-diff ,git-log
+                           ,git-branch ,git-checkout)
     #:logo "http://www.git-scm.com/images/logo@2x.png"
     #:resources (list (media #:urls '("http://www.git-scm.com")))))
 
