@@ -1,25 +1,3 @@
-GNU Guix is consists of Scheme code that implements the deployment model
-of the Nix package management tool.  In fact, it currently talks to a
-build daemon whose code comes from Nix (see the manual for details.)
+Glean is currently written and maintained by:
 
-Nix was initially written by Eelco Dolstra; other people have been
-contributing to it.  See `nix/AUTHORS' for details.
-
-The fine people listed below have contributed code to GNU Guix (in
-alphabetical order):
-
-           Eric Bavier <bavier@member.fsf.org>
-        Ludovic Courtès <ludo@gnu.org>
-           John Darrington <john@darrington.wattle.id.au>
-        Andreas Enge <andreas@enge.fr>
-         Alírio Eyng <alirioeyng@gmail.com>
-            Guy Grant <gzg@riseup.net>
-         Raimon Grau <raimonster@gmail.com>
-         Nikita Karetnikov <nikita@karetnikov.org>
-        Aljosha Papsch <misc@rpapsch.de>
-        Manolis Ragkousis <manolis837@gmail.com>
-          Cyril Roelandt <tipecaml@gmail.com>
-           Alex Sassmannshausen <alex.sassmannshausen@gmail.com>
-    Sree Harsha Totakura <sreeharsha@totakura.in>
-          David Thompson <dthompson2@worcester.edu>
-        Mark H. Weaver <mhw@netris.org>
+Alex Sassmannshausen <alex.sassmannshausen@gmail.com>

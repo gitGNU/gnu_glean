@@ -1,24 +1,31 @@
-;;; glean --- fast learning tool.         -*- coding: utf-8 -*-
+;; base32.scm --- base32 unit tests    -*- coding: utf-8 -*-
+;;
+;; Copyright (C) 2012, 2013, 2014 Ludovic Courtès <ludo@gnu.org>
+;; Copyright (C) 2014 Alex Sassmannshausen <alex.sassmannshausen@gmail.com>
+;;
+;; Author: Alex Sassmannshausen <alex.sassmannshausen@gmail.com>
+;; Created: 01 January 2014
+;;
+;; This file is part of Glean.
+;;
+;; This program is free software: you can redistribute it and/or modify it
+;; under the terms of the GNU Affero General Public License as published by
+;; the Free Software Foundation, either version 3 of the License, or (at your
+;; option) any later version.
+;;
+;; This program is distributed in the hope that it will be useful, but WITHOUT
+;; ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+;; FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Affero General Public
+;; License for more details.
+;;
+;; You should have received a copy of the GNU Affero General Public License
+;; along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-;;; Copyright (C) 2012, 2013, 2014 Ludovic Courtès <ludo@gnu.org>,
-;;; Alex Sassmannshausen <alex.sassmannshausen@gmail.com>
-
-;; This program is free software; you can redistribute it and/or
-;; modify it under the terms of the GNU General Public License as
-;; published by the Free Software Foundation; either version 3 of
-;; the License, or (at your option) any later version.
+;;; Commentary:
 ;;
-;; This program is distributed in the hope that it will be useful,
-;; but WITHOUT ANY WARRANTY; without even the implied warranty of
-;; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-;; GNU General Public License for more details.
+;; base32 unit tests.
 ;;
-;; You should have received a copy of the GNU General Public License
-;; along with this program; if not, contact:
-;;
-;; Free Software Foundation           Voice:  +1-617-542-5942
-;; 59 Temple Place - Suite 330        Fax:    +1-617-542-2652
-;; Boston, MA  02111-1307,  USA       gnu@gnu.org
+;;; Code:
 
 (define-module (tests base32)
   #:use-module (glean common base32)
@@ -62,3 +69,6 @@
 ;;(exit (= (test-runner-fail-count (test-runner-current)) 0))
 
 
+
+;;; discipline ends here
+;; Boston, MA  02111-1307,  USA       gnu@gnu.org

@@ -1,28 +1,36 @@
 #!/bin/sh
 
-# GNU Guix --- Functional package management for GNU
-# Copyright © 2012, 2013, 2014 Ludovic Courtès <ludo@gnu.org>
+# glean --- fast learning tool.         -*- coding: utf-8 -*-
 #
-# This file is part of GNU Guix.
+# Copyright (C) 2014 Alex Sassmannshausen <alex.sassmannshausen@gmail.com>
 #
-# GNU Guix is free software; you can redistribute it and/or modify it
-# under the terms of the GNU General Public License as published by
-# the Free Software Foundation; either version 3 of the License, or (at
-# your option) any later version.
+# This file is part of Glean.
 #
-# GNU Guix is distributed in the hope that it will be useful, but
-# WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
+# This program is free software: you can redistribute it and/or modify it
+# under the terms of the GNU Affero General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or (at your
+# option) any later version.
 #
-# You should have received a copy of the GNU General Public License
-# along with GNU Guix.  If not, see <http://www.gnu.org/licenses/>.
+# This program is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+# FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Affero General Public
+# License for more details.
+#
+# You should have received a copy of the GNU Affero General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+# Commentary:
+#
 # Usage: ./test-env COMMAND ARG...
 #
-# Run the daemon in the build directory, and run COMMAND within
-# `pre-inst-env'.  This is used to run unit tests with the just-built
-# daemon, unless `--disable-daemon' was passed at configure time.
+# Run COMMAND in a pre-installation environment.  Typical use is, e.g.,
+# "./pre-inst-env scripts/glean -h".
+#
+# This file is a (stripped down, but otherwise largely unmodified)
+# version of the one contained in the GNU Guix project, authored by
+# Ludovic Courtès <ludo@gnu.org>.
+#
+# Code:
 
 prefix="@prefix@"
 datarootdir="@datarootdir@"

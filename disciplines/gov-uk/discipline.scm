@@ -1,4 +1,34 @@
-;;; glean --- learning the world using Guile.         -*- coding: utf-8 -*-
+;; discipline.scm --- introduction to gov.uk    -*- coding: utf-8 -*-
+;;
+;; Copyright (C) 2014 Alex Sassmannshausen <alex.sassmannshausen@gmail.com>
+;;
+;; Author: Alex Sassmannshausen <alex.sassmannshausen@gmail.com>
+;; Created: 06 June 2014
+;;
+;; This file is part of Glean.
+;;
+;; This program is free software: you can redistribute it and/or modify it
+;; under the terms of the GNU Affero General Public License as published by
+;; the Free Software Foundation, either version 3 of the License, or (at your
+;; option) any later version.
+;;
+;; This program is distributed in the hope that it will be useful, but WITHOUT
+;; ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+;; FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Affero General Public
+;; License for more details.
+;;
+;; You should have received a copy of the GNU Affero General Public License
+;; along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+;;; Commentary:
+;;
+;; A discipline providing a high level overview of the http://www.gov.uk
+;; website.
+;;
+;; Like the Koha discipline, this is primarily intended to be an illustration
+;; of the current state of tutorials in Glean.
+;;
+;;; Code:
 
 (define-module (glean disciplines gov-uk discipline)
   #:use-module (glean library core-templates)
@@ -35,3 +65,5 @@ GOV.UK. After this we will practice using it through targeted exercises."
     #:resources (list (media #:urls '("https://www.gov.uk/help")))
     #:logo "http://dvlaregistrations.direct.gov.uk/images/assets/gov-uk-logo-footer.jpg"
     #:contents `(,tutorial)))
+
+;;; discipline ends here

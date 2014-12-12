@@ -1,25 +1,36 @@
-;;; glean --- Fast learning tool.         -*- coding: utf-8 -*-
-
-;;;; Glean Quickcheck Definitions
-
-;;; copyright etc. & license.
+;; quickcheck-defs.scm --- quickcheck definitions    -*- coding: utf-8 -*-
+;;
+;; Copyright (C) 2014 Alex Sassmannshausen <alex.sassmannshausen@gmail.com>
+;;
+;; Author: Alex Sassmannshausen <alex.sassmannshausen@gmail.com>
+;; Created: 01 January 2014
+;;
+;; This file is part of Glean.
+;;
+;; This program is free software: you can redistribute it and/or modify it
+;; under the terms of the GNU Affero General Public License as published by
+;; the Free Software Foundation, either version 3 of the License, or (at your
+;; option) any later version.
+;;
+;; This program is distributed in the hope that it will be useful, but WITHOUT
+;; ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+;; FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Affero General Public
+;; License for more details.
+;;
+;; You should have received a copy of the GNU Affero General Public License
+;; along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 ;;; Commentary:
-
-;;; Quickcheck is a property testing framework originally developed
-;;; for Haskell. Glean uses the portable scheme implementation of
-;;; Quickcheck created by IJP.
-;;;
-;;; This library defines generators specific to glean data-types
-;;; for use by quickcheck tests.
-
-;;;; Documentation
-;;;  (Incomplete as this may still change)
-;;;
-
+;;
+;; Quickcheck is a property testing framework originally developed
+;; for Haskell. Glean uses the portable scheme implementation of
+;; Quickcheck created by IJP.
+;;
+;; This library defines generators specific to glean data-types
+;; for use by quickcheck tests.
+;;
 ;;; Code:
-
-;;;;; Module Definition
+
 (define-module (tests quickcheck-defs)
   #:use-module (quickcheck quickcheck)
   #:use-module (ice-9 format)
@@ -55,7 +66,7 @@
             $response
 
             $aliveq
-             $challq
+            $challq
             $challs
             $evalq
             $evals
@@ -292,3 +303,5 @@ KEY-GENERATOR and VALUE-GENERATOR"
         l
         (loop (- i 1) (cons (proc i) l))))
   (loop (- size 1) '()))
+
+;;; quickcheck-defs ends here

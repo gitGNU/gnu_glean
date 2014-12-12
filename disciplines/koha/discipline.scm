@@ -1,4 +1,34 @@
-;;; glean --- learning the world using Guile.         -*- coding: utf-8 -*-
+;; discipline.scm --- an introduction to Koha    -*- coding: utf-8 -*-
+;;
+;; Copyright (C) 2014 Alex Sassmannshausen <alex.sassmannshausen@gmail.com>
+;;
+;; Author: Alex Sassmannshausen <alex.sassmannshausen@gmail.com>
+;; Created: 01 June 2014
+;;
+;; This file is part of Glean.
+;;
+;; This program is free software: you can redistribute it and/or modify it
+;; under the terms of the GNU Affero General Public License as published by
+;; the Free Software Foundation, either version 3 of the License, or (at your
+;; option) any later version.
+;;
+;; This program is distributed in the hope that it will be useful, but WITHOUT
+;; ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+;; FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Affero General Public
+;; License for more details.
+;;
+;; You should have received a copy of the GNU Affero General Public License
+;; along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+;;; Commentary:
+;;
+;; A discipline definition providing a high level overview of the Free library
+;; management system Koha.
+;;
+;; This module is primarily intended as to illustrate the current state of
+;; tutorials in Glean.
+;;
+;;; Code:
 
 (define-module (glean disciplines koha discipline)
   #:use-module (glean library core-templates)
@@ -55,3 +85,5 @@ managing your loans and amending your details."
                      "http://wiki.koha-community.org/wiki/Main_Page")))
     #:logo     "http://git.koha-community.org/gitweb/Koha-logo.jpg"
     #:contents `(,basic-search)))
+
+;;; discipline ends here
