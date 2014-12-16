@@ -64,18 +64,20 @@
 ;;;; Catalogue Record Type Definition
 
 (define-immutable-record-type catalogue
-  (make-catalogue id disciplines)
+  (make-catalogue id disciplines cat-dir)
   catalogue?
   (id          get-catalogue-id)
-  (disciplines get-disciplines set-disciplines))
+  (disciplines get-disciplines set-disciplines)
+  (cat-dir     get-catalogue-dir))
 
 ;;; Records used in Catalogue related file system traversal.
 
 (define-immutable-record-type journey
-  (make-journey depth-gauge journey-log)
+  (make-journey depth-gauge journey-log cat-dir)
   journey?
   (depth-gauge get-depth set-depth)
-  (journey-log get-log   set-log))
+  (journey-log get-log   set-log)
+  (cat-dir     get-cat))
 
 
 ;;;; UI
@@ -168,9 +170,10 @@ discipline id to the discipline in the store."
 
 ;;;; Atomic Catalogue Operations
 
-(define (make-bare-catalogue catalogue-id)
-  "Return a fresh catalogue, with CATALOGUE-ID as the catalogue's id."
-  (make-catalogue catalogue-id vlist-null))
+(define (make-bare-catalogue catalogue-id catalogue-dir)
+  "Return a fresh catalogue, with CATALOGUE-ID as the catalogue's id and
+CATALOGUE-DIR as its catalologue-dir."
+  (make-catalogue catalogue-id vlist-null catalogue-dir))
 
 (define (catalogue-add-discipline old-catalogue new-discipline)
   "Generate a new catalogue based on the catalogue OLD-CATALOGUE, which now
@@ -202,18 +205,25 @@ no longer containes the discipline identified by DISCIPLINE-ID."
      (set-disciplines old-catalogue
                       (vhash-delete discipline-id disciplines)))))
 
-(define (augment-catalogue old-catalogue counter new-discipline)
+(define* (augment-catalogue old-catalogue counter new-discipline
+                            #:key (cat-dir #f))
   "Return a new catalogue, incorporating the disciplines of OLD-CATALOGUE,
 named with COUNTER, and augmented by NEW-DISCIPLINE.  OLD-CATALOGUE should be
 a catalogue or '().  If the latter we build the resulting catalogue out of a
-bare catalogue."
-  (catalogue-add-discipline (if (null? old-catalogue)
-                                (make-bare-catalogue
-                                 (make-catalogue-name counter))
-                                (make-catalogue
-                                 (make-catalogue-name counter)
-                                 (get-disciplines (car old-catalogue))))
-                            (cons (basename new-discipline) new-discipline)))
+bare catalogue.
+
+If CAT-DIR is provided as a string, then we'll create the new catalogue with
+CAT-DIR as its catalogue-dir."
+  (let ((cat-dir (or cat-dir (get-catalogue-dir (car old-catalogue)))))
+    (catalogue-add-discipline (if (null? old-catalogue)
+                                  (make-bare-catalogue
+                                   (make-catalogue-name counter)
+                                   cat-dir)
+                                  (make-catalogue
+                                   (make-catalogue-name counter)
+                                   (get-disciplines (car old-catalogue))
+                                   cat-dir))
+                              (cons (basename new-discipline) new-discipline))))
 
 (define (impair-catalogue old-catalogue counter old-id)
   "Return a new catalogue, incorporating all disciplines of OLD-CATALOGUE,
@@ -221,10 +231,12 @@ except for the one identified by OLD-ID.  This catalogue will be named using
 COUNTER.  If OLD-CATALOGUE is '(), create a new, empty catalogue."
   (catalogue-remove-discipline (if (null? old-catalogue)
                                    (make-bare-catalogue
-                                    (make-catalogue-name counter))
+                                    (make-catalogue-name counter)
+                                    (get-catalogue-dir (car old-catalogue)))
                                    (make-catalogue
                                     (make-catalogue-name counter)
-                                    (get-disciplines (car old-catalogue))))
+                                    (get-disciplines (car old-catalogue))
+                                    (get-catalogue-dir (car old-catalogue))))
                                old-id))
 
 ;;;; Catalogue File System Semantics
@@ -303,13 +315,13 @@ the filename part of PATH, but the part that would identify the catalogue."
 
 ;;;; Journey/Filesystem Traversal Operations
 
-(define* (make-bare-journey depth #:key (state '()))
+(define* (make-bare-journey depth cat-dir #:key (state '()))
   "Return a fresh journey."
-  (make-journey depth state))
+  (make-journey depth state cat-dir))
 
-(define (log-add-catalogue catalogue-id log)
+(define (log-add-catalogue catalogue-id log catalogue-dir)
   "Return JOURNEY-LOG augmented by a fresh catalogue for CATALOGUE-ID."
-  (cons (make-bare-catalogue catalogue-id) log))
+  (cons (make-bare-catalogue catalogue-id catalogue-dir) log))
 
 (define (log-add-discipline discipline-filename log)
   "Return LOG with the first catalogue in it augmented by DISCIPLINE."
@@ -396,11 +408,14 @@ catalogue, if we find ourselves at the appropriate depth."
         (set-depth journey (go-deeper (get-depth journey)))
         (make-journey (go-deeper (get-depth journey))
                       (log-add-catalogue (cataloguename path)
-                                         (get-log journey)))))
+                                         (get-log journey)
+                                         (get-cat journey))
+                      (get-cat journey))))
   
   (lambda (catalogue-dir)
     (match (catalogue-system-fold local-enter? local-down
-                                  (make-bare-journey 0) catalogue-dir)
+                                  (make-bare-journey 0 catalogue-dir)
+                                  catalogue-dir)
       (() (nothing 'catalogue-lister (cons catalogue-dir #f)))
       (otherwise otherwise))))
 
@@ -419,12 +434,15 @@ CATALOGUE-ID is #f."
     "Upon descending in dir we want to create the template for a new
 catalogue: we cons (name '()) to the front of journey."
     (make-journey (go-deeper (get-depth journey))
-                  (log-add-catalogue (cataloguename path) (get-log journey))))
+                  (log-add-catalogue (cataloguename path)
+                                     (get-log journey)
+                                     (get-cat journey))
+                  (get-cat journey)))
 
   (lambda (catalogue-dir)
     (if catalogue-id
         (match (catalogue-system-fold local-enter? local-down
-                                      (make-bare-journey 1)
+                                      (make-bare-journey 1 catalogue-dir)
                                       (discipline-directory catalogue-dir
                                                             catalogue-id))
           (() (nothing 'catalogue-detailer (cons catalogue-id catalogue-dir)))
@@ -440,12 +458,16 @@ catalogue: we cons (name '()) to the front of journey."
 ;;; current-catalogue with one that encompasses it and a pointer to the newly
 ;;; installed discipline.
 
-(define (discipline-installer store-dir source-dir)
+(define* (discipline-installer store-dir source-dir #:key (naive? #f))
   "Return a procedure of one argument, which when applied, installs the
 discipline SOURCE-DIR in the store STORE-DIR, after which it activates a new
 catalogue augmenting the current catalogue with a new catalogue stored at the
 procedure's argument, which contains a pointer to the newly installed
-discipline."
+discipline.
+
+If NAIVE? is true then we simply install SOURCE-DIR in STORE-DIR under the
+discipline's id.  if it is #f then we install it using its deep-hash.  NAIVE?
+is used for temporary catalogue creation."
   (define (write-discipline store-dir source-dir)
     "Copy the discipline located at SOURCE-DIR into the store at STORE-DIR."
     ;; XXX: Should we be doing this in Scheme?
@@ -470,13 +492,16 @@ discipline."
 ;;; write-catalogue, so as long as that is delayed, we could simply use
 ;;; bearer directly.
 
-(define (catalogue-installer catalogue)
+(define* (catalogue-installer catalogue #:key (fake-dir #f))
   "Return a procedure of one argument, which when applied, installs a new
 catalogue in the directory pointed to by its argument, based on CURR-CAT, and
 returns this newly created catalogue or a nothing value with id
-'catalogue-installer."
+'catalogue-installer.
+
+If FAKE-DIR is a string we will install CATALOGUE in FAKE-DIR instead. This is
+used, for instance, for temporary catalogue creation."
   (lambda (catalogue-dir)
-    (let ((target-dir (discipline-directory catalogue-dir
+    (let ((target-dir (discipline-directory (or fake-dir catalogue-dir)
                                             (get-catalogue-id catalogue))))
       (mkdir-p target-dir)
       (catch 'system-error
@@ -546,6 +571,7 @@ JOURNEY as is."
   (lambda (catalogue-dir)
     (match (catalogue-system-fold local-enter? local-down
                                   (make-bare-journey 3 ; Allow exactly 1 descent.
+                                                     catalogue-dir
                                                      #:state 0)
                                   catalogue-dir
                                   #:local-skip local-skip
@@ -567,6 +593,18 @@ pointed to by CURR-CAT-LINK, or a nothing with id 'current-catalogue-namer."
         ;; (nothing 'current-catalogue-namer `(,key ,args))))))
         #f))))
 
+(define (tmp-dir-fetcher)
+  "Return a procedure of one argument, a string identifying a catalogue
+directory, which when applied, returns a directory name to a temporary
+directory on the filesystem."
+  (lambda (catalogue-dir)
+    (catch 'system-error
+      (lambda ()
+        (let ((dir (tmpnam)))
+          (mkdir-p dir)
+          dir))
+      (lambda (key . args)
+        ((tmp-dir-fetcher) catalogue-dir)))))
 
 ;;;; IO Catalogues Monad
 ;;;
@@ -613,13 +651,35 @@ overview of the catalogue identified by the string CATALOGUE-ID."
   "Generate a procedure to install the discipline SOURCE-DIR in the store at
 STORE-DIR, and activate the newly created catalogue at CATALOGUE-DIR."
   ((mlet* catalogue-monad
-       ((store-path (discipline-installer store-dir source-dir))
-        (counter    (next-catalogue-counter-maker))
+       ((store-path (discipline-installer store-dir source-dir #:naive? #t))
         (name       (current-catalogue-namer curr-cat-link))
         (curr-cat   (catalogue-detailer name))
+        (counter    (next-catalogue-counter-maker))
         (new-cat -> (augment-catalogue curr-cat counter store-path))
         (new-curr   (catalogue-installer new-cat))
         (catalogue  (current-catalogue-setter new-curr curr-cat-link)))
+     (return catalogue))
+   catalogue-dir))
+
+(define (mcatalogue-tmp catalogue-dir curr-cat-link tmp-curr-cat-link
+                        source-dir)
+  "Generate a procedure to install the discipline at SOURCE-DIR in a temporary
+store, and activate the newly created catalogue at TMP-CURR-CAT-LINK."
+  ((mlet* catalogue-monad
+       ((tmp-store-dir (tmp-dir-fetcher))
+        (store-path    (discipline-installer tmp-store-dir source-dir
+                                             #:naive? #t))
+        (name          (current-catalogue-namer curr-cat-link))
+        (curr-cat      (catalogue-detailer name))
+        (tmp-cat-dir   (tmp-dir-fetcher))
+        (new-cat ->    (augment-catalogue curr-cat 0 store-path
+                                          #:cat-dir tmp-cat-dir))
+        (catalogue ->  ((mlet* catalogue-monad
+                            ((new-curr      (catalogue-installer new-cat))
+                             (catalogue     (current-catalogue-setter
+                                             new-curr tmp-curr-cat-link)))
+                          (return catalogue))
+                        tmp-cat-dir)))
      (return catalogue))
    catalogue-dir))
 
