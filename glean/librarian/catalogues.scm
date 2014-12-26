@@ -55,10 +55,16 @@
   #:use-module (ice-9 regex)
   #:use-module (ice-9 vlist)
   #:use-module (srfi srfi-9 gnu)
-  #:export     (catalogue-list
+  #:export     (catalogue
+                catalogue?
+                get-catalogue-id
+                get-disiciplines
+                get-catalogue-dir
+                catalogue-list
                 catalogue-remove
                 catalogue-show
-                catalogue-install))
+                catalogue-install
+                mcatalogue-tmp))
 
 
 ;;;; Catalogue Record Type Definition
@@ -605,6 +611,7 @@ directory on the filesystem."
           dir))
       (lambda (key . args)
         ((tmp-dir-fetcher) catalogue-dir)))))
+
 
 ;;;; IO Catalogues Monad
 ;;;
@@ -661,10 +668,9 @@ STORE-DIR, and activate the newly created catalogue at CATALOGUE-DIR."
      (return catalogue))
    catalogue-dir))
 
-(define (mcatalogue-tmp catalogue-dir curr-cat-link tmp-curr-cat-link
-                        source-dir)
+(define (mcatalogue-tmp catalogue-dir curr-cat-link source-dir)
   "Generate a procedure to install the discipline at SOURCE-DIR in a temporary
-store, and activate the newly created catalogue at TMP-CURR-CAT-LINK."
+store."
   ((mlet* catalogue-monad
        ((tmp-store-dir (tmp-dir-fetcher))
         (store-path    (discipline-installer tmp-store-dir source-dir
@@ -672,14 +678,9 @@ store, and activate the newly created catalogue at TMP-CURR-CAT-LINK."
         (name          (current-catalogue-namer curr-cat-link))
         (curr-cat      (catalogue-detailer name))
         (tmp-cat-dir   (tmp-dir-fetcher))
-        (new-cat ->    (augment-catalogue curr-cat 0 store-path
+        (new-cat   ->  (augment-catalogue curr-cat 0 store-path
                                           #:cat-dir tmp-cat-dir))
-        (catalogue ->  ((mlet* catalogue-monad
-                            ((new-curr      (catalogue-installer new-cat))
-                             (catalogue     (current-catalogue-setter
-                                             new-curr tmp-curr-cat-link)))
-                          (return catalogue))
-                        tmp-cat-dir)))
+        (catalogue ->  ((catalogue-installer new-cat) tmp-cat-dir)))
      (return catalogue))
    catalogue-dir))
 
