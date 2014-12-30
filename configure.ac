@@ -21,7 +21,7 @@ dnl that autoconf was pointetd to.
 AC_CONFIG_SRCDIR([scripts/glean.in])
 
 AM_GNU_GETTEXT([external])
-AM_GNU_GETTEXT_VERSION([0.19.2])
+AM_GNU_GETTEXT_VERSION([0.18.1])
 
 dnl Where to find guile modules.
 guilemoduledir="${datarootdir}/guile/site/2.0"
@@ -30,6 +30,8 @@ AC_SUBST([guilemoduledir])
 dnl We require the pkg.m4 set of macros from pkg-config.
 dnl Make sure it's available.
 m4_pattern_forbid([PKG_CHECK_MODULES])
+dnl We must make sure guile.m4 exists, and error otherwise.
+m4_pattern_forbid([GUILE_CHECK])
 
 dnl Test installed Guile version.
 PKG_CHECK_MODULES([GUILE], [guile-2.0 >= 2.0.5])
