@@ -28,6 +28,7 @@
 
 (define-module (glean library lexp)
   #:use-module (glean library sets)
+  #:use-module (glean library library-store)
   #:use-module (ice-9 match)
   #:use-module (srfi srfi-1)
   #:use-module (srfi srfi-9 gnu)
@@ -39,7 +40,11 @@
                 lexp-set-resolve
                 lexp-set-member
                 lexp-set-base
-                lexp-discipline-tree))
+                discipline-tree
+                discipline-tree->serialized
+                discipline-serialized->tree
+                discipline-serialized-tree
+                discipline-ancestry-tree))
 
 
 ;;;; Section Heading 1
@@ -61,7 +66,7 @@ BASE-OR-FULL is a symbol, or null if it is a list.
 
 Example:
 
-(lexp-make '(git init))
+ (lexp-make '(git init))
 
 This lexp can resolve to the init set located in the git discipline."
   (cond ((symbol? base-or-full)         ; symbol(s)->lexp
@@ -100,7 +105,7 @@ generating it."
          set)
         ;; LEXP matches this set and we should recurse if possible.
         (($ <lexp> (? (lambda (base) (eqv? base (set-id set))))
-            (= lexp-make rest))
+                   (= lexp-make rest))
          (match (lexp-set-member set rest)
            ;; Recursion possible, recurse
            ((? set? mtch) (lexp-set-resolve mtch rest))
@@ -132,18 +137,10 @@ generating it."
   "Return the base-lexp for SET."
   (lexp-make (set-id set)))
 
-(define (lexp-discipline-tree discipline)
-  "Return a tree representation of DISCIPLINE, where each component set is
-replaced by the lexp identifying it.
-
-Each entry is a pair: (lexp . (list children))
-
-Output should hence be:
- (lexp . ((lexp . '())
-          (lexp . ((lexp . '())))))"
-  (define (node-id id foundation)
-    (lexp-make (reverse (cons id foundation))))
-
+(define (discipline-tree-base discipline node-id)
+  "A higher-order function which, when provided with a DISCIPLINE and a
+procedure identifying how to generate node-id's called NODE-ID, returns the
+appropriate tree representation of discipline."
   (define (make-leaf id foundation)
     (cons (node-id id foundation) '()))
 
@@ -160,7 +157,79 @@ Output should hence be:
 
   (if (plain-module? discipline)
       ((recurse-maker '()) discipline)
-      (error "LEXP-DISCIPLINE-TREE: DISCIPLINE is not a discipline:"
+      (error "DISCIPLINE-TREE: DISCIPLINE is not a discipline:"
              discipline)))
+
+(define (discipline-serialized-tree discipline)
+  "Return a tree representation of DISCIPLINE, where each component set is
+replaced by a write friendly representation of the lexp identifying it.
+
+Each entry is a pair: ((lexp path) . (list children))
+
+Output should hence be:
+ ((root) . (((root one) . '())
+            ((root two) . ((root two-one . '())))))"
+  (discipline-tree-base discipline
+                        (lambda (id foundation)
+                          (reverse (cons id foundation)))))
+
+(define (discipline-tree->serialized lexp-tree)
+  "Return a \"serialized\" version of LEXP-TREE, i.e. a version that can be
+read as a plain list structure and which can be turned back into a full
+lexp-tree using `discipline-serialized->tree.'"
+  (match lexp-tree
+    (((? lexp? lxp) . rest)
+     (cons (lexp-full lxp)
+           (map discipline-tree->serialized rest)))))
+
+(define (discipline-serialized->tree serialized-tree)
+  "Return a lexp-tree generated from the serialized lexp-tree
+SERIALIZED-TREE.  This procedure is the counterpart to
+`discipline-tree->serialized'."
+  (match serialized-tree
+    (((? list? full-lexp) . rest)
+     (cons (lexp-make full-lexp)
+           (map discipline-serialized->tree rest)))))
+
+(define (discipline-tree discipline)
+  "Return a tree representation of DISCIPLINE, where each component set is
+replaced by the lexp identifying it.
+
+Each entry is a pair: (lexp . (list children))
+
+Output should hence be:
+ (lexp . ((lexp . '())
+          (lexp . ((lexp . '())))))"
+  (discipline-tree-base discipline
+                        (lambda (id foundation)
+                          (lexp-make (reverse (cons id foundation))))))
+
+(define (discipline-ancestry-tree discipline ancestor)
+  "Return a tree providing a schema by which an ancestor lexp-tree could be
+modified to the equivalent tree for discipline.
+
+Ancestry trees always operate on serialized trees, as their primary function
+relates to their being read/written to/from files and passed to the lounge.
+
+Finally, the hashes we use here are shallow hashes: they capture changes to
+the structure of the discipline and version changes.  The hashing procedure
+that will be used is set-shallow-hash (a hash of the set's lexp, each direct
+child lexp, and its version).  For now we use set-fullhash (in the long term
+this is undesirable as it will force lounge updates on a far to frequent
+basis).
+
+The format is as follows:
+ ((ancestor-hash . disc-hash) . ((ancestor-hash . disc-hash) ...))"
+
+  (define (node-id id foundation)
+    (let ((set (lexp-set-resolve discipline
+                                 (lexp-make (reverse (cons id foundation))))))
+      (match (set-lineage set)
+        ((? lexp? lxp)
+         (cons (set-fullhash (lexp-set-resolve ancestor lxp))
+               (set-fullhash set)))
+        (otherwise (cons #f (set-fullhash set))))))
+
+  (discipline-tree-base discipline node-id))
 
 ;;; lexp ends here

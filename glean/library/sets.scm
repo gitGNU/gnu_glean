@@ -510,7 +510,7 @@ record set.
 
 Please check your media records' audio field(s).")
           ((eqv? current 'err-set-lineage)
-           "The lineage contents of a set record should consist of a pair,
+           "The lineage contents of a set record should consist of a lexp,
 after the '#:lineage' keyword.  Please consult the manual for details on its
 content.")
           (else (string-append "Unknown error: "
@@ -537,7 +537,7 @@ content.")
 (define* (module id #:key (contents '()) (name "") (version "")
            (synopsis "") (description "") (keywords '())
            (creator "") (attribution '()) (resources '()) (logo "")
-           (properties '()) (lineage '(inherit . #f)))
+           (properties '()) (lineage #f))
   "High level convenenience interface to make-set, for the
 creation of modules."
   (make-set id contents name version synopsis description keywords
@@ -550,7 +550,7 @@ creation of modules."
 (define* (set id #:key (contents '()) (name "") (version "")
               (synopsis "") (description "") (keywords '())
               (creator "") (attribution '()) (resources '())
-              (logo "") (properties '()) (lineage '(inherit . #f)))
+              (logo "") (properties '()) (lineage #f))
   "High level convenenience interface to make-set, for the
 creation of sets."
   (make-set id contents name version synopsis description keywords
@@ -559,7 +559,7 @@ creation of sets."
 (define* (tutorial id #:key (contents '()) (name "") (version "")
                    (synopsis "") (description "") (keywords '())
                    (creator "") (attribution '()) (resources '())
-                   (logo "") (properties '()) (lineage '(inherit . #f)))
+                   (logo "") (properties '()) (lineage #f))
   "High level convenenience interface to make-set, for the
 creation of tutorials."
   (make-set id contents name version synopsis description keywords

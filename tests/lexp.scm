@@ -44,15 +44,28 @@
 
 (define test-set (set 'test #:contents `(,(set 'child) ,(set 'second)
                                          ,(set 'third))))
+(define test-ancestor
+  (module 'root
+    #:contents `(,(set 'one
+                       #:contents `(,(set 'one-one)))
+                 ,(set 'two
+                       #:contents `(,(problem (q "test")
+                                              (s "test"))))
+                 ,(set 'three
+                       #:contents `(,(tutorial 'three-one)
+                                    ,(set 'three-two))))))
+
 (define test-module (module 'root
-                      #:contents `(,(set 'one
-                                         #:contents `(,(set 'one-one)))
+                      #:contents `(,(set 'four
+                                         #:lineage (lexp (root one))
+                                         #:contents `(,(set 'one-four)))
                                    ,(set 'two
                                          #:contents `(,(problem (q "test")
                                                                 (s "test"))))
-                                   ,(set 'three
-                                         #:contents `(,(tutorial 'three-one)
-                                                      ,(set 'three-two))))))
+                                   ,(set 'seven
+                                         #:lineage (lexp (root three))
+                                         #:contents `(,(tutorial 'seven-one)
+                                                      ,(set 'seven-two))))))
 (define lexp-make (@@ (glean library lexp) lexp-make))
 (define <lexp> (@@ (glean library lexp) <lexp>))
 
@@ -115,19 +128,49 @@
   (and (eqv? (lexp-base (lexp-set-base test-set)) 'test)
        (null? (lexp-rest (lexp-set-base test-set)))))
 
-(test-assert "lexp-discipline-tree"
+(test-assert "discipline-tree"
   ;; Each entry is a pair: (lexp . (list children) | #f)
-  (match (lexp-discipline-tree test-module)
+  (match (discipline-tree test-module)
     (
 
      (($ <lexp> 'root ())
-      (($ <lexp> 'root (one))
-       (($ <lexp> 'root (one one-one)) . '()))
+      (($ <lexp> 'root (four))
+       (($ <lexp> 'root (four four-one)) . '()))
       (($ <lexp> 'root (two)) . '())
-      (($ <lexp> 'root (three))
-       (($ <lexp> 'root (three three-one)) . '())
-       (($ <lexp> 'root (three three-two)) . '())))
+      (($ <lexp> 'root (seven))
+       (($ <lexp> 'root (seven seven-one)) . '())
+       (($ <lexp> 'root (seven seven-two)) . '())))
 
+     #t)
+    (_ #f)))
+
+(test-assert "discipline-serialized-tree"
+  (match (discipline-serialized-tree test-module)
+    (
+     ((root)
+      ((root four) ((root four four-one)))
+      ((root two))
+      ((root seven) ((root seven seven-one)) ((root seven seven-two))))
+     #t)
+    (_ #f)))
+
+(test-assert "discipline-tree->serialized-conversion"
+  (equal? (discipline-serialized->tree
+           (discipline-tree->serialized (discipline-tree test-module)))
+          (discipline-tree test-module)))
+
+(test-assert "discipline-ancestry-tree"
+  (match (discipline-ancestry-tree test-module test-ancestor)
+    (
+     ((#f . y4euxsglh3pe3fimxpt6dbsq7ihfz3ykqzvxt5pfazfcojqmvuqa)
+      ((h4hgf3bshpvkwb5cjzqnqb6fmh5ztammgzv43zcnyusak4wkfgoq
+        . yweuuld6bvrmynevqdurvrki2gcilr2xwrz76tz64u7owduu5lra)
+       ((#f . "agfzfy5mgzqoe6ryntnbraobleacdw43nrgbzexock4koyzewx6a")))
+      ((#f . "ktf43vwrqz2l6ny3el6sdhdex3l7wqsrtxdad2dzbw3z5wuzxdeq"))
+      ((noz374bevnzqd55u5m2ednnd3fhdskiliwzl5g3hkwnfmdh5ryfq
+        . t7fvvpxennlskntq3xsqzbh66nnf46f76dikckdylecwq7tblw6q)
+       ((#f . "ettrdnlvtfa35dxaumzn37lpiibzlkviei4a2m4rnk5wvq3wupea"))
+       ((#f . "w6gwg45jbp47trkrbcqum6lws3zq3qmtgdw3zjevvsypt7rmnepq"))))
      #t)
     (_ #f)))
 
