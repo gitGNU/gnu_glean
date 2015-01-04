@@ -68,10 +68,6 @@
             ;; Concrete monads.
             identity-monad
             state-monad
-            nothing
-            nothing?
-            nothing-id
-            nothing-context
             stateful
             stateful?
             result
@@ -292,11 +288,6 @@ lifted in monad, for which proc returns true."
 ;;; MVALUE: returns a procedure taking state, which in turn, when
 ;;; provided with state, returns a stateful.
 
-(define-record-type <nothing>
-  (nothing id context)
-  nothing?
-  (id      nothing-id)
-  (context nothing-context))
 (define-record-type <stateful>
   (stateful res st8)
   stateful?

@@ -33,8 +33,7 @@
 (define-module (glean common utils)
   #:use-module (ice-9 match)
   #:use-module (rnrs records inspection)
-  #:use-module (rnrs records syntactic)
-  #:use-module (rnrs records procedural)
+  #:use-module (srfi srfi-9)
   #:use-module (srfi srfi-26)
   #:export (
             _
@@ -58,6 +57,11 @@
             log-level
             log-levels
             make-logger
+            <nothing>
+            nothing
+            nothing?
+            nothing-id
+            nothing-context
             inform
             caution
             insist
@@ -130,6 +134,22 @@ pair or improper list."
                              list)))
               (hash-set! cache args results)
               (apply values results)))))))
+
+
+;;;; Parseable #f values
+;;;
+;;; This section defines the <nothing> record type.  I originally introduced
+;;; it for use in monads - but I now think it may be a nice way to allow us
+;;; handle acceptable "non-desired results" with context, which can be used to
+;;; continue further evaluation whilst keeping note of an unexpected result.
+;;;
+;;; To see it in use, see (glean library lexp).
+
+(define-record-type <nothing>
+  (nothing id context)
+  nothing?
+  (id      nothing-id)
+  (context nothing-context))
 
 
 ;;;; UI Convenience

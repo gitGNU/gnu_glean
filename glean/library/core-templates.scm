@@ -43,6 +43,7 @@
 
 (define-module (glean library core-templates)
   #:use-module (glean common monads)
+  #:use-module (glean common utils)
   #:use-module (glean library sets)
   #:use-module (ice-9 match)
   #:use-module (srfi srfi-1)
