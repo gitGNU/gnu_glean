@@ -27,6 +27,7 @@
 ;;; Code:
 
 (define-module (glean library lexp)
+  #:use-module (glean common utils)
   #:use-module (glean library sets)
   #:use-module (glean library library-store)
   #:use-module (ice-9 match)
@@ -97,25 +98,27 @@ generating it."
      (cons base rest))))
 
 (define (lexp-set-resolve set lxp)
-  "Extract the set identified by the lexp LXP from SET, or #f."
-  (if (set? set)
-      (match lxp
-        ;; LEXP matches this set, and no further recursion needed.
-        (($ <lexp> (? (lambda (base) (eqv? base (set-id set)))) ())
-         set)
-        ;; LEXP matches this set and we should recurse if possible.
-        (($ <lexp> (? (lambda (base) (eqv? base (set-id set))))
-                   (= lexp-make rest))
-         (match (lexp-set-member set rest)
-           ;; Recursion possible, recurse
-           ((? set? mtch) (lexp-set-resolve mtch rest))
-           ;; Recursion not possible: LXP did not resolve.
-           (_ #f)))
-        ;; We have valid input, but LXP did not resolve.
-        (($ <lexp>) #f)
-        ;; Invalid input
-        (_ (error "LEXP-SET-RESOLVE: Unexpected LXP:" lxp)))
-      (error "LEXP-SET-RESOLVE: Unexpected SET:" set)))
+  "Extract the set identified by the lexp LXP from SET, or a nothing value
+with id 'lexp-unknown, and context SET and LXP."
+  (define (resolve next-set next-lxp)
+    (match next-lxp
+      ;; LEXP matches this set, and no further recursion needed.
+      (($ <lexp> (? (lambda (base) (eqv? base (set-id next-set)))) ())
+       next-set)
+      ;; LEXP matches this set and we should recurse if possible.
+      (($ <lexp> (? (lambda (base) (eqv? base (set-id next-set))))
+          (= lexp-make rest))
+       (match (lexp-set-member next-set rest)
+         ;; Recursion possible, recurse
+         ((? set? mtch) (lexp-set-resolve mtch rest))
+         ;; Rest of NEXT-LXP does not point to set in SET.
+         (_ (nothing 'lexp-unknown `(,(set-id set) ,lxp)))))
+      ;; NEXT-LXP's base does not match NEXT-SET id.
+      (($ <lexp>) (nothing 'lexp-unknown `(,(set-id set) ,lxp)))))
+
+  (if (and (set? set) (lexp? lxp))
+      (resolve set lxp)
+      (error "LEXP-SET-RESOLVE: Unexpected SET or LEXP:" set lxp)))
 
 (define (lexp-set-member set lxp)
   "Return the set that is a child of SET which matches the base of LXP, or
@@ -219,16 +222,24 @@ this is undesirable as it will force lounge updates on a far to frequent
 basis).
 
 The format is as follows:
- ((ancestor-hash . disc-hash) . ((ancestor-hash . disc-hash) ...))"
+ ((ancestor-hash . disc-hash) . ((ancestor-hash . disc-hash) ...))
+
+The resulting tree may contain nothings of id 'lexp-unknown, if some lexp's in
+DISCIPLINE did not resolve to sets in ANCESTOR."
 
   (define (node-id id foundation)
-    (let ((set (lexp-set-resolve discipline
-                                 (lexp-make (reverse (cons id foundation))))))
-      (match (set-lineage set)
-        ((? lexp? lxp)
-         (cons (set-fullhash (lexp-set-resolve ancestor lxp))
-               (set-fullhash set)))
-        (otherwise (cons #f (set-fullhash set))))))
+    (match (lexp-set-resolve discipline
+                             (lexp-make (reverse (cons id foundation))))
+      ((? (lambda (set) (and (set? set) (lexp? (set-lineage set)))) set)
+       (cons (match (lexp-set-resolve ancestor (set-lineage set))
+               ((? set? set) (set-fullhash set))
+               (otherwise otherwise))
+             (set-fullhash set)))
+      ((? set? set)
+       (cons #f (set-fullhash set)))
+      (($ <nothing> 'lexp-unknown context)
+       (nothing 'lexp-unknown context))
+      (_ (error "DISCIPLINE-ANCESTRY-TREE: BUG: unexpected behaviour."))))
 
   (discipline-tree-base discipline node-id))
 

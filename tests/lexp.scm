@@ -33,6 +33,7 @@
 ;;; Code:
 
 (define-module (tests lexp)
+  #:use-module (glean common utils)
   #:use-module (glean library lexp)
   #:use-module (glean library sets)
   #:use-module (ice-9 match)
@@ -55,17 +56,31 @@
                        #:contents `(,(tutorial 'three-one)
                                     ,(set 'three-two))))))
 
-(define test-module (module 'root
-                      #:contents `(,(set 'four
-                                         #:lineage (lexp (root one))
-                                         #:contents `(,(set 'one-four)))
-                                   ,(set 'two
-                                         #:contents `(,(problem (q "test")
-                                                                (s "test"))))
-                                   ,(set 'seven
-                                         #:lineage (lexp (root three))
-                                         #:contents `(,(tutorial 'seven-one)
-                                                      ,(set 'seven-two))))))
+(define test-module
+  (module 'root
+    #:contents `(,(set 'four
+                       #:lineage (lexp (root one))
+                       #:contents `(,(set 'one-four)))
+                 ,(set 'two
+                       #:contents `(,(problem (q "test")
+                                              (s "test"))))
+                 ,(set 'seven
+                       #:lineage (lexp (root three))
+                       #:contents `(,(tutorial 'seven-one)
+                                    ,(set 'seven-two))))))
+(define test-module-false
+  (module 'root
+    #:contents `(,(set 'four
+                       #:lineage (lexp (root unknown))
+                       #:contents `(,(set 'one-four)))
+                 ,(set 'two
+                       #:contents `(,(problem (q "test")
+                                              (s "test"))))
+                 ,(set 'seven
+                       #:lineage (lexp (root blah))
+                       #:contents `(,(tutorial 'seven-one)
+                                    ,(set 'seven-two))))))
+
 (define lexp-make (@@ (glean library lexp) lexp-make))
 (define <lexp> (@@ (glean library lexp) <lexp>))
 
@@ -114,7 +129,9 @@
         'second))
 
 (test-assert "lexp-set-resolve-false"
-  (not (lexp-set-resolve test-set (lexp-make 'wrong 'lexp))))
+  (match (lexp-set-resolve test-set (lexp-make 'wrong 'lexp))
+    (($ <nothing> 'lexp-unknown) #t)
+    (_ #f)))
 
 ;; LEXP macro
 
@@ -168,6 +185,21 @@
        ((#f . "agfzfy5mgzqoe6ryntnbraobleacdw43nrgbzexock4koyzewx6a")))
       ((#f . "ktf43vwrqz2l6ny3el6sdhdex3l7wqsrtxdad2dzbw3z5wuzxdeq"))
       ((noz374bevnzqd55u5m2ednnd3fhdskiliwzl5g3hkwnfmdh5ryfq
+        . t7fvvpxennlskntq3xsqzbh66nnf46f76dikckdylecwq7tblw6q)
+       ((#f . "ettrdnlvtfa35dxaumzn37lpiibzlkviei4a2m4rnk5wvq3wupea"))
+       ((#f . "w6gwg45jbp47trkrbcqum6lws3zq3qmtgdw3zjevvsypt7rmnepq"))))
+     #t)
+    (_ #f)))
+
+(test-assert "discipline-ancestry-tree-unresolvable"
+  (match (discipline-ancestry-tree test-module-false test-ancestor)
+    (
+     ((#f . y4euxsglh3pe3fimxpt6dbsq7ihfz3ykqzvxt5pfazfcojqmvuqa)
+      (((? nothing?)
+        . yweuuld6bvrmynevqdurvrki2gcilr2xwrz76tz64u7owduu5lra)
+       ((#f . "agfzfy5mgzqoe6ryntnbraobleacdw43nrgbzexock4koyzewx6a")))
+      ((#f . "ktf43vwrqz2l6ny3el6sdhdex3l7wqsrtxdad2dzbw3z5wuzxdeq"))
+      (((? nothing?)
         . t7fvvpxennlskntq3xsqzbh66nnf46f76dikckdylecwq7tblw6q)
        ((#f . "ettrdnlvtfa35dxaumzn37lpiibzlkviei4a2m4rnk5wvq3wupea"))
        ((#f . "w6gwg45jbp47trkrbcqum6lws3zq3qmtgdw3zjevvsypt7rmnepq"))))
