@@ -22,7 +22,20 @@
 
 ;;; Commentary:
 ;;
-;; 
+;; lexps are expressions akin to xpath expressions.  Their aim is to make it
+;; easy to traverse disciplines and to retrieve arbitrary sets within them.
+;;
+;; lexps are a record type, but a macro, `lexp' is provided which allows easy
+;; generation of lexps.  The recommended format for user lexp generation is:
+;; (lexp (discipline [child-set [grandchild-set [...]]]))
+;;
+;; lexps will initially be used to generate upgrade paths for disciplines
+;; when, such that the lounge is able to remain in-sync with changes to a
+;; discipline's structure, without it requiring knowledge of a full discipline.
+;;
+;; At a later stage lexps will be used to facilitate aribitrary discipline/set
+;; referencing in set properties (e.g. user progression prerequisites in
+;; disciplines that take the form of a minimum rank in another discipline).
 ;;
 ;;; Code:
 
