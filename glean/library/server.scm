@@ -113,13 +113,15 @@ handling to request handler."
 COUNTER, or raise 'invalid-set."
     ;; FIXME: this procedure is logic, not parsing, so it should be in
     ;; library-store, not in module-server.
+    ;; FIXME: I've disabled passing back of media for now — they need to be
+    ;; reworked anyway.
     (let ((s  (problem-s problem))
           (q  (problem-q problem))
           (os (problem-o problem)))
-      (list (cons (q-text q) (q-media q))
+      (list (cons (q-text q) #f)        ; disabled media
             (if (null? os)
                 '()
-                (map (lambda (o) (cons (o-text o) (o-media o))) os))
+                (map (lambda (o) (cons (o-text o) #f)) os)) ; disabled media
             ;; FIXME: solution for allowing different question types.
             (cond ((not s)          'info)
                   ((and (list? s) (> (length s) 1)) 'multi)

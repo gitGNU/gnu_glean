@@ -62,9 +62,8 @@
 (define-module (glean library sets)
   #:use-module (glean common utils)
   #:use-module (ice-9 match)
-  #:use-module (rnrs records syntactic)
-  #:use-module (rnrs records procedural)
   #:use-module (srfi srfi-1)
+  #:use-module (srfi srfi-9)
   #:export (
             set
             set?
@@ -132,289 +131,123 @@
             media-audio
             ))
 
-
-;;;;; Set Usage
-;;; This section details porcelain commands that should normally be
-;;; used by humans to generate sets and/or modules.
-(define (number-of-problems set)
-  (define (num-of-problems-helper set count)
-    (if (rootset? set)
-        (+ count (length (set-contents set)))
-        (fold num-of-problems-helper count (set-contents set))))
-  
-  (if (set? set)
-      (num-of-problems-helper set 0)))
+;;;; Set Structure
+;;;
+;;; SRFI-9 record type definitions of sets and their component parts.
 
-(define* (module id #:key (contents '()) (name "") (version "")
-           (synopsis "") (description "") (keywords '())
-           (creator "") (attribution '()) (resources '()) (logo "")
-           (properties '()))
-  "High level convenenience interface to make-set, for the
-creation of modules."
-  (make-set id contents name version synopsis description keywords
-            creator attribution resources logo
-            (if (assoc 'module properties)
-                properties
-                (acons 'module #t properties))))
+;;;;; Questions
+(define-record-type <question>
+  (make-q text media)
+  q?
+  (text  q-text)
+  (media q-media))
 
-(define* (set id #:key (contents '()) (name "") (version "")
-              (synopsis "") (description "") (keywords '())
-              (creator "") (attribution '()) (resources '())
-              (logo "") (properties '()))
-  "High level convenenience interface to make-set, for the
-creation of sets."
-  (make-set id contents name version synopsis description keywords
-            creator attribution resources logo properties))
+(define* (q text #:optional (media (media)))
+  (make-q text media))
 
-(define* (tutorial id #:key (contents '()) (name "") (version "")
-                   (synopsis "") (description "") (keywords '())
-                   (creator "") (attribution '()) (resources '())
-                   (logo "") (properties '()))
-  "High level convenenience interface to make-set, for the
-creation of tutorials."
-  (make-set id contents name version synopsis description keywords
-            creator attribution resources logo
-            (if (assoc 'tutorial properties)
-                properties
-                (acons 'tutorial #t properties))))
+;;;;; Solutions
+(define-record-type <solution>
+  (make-s text media)
+  s?
+  (text  s-text)
+  (media s-media))
 
-;;;;; Set Structure
-;;; The (rnrs records syntactic) record definitions for all things
-;;; related to glean module generation. The definitions
-;;; themselves are pretty standard, but all define protocol that uses
-;;; the validator procedure, which I hope is an effective way to make
-;;; help available to module and content maintainers (see the
-;;; relevant section below for details).
+(define* (s text #:optional (media (media)))
+  (make-s text media))
 
-;;;;;; Questions
-(define question-rtd
-  (make-record-type-descriptor 'question #f #f #f #f
-                               '#((immutable text)
-                                  (immutable media))))
-(define question-rcd
-  (make-record-constructor-descriptor
-   question-rtd #f (lambda (new)
-                     (lambda*
-                         (text #:optional (media (media)))
-                       (validator new
-                                  (list (vstring? 'err-q-text)
-                                        (vtype? media? 'err-q-media))
-                                  text media)))))
-(define q (record-constructor question-rcd))
-(define make-q (record-constructor
-                (make-record-constructor-descriptor question-rtd #f #f)))
-(define q? (record-predicate question-rtd))
-(define q-text (record-accessor question-rtd 0))
-(define q-media (record-accessor question-rtd 1))
+;;;;; Options
+(define-record-type <option>
+  (make-o text media)
+  o?
+  (text  o-text)
+  (media o-media))
 
-;;;;;; Solutions
-(define solution-rtd
-  (make-record-type-descriptor 'solution #f #f #f #f
-                               '#((immutable text)
-                                  (immutable media))))
-(define solution-rcd
-  (make-record-constructor-descriptor
-   solution-rtd #f (lambda (new)
-                     (lambda*
-                         (text #:optional (media (media)))
-                       (validator new
-                                  (list (vstring? 'err-s-text)
-                                        (vtype? media? 'err-s-media))
-                                  text media)))))
-(define s (record-constructor solution-rcd))
-(define make-s (record-constructor
-                (make-record-constructor-descriptor solution-rtd #f #f)))
-(define s? (record-predicate solution-rtd))
-(define s-text (record-accessor solution-rtd 0))
-(define s-media (record-accessor solution-rtd 1))
+(define* (o text #:optional (media (media)))
+  (make-o text media))
 
-;;;;;; Options
-(define option-rtd
-  (make-record-type-descriptor 'option #f #f #f #f
-                               '#((immutable text)
-                                  (immutable media))))
-(define option-rcd
-  (make-record-constructor-descriptor
-   option-rtd #f (lambda (new)
-                   (lambda*
-                       (text #:optional (media (media)))
-                     (validator new
-                                (list (vstring? 'err-o-text)
-                                      (vtype? media? 'err-o-media))
-                                text media)))))
-(define o (record-constructor option-rcd))
-(define make-o (record-constructor
-                (make-record-constructor-descriptor option-rtd #f #f)))
-(define o? (record-predicate option-rtd))
-(define o-text (record-accessor option-rtd 0))
-(define o-media (record-accessor option-rtd 1))
+;;;;; Predicates
+(define-record-type <predicate>
+  (make-p function)
+  p?
+  (function p-function))
 
-;;;;;; Predicates
-(define predicate-rtd
-  (make-record-type-descriptor 'predicate #f #f #f #f
-                               '#((immutable function))))
-(define predicate-rcd
-  (make-record-constructor-descriptor
-   predicate-rtd #f
-   (lambda (new)
-     (lambda (function)
-       (validator new
-                  (list (vtype? procedure? 'err-p-function))
-                  function)))))
-(define p (record-constructor predicate-rcd))
-(define p? (record-predicate predicate-rtd))
-(define p-function (record-accessor predicate-rtd 0))
+(define (p function)
+  (make-p function))
 
-;;;;;; Media
-(define media-rtd
-  (make-record-type-descriptor 'medii #f #f #f #f
-                               '#((immutable text)
-                                  (immutable urls)
-                                  (immutable books)
-                                  (immutable images)
-                                  (immutable videos)
-                                  (immutable audio))))
-(define medii-rcd
-  (make-record-constructor-descriptor
-   media-rtd #f (lambda (new)
-                  (lambda*
-                      (#:key (text "") (urls '()) (books '()) (images '())
-                             (videos '()) (audio '()))
-                    (validator new
-                               (list (vstring? 'err-media-text)
-                                     (vlist? vstring? 'err-media-urls)
-                                     (vlist? vstring? 'err-media-books)
-                                     (vlist? vstring? 'err-media-images)
-                                     (vlist? vstring? 'err-media-videos)
-                                     (vlist? vstring? 'err-media-audio))
-                               text urls books images videos audio)))))
-(define media (record-constructor medii-rcd))
-(define make-media (record-constructor
-                    (make-record-constructor-descriptor media-rtd
-                                                        #f
-                                                        #f)))
-(define media? (record-predicate media-rtd))
-(define media-text (record-accessor media-rtd 0))
-(define media-urls (record-accessor media-rtd 1))
-(define media-books (record-accessor media-rtd 2))
-(define media-images (record-accessor media-rtd 3))
-(define media-videos (record-accessor media-rtd 4))
-(define media-audio (record-accessor media-rtd 5))
+;;;;; Media
+(define-record-type <media>
+  (make-media text urls books images videos audio)
+  media?
+  (text    media-text)
+  (urls    media-urls)
+  (books   media-books)
+  (images  media-images)
+  (videos  media-videos)
+  (audio   media-audio))
 
-;;;;;; Problems
-(define problem-rtd
-  (make-record-type-descriptor 'prob #f #f #f #f
-                               '#((immutable question)
-                                  (immutable solution)
-                                  (immutable options)
-                                  (immutable predicate))))
-(define prob-rcd
-  (make-record-constructor-descriptor
-   problem-rtd #f
-   ;; I wanted for it to be possible that module creators need not
-   ;; specify the list structure and order of the optional arguments. I
-   ;; also did not want to use keyword arguments to reduce the amount
-   ;; of repetitive typing. Hence the peculiar protocol below.
-   (lambda (new)
-     (lambda (q s . args)
-       (define (parse-args list)
-         "Return optional arguments (multiple o records and one p
-record), from arbitrary positions to the order expected by validator
-and the rnrs records definition."
-         (define (pa options predicate remaining)
-           (cond ((null? remaining)
-                  (cons (reverse options) predicate))
-                 ((p? (car remaining))
-                  (pa options
-                      (car remaining)
-                      (cdr remaining)))
-                 (else
-                  (pa (cons (car remaining) options)
-                      predicate
-                      (cdr remaining)))))
-         (pa '() (p equal?) list))
-       (let ((op-pair (parse-args args)))
-         (validator new
-                    (list (vtype? q? 'err-problem-q)
-                          ((const #t) 'err-problem-s)
-                          (vlist? voptions? 'err-problem-os)
-                          (vtype? p? 'err-problem-p))
-                    ;; Temporary fix to allow multiple solutions
-                    #:method 'lazy
-                    q s (car op-pair) (cdr op-pair)))))))
-(define problem (record-constructor prob-rcd))
-(define make-problem (record-constructor
-                      (make-record-constructor-descriptor problem-rtd
-                                                          #f
-                                                          #f)))
-(define problem? (record-predicate problem-rtd))
-(define problem-q (record-accessor problem-rtd 0))
-(define problem-s (record-accessor problem-rtd 1))
-(define problem-o (record-accessor problem-rtd 2))
-(define problem-p (record-accessor problem-rtd 3))
+(define* (media #:key (text "") (urls '()) (books '()) (images '())
+                (videos '()) (audio '()))
+  (make-media text urls books images videos audio))
 
-;;;;;; Sets
-(define set-rtd
-  (make-record-type-descriptor 'set #f #f #f #f
-                               '#((immutable id)
-                                  (immutable contents)
-                                  (immutable name)
-                                  (immutable version)
-                                  (immutable synopsis)
-                                  (immutable description)
-                                  (immutable keywords)
-                                  (immutable creator)
-                                  (immutable attribution)
-                                  (immutable resources)
-                                  (immutable logo)
-                                  (immutable properties))))
-;; mecha-set is to be used for non-human set construction (e.g. when
-;; pushing through (exchange).
-(define mecha-set-rcd
-  (make-record-constructor-descriptor set-rtd #f #f))
-(define mecha-set (record-constructor mecha-set-rcd))
-;; make-set has an enhanced protocol to help humans when creating sets
-;; and modules.
-(define set-rcd
-  (make-record-constructor-descriptor
-   set-rtd #f
-   ;; Really, when used by humans, sets should be defined through the
-   ;; porcelain gset and module commands. make-set is exported for use
-   ;; by programmatic module/set construction. The 'user-friendly'
-   ;; layer to set creation is hence located in the porcelain
-   ;; commands.
-   (lambda (new)
-     (lambda (id contents name version synopsis description keywords
-                 creator attribution resources logo properties)
-       (validator new
-                  (list (vid? 'err-set-id)
-                        (vlist? vsets-or-vproblems? 'err-set-contents)
-                        (vstring? 'err-set-name)
-                        (vstring? 'err-set-version)
-                        (vstring? 'err-set-synopsis)
-                        (vstring? 'err-set-description)
-                        (vlist? vstring? 'err-set-keywords)
-                        (vstring? 'err-set-creator)
-                        (vlist? vmedia? 'err-set-attribution)
-                        (vlist? vmedia? 'err-set-resources)
-                        (vstring? 'err-set-logo)
-                        (vlist? vpair? 'err-set-properties))
-                  id contents name version synopsis description
-                  keywords creator attribution resources logo properties)))))
-(define make-set (record-constructor set-rcd))
-(define set? (record-predicate set-rtd))
-(define set-id (record-accessor set-rtd 0))
-(define set-contents (record-accessor set-rtd 1))
-(define set-name (record-accessor set-rtd 2))
-(define set-version (record-accessor set-rtd 3))
-(define set-synopsis (record-accessor set-rtd 4))
-(define set-description (record-accessor set-rtd 5))
-(define set-keywords (record-accessor set-rtd 6))
-(define set-creator (record-accessor set-rtd 7))
-(define set-attribution (record-accessor set-rtd 8))
-(define set-resources (record-accessor set-rtd 9))
-(define set-logo (record-accessor set-rtd 10))
-(define set-properties (record-accessor set-rtd 11))
+;;;;; Problems
+(define-record-type <problem>
+  (make-problem question solution options predicate)
+  problem?
+  (question   problem-q)
+  (solution   problem-s)
+  (options    problem-o)
+  (predicate  problem-p))
+
+;; I wanted for it to be possible that module creators need not
+;; specify the list structure and order of the optional arguments. I
+;; also did not want to use keyword arguments to reduce the amount
+;; of repetitive typing. Hence the peculiar protocol below.
+(define (problem q s . args)
+  (define (parse-args list)
+    "Return optional arguments (multiple o records and one p record), from
+arbitrary positions to the order expected by validator & the record
+definition."
+    (define (pa options predicate remaining)
+      (cond ((null? remaining)
+             (cons (reverse options) predicate))
+            ((p? (car remaining))
+             (pa options
+                 (car remaining)
+                 (cdr remaining)))
+            (else
+             (pa (cons (car remaining) options)
+                 predicate
+                 (cdr remaining)))))
+
+    (pa '() (p equal?) list))
+
+  (let ((op-pair (parse-args args)))
+    (make-problem q s (car op-pair) (cdr op-pair))))
+
+;;;;; Sets
+(define-record-type <set>
+  (mecha-make-set id contents name version synopsis description keywords
+                  creator attribution resources logo properties lineage)
+  set?
+  (id           set-id)
+  (contents     set-contents)
+  (name         set-name)
+  (version      set-version)
+  (synopsis     set-synopsis)
+  (description  set-description)
+  (keywords     set-keywords)
+  (creator      set-creator)
+  (attribution  set-attribution)
+  (resources    set-resources)
+  (logo         set-logo)
+  (properties   set-properties))
+
+(define* (make-set id #:optional (contents '()) (name "") (version "")
+                   (synopsis "") (description "") (keywords '()) (creator "")
+                   (attribution '()) (resources '()) (logo "")
+                   (properties '()) (lineage #f))
+  (mecha-make-set id contents name version synopsis description keywords
+                  creator attribution resources logo properties lineage))
 
 (define (rootset? set)
   "Return #t if set-contents contains problems (which means it's a
@@ -441,162 +274,10 @@ rootset?). #f otherwise."
       #f))
 
 
-;;;;; Validators
-;;; VALIDATOR and VALIDATE work together to try to detect mistakes in module
-;;; definitions easily made by humans. I have tried to make the DSL for module
-;;; definition as intuitive as possible, but inevitably things will get
-;;; confusing, especially for newbies. VALIDATOR should catch most errors in
-;;; module definition when the modules are first loaded (ideally when
-;;; installing through the glean 'installer' functionality). Errors that I
-;;; envisage being captured are things like not encapsulating a module's
-;;; problems in a list, or not using a string type for the version of a
-;;; module.
+;;;; Error Parsing
 ;;;
-;;; To locate errors I have decided to make use of VEDICATES, essentially
-;;; predicates whose role it is to return a custom symbol, instead of false,
-;;; when conditions are not met (see below for details).
-(define* (validator constructor vedicates
-                    #:key (method 'strict) . args)
-  "Return the completed record, or bail out by deferring to
-error-parser, if METHOD is 'strict, and a record definition error is
-detected."
-  (cond ((eqv? method 'strict)
-         (let ((result (validate vedicates args)))
-           (if (eq? result #t)
-               (apply constructor args)
-               (error-parser result))))
-        ((eqv? method 'lazy)
-         ;; First remove #:method 'lazy from args, then use args.
-         (apply constructor (cddr args)))
-        (else
-         (error
-          (string-append "validator: METHOD not recognised: "
-                         (object->string method))))))
+;;; These are useful as a preliminary formal specification of sets.
 
-(define (validate vedicates args)
-  "Return #t or the first symbol returned by a VEDICATE.
-
-Check the list of VEDICATES is the same length as the list of ARGS. If
-so, test each ARG in turn with the corresponding VEDICATE.
-
-A VEDICATE is a predicate that returns either #t or a symbol that can
-be used for key value lookups."
-  (define (test-arg vedicate arg)
-    (vedicate arg))
-  
-  (let ((nr-vedicates (length vedicates))
-        (nr-args (length args)))
-    (cond ((= nr-vedicates nr-args)
-           (let ((result (map test-arg vedicates args)))
-             (if (null? (flatten (strip result)))
-                 #t
-                 (flatten (strip result)))))
-          ((< nr-vedicates nr-args)
-           'too-many-args)
-          ((> nr-vedicates nr-args)
-           'too-few-args)
-          (else (error "validate: logic problem.")))))
-
-(define (strip list)
-  "Return '() or a list containing only those values that do not
-resolve to exactly #t. Can operate on lists of arbitrary depth.
-
-The resulting list could be harvested for, for instance, key value
-lookups, if the resulting list contains only symbols."
-  
-  (define (stripper next rest)
-    (if (list? next)
-        (let ((result (strip next)))
-          (if (null? result)
-              (strip rest)
-              (cons result
-                    (strip rest))))
-        (if (not (eq? next #t))
-            (cons next
-                  (strip rest))
-            (strip rest))))
-  
-  (if (null? list)
-      '()
-      (stripper (car list) (cdr list))))
-
-
-;;;;; Vedicates
-;;; The idea is that one could accumulate a list of all these symbols first,
-;;; and then return a 'report' generated through error-parser, detailing all
-;;; areas of the module that need correction, rather than bailing out at the
-;;; first #f. This is not quite working yet — we still bail out at the first
-;;; error.
-;;;
-;;; Nonetheless, Vedicates and Validator allow for pretty precise pin-pointing
-;;; of content error and the output of human advice through error parser.
-(define (vlist? child-vedicate symbol)
-  "Vlist is a special vedicate, it checks whether the content to be
-investigated is a list and then performs a validate on the content of
-the list using CHILD-VEDICATE and SYMBOL.
-
-If it notices content is not a list, it returns SYMBOL prefixed with
-vlist-."
-  (lambda (obj)
-    (cond ((null? obj)
-           #t)
-          ((list? obj)
-           (let ((result
-                  (map (lambda (ob)
-                         (validate (list (child-vedicate symbol))
-                                   (list ob)))
-                       obj)))
-             (if (null? (flatten (strip result)))
-                 #t
-                 (flatten (strip result)))))
-          (else (string->symbol 
-                 (string-append "vlist-"
-                                (symbol->string symbol)))))))
-
-;;; Vedicates testing for specific content, defined in terms of the more
-;;; general vedicates below.
-(define (vid? symbol)
-  (vtype? symbol? symbol))
-(define (vpair? symbol)
-  (vtype? pair? symbol))
-(define (vstring? symbol)
-  (vtype? string? symbol))
-(define (vboolean? symbol)
-  (vtype? boolean? symbol))
-(define (vmedia? symbol)
-  (vtype? media? symbol))
-(define (vsets? symbol)
-  (vtype? set? symbol))
-(define (voptions? symbol)
-  (vtype? o? symbol))
-(define (vproblems? symbol)
-  (vtype? problem? symbol))
-(define (vsets-or-vproblems? symbol)
-  (vtype-2? set? problem? symbol))
-
-;;; General Vedicates for composition.
-(define (vtype? predicate symbol)
-  "Return a function which takes an object and returns #t if predicate
-returns true, or symbol otherwise."
-  (lambda (obj)
-    (if (predicate obj)
-        #t
-        symbol)))
-
-(define (vtype-2? predicate1 predicate2 symbol)
-  "Return a function which takes an object and returns #t if
-predicate1 or predicate2 returns true. Return symbol otherwise.
-
-Has potential to be abstracted to a more powerful compositing
-vedicate, but not required at present."
-  (lambda (obj)
-    (if (or (predicate1 obj)
-            (predicate2 obj))
-        #t
-        symbol)))
-
-
-;;;;; Error Parsing
 (define (error-parser results)
   "Collection of error messages related to the creation of sets and
 modules."
@@ -819,5 +500,52 @@ Please check your media records' audio field(s).")
   (if (list? results)
       (throw 'validation (map translate results))
       (error "error-parser: logic error.")))
+
+
+;;;; Set Usage
+;;; This section details porcelain commands that should normally be
+;;; used by humans to generate sets and/or modules.
+
+(define (number-of-problems set)
+  (define (num-of-problems-helper set count)
+    (if (rootset? set)
+        (+ count (length (set-contents set)))
+        (fold num-of-problems-helper count (set-contents set))))
+
+  (if (set? set)
+      (num-of-problems-helper set 0)))
+
+(define* (module id #:key (contents '()) (name "") (version "")
+           (synopsis "") (description "") (keywords '())
+           (creator "") (attribution '()) (resources '()) (logo "")
+           (properties '()))
+  "High level convenenience interface to make-set, for the
+creation of modules."
+  (make-set id contents name version synopsis description keywords
+            creator attribution resources logo
+            (if (assoc 'module properties)
+                properties
+                (acons 'module #t properties))))
+
+(define* (set id #:key (contents '()) (name "") (version "")
+              (synopsis "") (description "") (keywords '())
+              (creator "") (attribution '()) (resources '())
+              (logo "") (properties '()))
+  "High level convenenience interface to make-set, for the
+creation of sets."
+  (make-set id contents name version synopsis description keywords
+            creator attribution resources logo properties))
+
+(define* (tutorial id #:key (contents '()) (name "") (version "")
+                   (synopsis "") (description "") (keywords '())
+                   (creator "") (attribution '()) (resources '())
+                   (logo "") (properties '()))
+  "High level convenenience interface to make-set, for the
+creation of tutorials."
+  (make-set id contents name version synopsis description keywords
+            creator attribution resources logo
+            (if (assoc 'tutorial properties)
+                properties
+                (acons 'tutorial #t properties))))
 
 ;;; sets.scm ends here
