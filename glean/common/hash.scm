@@ -42,6 +42,7 @@
             port-sha256
             open-sha256-input-port
             sha256-string
+            sha256-string-strict
             sha256-symbol
             ))
 
@@ -178,9 +179,14 @@ character."
   (bytevector->base32-string
    (sha256 (string->utf8 (string-join (map object->string strings))))))
 
+(define (sha256-string-strict string)
+  "Return the sha256 hash of STRING as a base32 encoded string."
+  (bytevector->base32-string (sha256 (string->utf8 string))))
+
 (define (sha256-symbol . strings)
   "Return a sha256 hash, as a symbol, of the strings joined by a simple space
 character."
   (string->symbol (apply sha256-string strings)))
 
 ;;; hash.scm ends here
+
