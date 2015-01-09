@@ -52,24 +52,24 @@
 
 (define git-init
   (set 'git-init
-        #:contents
-        (list
-         (problem (q "What Git command would you use to initiate a new project
+       #:contents
+       (list
+        (problem (q "What Git command would you use to initiate a new project
 in the current directory?")
-                  (s "git init"))
-         (problem (q "In order to create a new Git repository, would you type:")
-                  (s "git init")
-                  (o "git start")
-                  (o "git init")
-                  (o "git create"))
-         (problem (q "What is the first command to issue when you want to
+                 (s "git init"))
+        (problem (q "In order to create a new Git repository, would you type:")
+                 (s "git init")
+                 (o "git start")
+                 (o "git init")
+                 (o "git create"))
+        (problem (q "What is the first command to issue when you want to
 start using Git for a project?")
-                  (s "git init"))
-         (problem (q "What would the command ‘git init‘ do?")
-                  (s "Create a new git project in the current directory.")
-                  (o "Create a new git project in the current directory.")
-                  (o "Check the status of the current git project.")
-                  (o "Show an overview of recent actions.")))))
+                 (s "git init"))
+        (problem (q "What would the command ‘git init‘ do?")
+                 (s "Create a new git project in the current directory.")
+                 (o "Create a new git project in the current directory.")
+                 (o "Check the status of the current git project.")
+                 (o "Show an overview of recent actions.")))))
 
 (define git-status
   (set 'git-status
@@ -119,101 +119,101 @@ the current directory?")
 
 (define git-commit
   (set 'git-commit
-        #:contents
-        (list
-         (problem (q "‘true’ or ’false’: you can commit the changes you have
+       #:contents
+       (list
+        (problem (q "‘true’ or ’false’: you can commit the changes you have
 added to your Git index using the ’git commit‘ command.")
-                  (s "true")
-                  (o "true")
-                  (o "false"))
-         (problem (q "After having used the ‘git add‘ command, what command
+                 (s "true")
+                 (o "true")
+                 (o "false"))
+        (problem (q "After having used the ‘git add‘ command, what command
 would you use commit your changes to the repository?")
-                  (s "git commit"))
-         (problem (q "Will ’git commit‘ commit changes to files in your
+                 (s "git commit"))
+        (problem (q "Will ’git commit‘ commit changes to files in your
 repository even if those changes have not been added to the Git index?")
-                  (s "no")
-                  (o "yes")
-                  (o "no"))
-         (problem (q "Making changes to your files permanent in your
+                 (s "no")
+                 (o "yes")
+                 (o "no"))
+        (problem (q "Making changes to your files permanent in your
 repository is done by using…")
-                  (s "git commit")
-                  (s "git commit")
-                  (s "git add")
-                  (s "git log")))))
+                 (s "git commit")
+                 (o "git commit")
+                 (o "git add")
+                 (o "git log")))))
 
 (define git-diff
   (set 'git-diff
-        #:contents
-        (list
-         (problem (q "Which of the following commands would you use to obtain
+       #:contents
+       (list
+        (problem (q "Which of the following commands would you use to obtain
 a detailed report on your work since your last commit?")
-                  (s "git diff")
-                  (o "git show")
-                  (o "git status")
-                  (o "git diff"))
-         (problem (q "How can you tell what changes have been made since your
+                 (s "git diff")
+                 (o "git show")
+                 (o "git status")
+                 (o "git diff"))
+        (problem (q "How can you tell what changes have been made since your
 last commit?")
-                  (s "git diff"))
-         (problem (q "What command would you use to view a diff-style report
+                 (s "git diff"))
+        (problem (q "What command would you use to view a diff-style report
 on the files tracked in your project?")
-                  (s "git diff")))))
+                 (s "git diff")))))
 
 (define git-log
   (set 'git-log
-        #:contents
-        (list
-         (problem (q "‘true‘ or ‘false‘: ‘git log’ allows you to see a snapshot of
+       #:contents
+       (list
+        (problem (q "‘true‘ or ‘false‘: ‘git log’ allows you to see a snapshot of
 the current status of your project")
-                  (s "false")
-                  (o "true")
-                  (o "false"))
-         (problem (q "How can you view the history of your commits?")
-                  (s "git log"))
-         (problem (q "The command ’git log’ allows you to…")
-                  (s "view your commit history.")
-                  (o "view your commit history.")
-                  (o "write a commit message.")
-                  (o "view your last commit.")))))
+                 (s "false")
+                 (o "true")
+                 (o "false"))
+        (problem (q "How can you view the history of your commits?")
+                 (s "git log"))
+        (problem (q "The command ’git log’ allows you to…")
+                 (s "view your commit history.")
+                 (o "view your commit history.")
+                 (o "write a commit message.")
+                 (o "view your last commit.")))))
 
 (define git-branch
   (set 'git-branch
-        #:contents
-        (list
-         (problem (q "To list the currently existing branches in your project,
+       #:contents
+       (list
+        (problem (q "To list the currently existing branches in your project,
 you would type:")
-                  (s "git branch")
-                  (o "git status")
-                  (o "git checkpoints")
-                  (o "git branch"))
-         (problem (q "How would you create a new branch named ‘experimental‘
+                 (s "git branch")
+                 (o "git status")
+                 (o "git checkpoints")
+                 (o "git branch"))
+        (problem (q "How would you create a new branch named ‘experimental‘
 in your current project?")
-                  (s "git branch experimental"))
-         (problem (q "How can you tell what different branches exist as
+                 (s "git branch experimental"))
+        (problem (q "How can you tell what different branches exist as
 part of the same project?")
-                  (s "git branch"))
-         (problem (q "To create a branch called ’feature’, you'd type…")
-                  (s "git branch feature")
-                  (o "git target feature")
-                  (o "git branch feature")
-                  (o "git checkout feature")))))
+                 (s "git branch"))
+        (problem (q "To create a branch called ’feature’, you'd type…")
+                 (s "git branch feature")
+                 (o "git target feature")
+                 (o "git branch feature")
+                 (o "git checkout feature")))))
 
 (define git-checkout
   (set 'git-checkout
-        #:contents
-        (list
-         (problem (q "Switching to the ‘feature’ branch is done by typing…")
-                  (s "git checkout feature")
-                  (o "git check feature")
-                  (o "git checkout feature")
-                  (o "git branch feature"))
-         (problem (q "How would you switch to an existing branch
+       #:contents
+       (list
+        (problem (q "Switching to the ‘feature’ branch is done by typing…")
+                 (s "git checkout feature")
+                 (o "git check feature")
+                 (o "git checkout feature")
+                 (o "git branch feature"))
+        (problem (q "How would you switch to an existing branch
 called ‘experimental’?")
-                  (s "git checkout experimental"))
-         (problem (q "Can you switch to a different branch whilst you have
+                 (s "git checkout experimental"))
+        (problem (q "Can you switch to a different branch whilst you have
 uncommited, but tracked, files in your repository?")
-                  (s "no")
-                  (o "yes")
-                  (o "no")))))
+                 (s "no")
+                 (o "yes")
+                 (o "no")))))
 
 ;;;; Discipline
 ;;;
