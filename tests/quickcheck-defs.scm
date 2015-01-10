@@ -46,6 +46,7 @@
   #:export (
             $mk-rootset
             $mk-set
+            $mk-discipline
             $mk-hashtree
             $mk-hashmap
             $question
@@ -118,6 +119,27 @@ child-sets with each BASE_NUM of children."
             (($short-list $medii))                   ; resources
             ($string)                                ; logo
             (($short-assoc $symbol $string))))       ; properties
+
+(define* ($mk-discipline #:optional base_num (depth 1))
+  "Return a randomised set containing DEPTH levels of children.  The final
+level consists of rootsets.  If BASE_NUM is a number, force $mk-set to produce
+child-sets with each BASE_NUM of children."
+  (make-set ($symbol)                                ; id
+            (if (= depth 1)
+                (($short-list (lambda ()
+                                ($mk-rootset base_num))
+                              base_num))
+                (($short-list (lambda ()
+                                ($mk-set base_num (1- depth)))
+                              base_num)))                 ; contents
+            ($string) ($string)                      ; name / version
+            ($string) ($string)                      ; synopsis / description
+            (($short-list $string))                  ; keywords
+            ($string)                                ; creator
+            (($short-list $medii))                   ; attribution
+            (($short-list $medii))                   ; resources
+            ($string)                                ; logo
+            '((module . #t))))
 
 (define* ($mk-hashtree #:optional (input $mk-set))
   "Return a randomised hashtree built of INPUT (should be $mk-set or
