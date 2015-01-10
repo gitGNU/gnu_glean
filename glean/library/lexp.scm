@@ -46,14 +46,17 @@
   #:use-module (ice-9 match)
   #:use-module (srfi srfi-1)
   #:use-module (srfi srfi-9 gnu)
+  #:use-module (srfi srfi-26)
   #:export     (lexp
                 lexp?
                 lexp-base
                 lexp-rest
-                lexp-full
+                lexp-append
+                lexp-serialize
                 lexp-set-resolve
                 lexp-set-member
-                lexp-set-base
+                set-lexp
+                set-child-lexps
                 discipline-tree
                 discipline-tree->serialized
                 discipline-serialized->tree
@@ -69,7 +72,7 @@
   (lexp-mecha-make base rest)
   lexp?
   (base lexp-base)
-  (rest lexp-rest))
+  (rest lexp-rest set-lexp-rest))
 
 (define (lexp-make base-or-full . rest-or-null)
   "Return a lexp, an expression which can be used to retrieve a specific
@@ -87,15 +90,16 @@ This lexp can resolve to the init set located in the git discipline."
          (match rest-or-null
            ((or () ((? symbol?) ...))
             (lexp-mecha-make base-or-full rest-or-null))
-           (_ (error "LEXP-MAKE: Unexpected REST-OR-NULL pattern"
+           (_ (throw 'glean-type-error "LEXP-MAKE: Unexpected REST-OR-NULL"
                      rest-or-null))))
         ((null? rest-or-null)           ; list->lexp
          (match base-or-full
            (((? symbol? base) . ((? symbol? rest) ...))
             (lexp-mecha-make base rest))
-           (_ (error "LEXP-MAKE: Unexpected BASE-OR-FULL pattern"
-                     base-or-full))))
-        (else (error "LEXP-MAKE: Unexpected ingredient pattern."))))
+           (_ (throw "LEXP-MAKE: Unexpected BASE-OR-FULL" base-or-full))))
+        (else (throw 'glean-type-error
+                     "LEXP-MAKE: Unexpected ingredient pattern."
+                     base-or-full rest-or-null))))
 
 ;; syntactic sugar for lexps.
 (define-syntax lexp
@@ -103,12 +107,18 @@ This lexp can resolve to the init set located in the git discipline."
     ((lex exp)
      (lexp-make 'exp))))
 
-(define (lexp-full lxp)
+(define (lexp-serialize lxp)
   "Return the full lexp contained in LXP, as would have been provided when
 generating it."
   (match lxp
     (($ <lexp> base rest)
      (cons base rest))))
+
+(define (lexp-append lxp . ids)
+  "Append IDS to LXP's lxp-rest."
+  (set-lexp-rest lxp (append (lexp-rest lxp) ids)))
+
+;;;; Set lexp operations
 
 (define (lexp-set-resolve set lxp)
   "Extract the set identified by the lexp LXP from SET, or a nothing value
@@ -116,10 +126,10 @@ with id 'lexp-unknown, and context SET and LXP."
   (define (resolve next-set next-lxp)
     (match next-lxp
       ;; LEXP matches this set, and no further recursion needed.
-      (($ <lexp> (? (lambda (base) (eqv? base (set-id next-set)))) ())
+      (($ <lexp> (? (cut eqv? <> (set-id next-set))) ())
        next-set)
       ;; LEXP matches this set and we should recurse if possible.
-      (($ <lexp> (? (lambda (base) (eqv? base (set-id next-set))))
+      (($ <lexp> (? (cut eqv? <> (set-id next-set)))
           (= lexp-make rest))
        (match (lexp-set-member next-set rest)
          ;; Recursion possible, recurse
@@ -136,7 +146,7 @@ with id 'lexp-unknown, and context SET and LXP."
 (define (lexp-set-member set lxp)
   "Return the set that is a child of SET which matches the base of LXP, or
 #f."
-  (if (or (rootset? set) (null? (set-contents set)))
+  (if (rootset? set)
       #f                                ; rootset or no children
       (match (fold (lambda (disc result)
                      (cond (result result)
@@ -144,14 +154,27 @@ with id 'lexp-unknown, and context SET and LXP."
                            (else #f)))
                    #f
                    (set-contents set))
-        ;; We have found our matching set
-        ((? set? mtch) mtch)
-        ;; We were unable to find our matching set
-        (_ #f))))
+        ((? set? mtch) mtch)         ; We have found our matching set
+        (_ #f))))                    ; We were unable to find our matching set
 
-(define (lexp-set-base set)
-  "Return the base-lexp for SET."
+(define (set-lexp set)
+  "Return base-lexp generated from SET."
   (lexp-make (set-id set)))
+
+(define* (set-child-lexps set #:optional base-lxp)
+  "Return the list of lexps for the child-sets of SET, or the empty list if
+set is a rootset.  Assume set is a crownset, or, if LXP is provided, use it as
+the basis for generating the lexp list."
+  (cond ((rootset? set) '())
+        ((set? set)
+         (map (lambda (child)
+                (if base-lxp
+                    (lexp-append base-lxp (set-id set) (set-id child))
+                    (lexp-make (set-id set) (set-id child))))
+              (set-contents set)))
+        (else (throw 'glean-type-error "SET-CHILD-LEXPS: Wrong type:" set))))
+
+;;;;; Discipline lexp operations
 
 (define (discipline-tree-base discipline node-id)
   "A higher-order function which, when provided with a DISCIPLINE and a
@@ -195,7 +218,7 @@ read as a plain list structure and which can be turned back into a full
 lexp-tree using `discipline-serialized->tree.'"
   (match lexp-tree
     (((? lexp? lxp) . rest)
-     (cons (lexp-full lxp)
+     (cons (lexp-serialize lxp)
            (map discipline-tree->serialized rest)))))
 
 (define (discipline-serialized->tree serialized-tree)

@@ -38,13 +38,16 @@
   #:use-module (glean library sets)
   #:use-module (ice-9 match)
   #:use-module (srfi srfi-1)
-  #:use-module (srfi srfi-64))
+  #:use-module (srfi srfi-64)
+  #:use-module (tests quickcheck-defs))
 
 
-;;;; Tests
+;;;; Definitions / Mock
 
 (define test-set (set 'test #:contents `(,(set 'child) ,(set 'second)
                                          ,(set 'third))))
+
+;; Changing the mock data structures will require tweakes to the tree tests.
 (define test-ancestor
   (module 'root
     #:contents `(,(set 'one
@@ -84,12 +87,22 @@
 (define lexp-make (@@ (glean library lexp) lexp-make))
 (define <lexp> (@@ (glean library lexp) <lexp>))
 
+;;;; Tests
+
 (test-begin "lexp")
 
-;; Basic lexp tests
+;;;;; Basic lexp tests
 
 (test-assert "lexp?"
   (lexp? ((@@ (glean library lexp) lexp-mecha-make) 'test '(rest))))
+
+;;;;; Lexp make
+
+(test-assert "lexp-make"
+  (and (match (lexp-make 'test 'one 'two)
+         (($ <lexp> 'test (one two)) #t))
+       (match (lexp-make '(test one two))
+         (($ <lexp> 'test (one two)) #t))))
 
 (test-assert "lexp-list"
   (let ((lxp (lexp-make '(hello scheme world))))
@@ -101,6 +114,8 @@
     (and (eqv? (lexp-base lxp) 'hello)
          (equal? (lexp-rest lxp) '(scheme world)))))
 
+;;;;; Other
+
 (test-assert "lexp-base"
   (fold (lambda (lxp prev)
           (and prev
@@ -109,41 +124,61 @@
         #t
         (list (lexp-make 'hello) (lexp-make '(hello)))))
 
-;; LEXP member
+(test-equal "lexp-serialize"
+  (lexp-serialize (lexp (test one))) '(test one))
 
-(test-assert "lexp-member-third"
-  (eqv? (set-id (lexp-set-member test-set (lexp-make 'third)))
-        'third))
+(test-equal "lexp-append"
+  (lexp-append (lexp (test one)) 'two 'three)
+  (lexp (test one two three)))
+
+;;;;; LEXP member
+
+(test-eqv "lexp-member-third"
+  (set-id (lexp-set-member test-set (lexp-make 'third))) 'third)
 
 (test-assert "lexp-member-false"
   (not (lexp-set-member test-set (lexp-make 'false))))
 
-;; LEXP Set resolution
+;;;;; LEXP Set resolution
 
-(test-assert "lexp-set-resolve-short"
-  (eqv? (set-id (lexp-set-resolve test-set (lexp-make 'test)))
-        'test))
+(test-eqv "lexp-set-resolve-short"
+  (set-id (lexp-set-resolve test-set (lexp-make 'test))) 'test)
 
-(test-assert "lexp-set-resolve-long"
-  (eqv? (set-id (lexp-set-resolve test-set (lexp-make 'test 'second)))
-        'second))
+(test-eqv "lexp-set-resolve-long"
+  (set-id (lexp-set-resolve test-set (lexp-make 'test 'second))) 'second)
 
 (test-assert "lexp-set-resolve-false"
   (match (lexp-set-resolve test-set (lexp-make 'wrong 'lexp))
     (($ <nothing> 'lexp-unknown) #t)
     (_ #f)))
 
-;; LEXP macro
+;;;;; LEXP macro
 
-(test-assert "lexp-macro"
-  (eqv? (set-id (lexp-set-resolve test-set (lexp (test third))))
-        'third))
+(test-eqv "lexp-macro"
+  (set-id (lexp-set-resolve test-set (lexp (test third)))) 'third)
 
 ;; LEXP utilities
 
-(test-assert "lexp-set-base"
-  (and (eqv? (lexp-base (lexp-set-base test-set)) 'test)
-       (null? (lexp-rest (lexp-set-base test-set)))))
+(test-assert "set-lexp"
+  (and (eqv? (lexp-base (set-lexp test-set)) 'test)
+       (null? (lexp-rest (set-lexp test-set)))))
+
+(test-assert "set-child-lexps"
+  (match (set-child-lexps test-module)
+    ((($ <lexp> 'root (four)) ($ <lexp> 'root (two))
+      ($ <lexp> 'root (seven)))
+     #t)
+    (_ #f)))
+
+(test-assert "set-child-lexps-with-lexp"
+  (match (set-child-lexps test-module (lexp (test)))
+    ((($ <lexp> 'test (root four)) ($ <lexp> 'test (root two))
+      ($ <lexp> 'test (root seven)))
+     #t)
+    (_ #f)))
+
+(test-assert "rootset-child-lexps"
+  (null? (set-child-lexps ($mk-rootset))))
 
 (test-assert "discipline-tree"
   ;; Each entry is a pair: (lexp . (list children) | #f)
@@ -171,10 +206,10 @@
      #t)
     (_ #f)))
 
-(test-assert "discipline-tree->serialized-conversion"
-  (equal? (discipline-serialized->tree
-           (discipline-tree->serialized (discipline-tree test-module)))
-          (discipline-tree test-module)))
+(test-equal "discipline-tree->serialized-conversion"
+  (discipline-serialized->tree
+   (discipline-tree->serialized (discipline-tree test-module)))
+  (discipline-tree test-module))
 
 (test-assert "discipline-ancestry-tree"
   (match (discipline-ancestry-tree test-module test-ancestor)
