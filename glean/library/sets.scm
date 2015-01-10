@@ -64,6 +64,7 @@
   #:use-module (ice-9 match)
   #:use-module (srfi srfi-1)
   #:use-module (srfi srfi-9)
+  #:use-module (srfi srfi-9 gnu)
   #:export (
             set
             set?
@@ -76,7 +77,6 @@
             
             make-set
             mecha-set
-            set-rcd
             set-id
             set-contents
             set-info
@@ -90,6 +90,20 @@
             set-resources
             set-properties
             set-logo
+            set-lineage
+            set-set-id
+            set-set-contents
+            set-set-name
+            set-set-version
+            set-set-synopsis
+            set-set-description
+            set-set-keywords
+            set-set-creator
+            set-set-attribution
+            set-set-resources
+            set-set-logo
+            set-set-properties
+            set-set-lineage
             
             problem
             make-problem
@@ -225,22 +239,23 @@ definition."
     (make-problem q s (car op-pair) (cdr op-pair))))
 
 ;;;;; Sets
-(define-record-type <set>
+(define-immutable-record-type <set>
   (mecha-make-set id contents name version synopsis description keywords
                   creator attribution resources logo properties lineage)
   set?
-  (id           set-id)
-  (contents     set-contents)
-  (name         set-name)
-  (version      set-version)
-  (synopsis     set-synopsis)
-  (description  set-description)
-  (keywords     set-keywords)
-  (creator      set-creator)
-  (attribution  set-attribution)
-  (resources    set-resources)
-  (logo         set-logo)
-  (properties   set-properties))
+  (id           set-id          set-set-id)
+  (contents     set-contents    set-set-contents)
+  (name         set-name        set-set-name)
+  (version      set-version     set-set-version)
+  (synopsis     set-synopsis    set-set-synopsis)
+  (description  set-description set-set-description)
+  (keywords     set-keywords    set-set-keywords)
+  (creator      set-creator     set-set-creator)
+  (attribution  set-attribution set-set-attribution)
+  (resources    set-resources   set-set-resources)
+  (logo         set-logo        set-set-logo)
+  (properties   set-properties  set-set-properties)
+  (lineage      set-lineage     set-set-lineage))
 
 (define* (make-set id #:optional (contents '()) (name "") (version "")
                    (synopsis "") (description "") (keywords '()) (creator "")
