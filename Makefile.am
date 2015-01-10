@@ -43,6 +43,7 @@ MODULES =						\
   glean/librarian/catalogues.scm			\
   glean/library/core-templates.scm			\
   glean/library/lexp.scm				\
+  glean/library/set-tools.scm			  	\
   glean/library/sets.scm			  	\
   glean/library/boot.scm			     	\
   glean/library/library-store.scm			\
@@ -70,6 +71,7 @@ SCM_TESTS =						\
   tests/catalogues.scm					\
   tests/hash.scm					\
   tests/lexp.scm				    	\
+  tests/set-tools.scm				    	\
   tests/lounge-store.scm			     	\
   tests/lounge-server.scm			    	\
   tests/library-store.scm			    	\
