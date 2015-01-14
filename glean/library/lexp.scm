@@ -141,7 +141,8 @@ with id 'lexp-unknown, and context SET and LXP."
 
   (if (and (set? set) (lexp? lxp))
       (resolve set lxp)
-      (error "LEXP-SET-RESOLVE: Unexpected SET or LEXP:" set lxp)))
+      (throw 'glean-type-error "LEXP-SET-RESOLVE: Unexpected SET or LEXP:"
+             set lxp)))
 
 (define (lexp-set-member set lxp)
   "Return the set that is a child of SET which matches the base of LXP, or
@@ -180,19 +181,20 @@ the basis for generating the lexp list."
   "A higher-order function which, when provided with a DISCIPLINE and a
 procedure identifying how to generate node-id's called NODE-ID, returns the
 appropriate tree representation of discipline."
-  (define (make-leaf id foundation)
-    (cons (node-id id foundation) '()))
+  (define (make-leaf id foundation set)
+    (cons (node-id id foundation set) '()))
 
-  (define (make-node id foundation children)
-    (cons (node-id id foundation)
+  (define (make-node id foundation children set)
+    (cons (node-id id foundation set)
           (map (recurse-maker (cons id foundation)) children)))
 
   (define (recurse-maker lxp-foundation)
     (lambda (set)
       (cond ((rootset? set)
-             (make-leaf (set-id set) lxp-foundation))
+             (make-leaf (set-id set) lxp-foundation set))
             (else
-             (make-node (set-id set) lxp-foundation (set-contents set))))))
+             (make-node (set-id set) lxp-foundation
+                        (set-contents set) set)))))
 
   (if (plain-module? discipline)
       ((recurse-maker '()) discipline)
@@ -209,7 +211,7 @@ Output should hence be:
  ((root) . (((root one) . '())
             ((root two) . ((root two-one . '())))))"
   (discipline-tree-base discipline
-                        (lambda (id foundation)
+                        (lambda (id foundation set)
                           (reverse (cons id foundation)))))
 
 (define (discipline-tree->serialized lexp-tree)
@@ -240,9 +242,7 @@ Output should hence be:
  (lexp . ((lexp . '())
           (lexp . ((lexp . '())))))"
   (discipline-tree-base discipline
-                        (lambda (id foundation)
-                          (lexp-make (reverse (cons id foundation))))))
-
+                        (lambda (id foundation set)
 (define (discipline-ancestry-tree discipline ancestor)
   "Return a tree providing a schema by which an ancestor lexp-tree could be
 modified to the equivalent tree for discipline.
@@ -278,5 +278,7 @@ DISCIPLINE did not resolve to sets in ANCESTOR."
       (_ (error "DISCIPLINE-ANCESTRY-TREE: BUG: unexpected behaviour."))))
 
   (discipline-tree-base discipline node-id))
+
+                          (lexp-make (reverse (cons id foundation))))))
 
 ;;; lexp ends here
