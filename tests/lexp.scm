@@ -48,17 +48,6 @@
                                          ,(set 'third))))
 
 ;; Changing the mock data structures will require tweakes to the tree tests.
-(define test-ancestor
-  (module 'root
-    #:contents `(,(set 'one
-                       #:contents `(,(set 'one-one)))
-                 ,(set 'two
-                       #:contents `(,(problem (q "test")
-                                              (s "test"))))
-                 ,(set 'three
-                       #:contents `(,(tutorial 'three-one)
-                                    ,(set 'three-two))))))
-
 (define test-module
   (module 'root
     #:contents `(,(set 'four
@@ -69,18 +58,6 @@
                                               (s "test"))))
                  ,(set 'seven
                        #:lineage (lexp (root three))
-                       #:contents `(,(tutorial 'seven-one)
-                                    ,(set 'seven-two))))))
-(define test-module-false
-  (module 'root
-    #:contents `(,(set 'four
-                       #:lineage (lexp (root unknown))
-                       #:contents `(,(set 'one-four)))
-                 ,(set 'two
-                       #:contents `(,(problem (q "test")
-                                              (s "test"))))
-                 ,(set 'seven
-                       #:lineage (lexp (root blah))
                        #:contents `(,(tutorial 'seven-one)
                                     ,(set 'seven-two))))))
 
@@ -211,35 +188,6 @@
    (discipline-tree->serialized (discipline-tree test-module)))
   (discipline-tree test-module))
 
-(test-assert "discipline-ancestry-tree"
-  (match (discipline-ancestry-tree test-module test-ancestor)
-    (
-     ((#f . y4euxsglh3pe3fimxpt6dbsq7ihfz3ykqzvxt5pfazfcojqmvuqa)
-      ((h4hgf3bshpvkwb5cjzqnqb6fmh5ztammgzv43zcnyusak4wkfgoq
-        . yweuuld6bvrmynevqdurvrki2gcilr2xwrz76tz64u7owduu5lra)
-       ((#f . "agfzfy5mgzqoe6ryntnbraobleacdw43nrgbzexock4koyzewx6a")))
-      ((#f . "ktf43vwrqz2l6ny3el6sdhdex3l7wqsrtxdad2dzbw3z5wuzxdeq"))
-      ((noz374bevnzqd55u5m2ednnd3fhdskiliwzl5g3hkwnfmdh5ryfq
-        . t7fvvpxennlskntq3xsqzbh66nnf46f76dikckdylecwq7tblw6q)
-       ((#f . "ettrdnlvtfa35dxaumzn37lpiibzlkviei4a2m4rnk5wvq3wupea"))
-       ((#f . "w6gwg45jbp47trkrbcqum6lws3zq3qmtgdw3zjevvsypt7rmnepq"))))
-     #t)
-    (_ #f)))
-
-(test-assert "discipline-ancestry-tree-unresolvable"
-  (match (discipline-ancestry-tree test-module-false test-ancestor)
-    (
-     ((#f . y4euxsglh3pe3fimxpt6dbsq7ihfz3ykqzvxt5pfazfcojqmvuqa)
-      (((? nothing?)
-        . yweuuld6bvrmynevqdurvrki2gcilr2xwrz76tz64u7owduu5lra)
-       ((#f . "agfzfy5mgzqoe6ryntnbraobleacdw43nrgbzexock4koyzewx6a")))
-      ((#f . "ktf43vwrqz2l6ny3el6sdhdex3l7wqsrtxdad2dzbw3z5wuzxdeq"))
-      (((? nothing?)
-        . t7fvvpxennlskntq3xsqzbh66nnf46f76dikckdylecwq7tblw6q)
-       ((#f . "ettrdnlvtfa35dxaumzn37lpiibzlkviei4a2m4rnk5wvq3wupea"))
-       ((#f . "w6gwg45jbp47trkrbcqum6lws3zq3qmtgdw3zjevvsypt7rmnepq"))))
-     #t)
-    (_ #f)))
 
 (test-end)
 

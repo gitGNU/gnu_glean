@@ -50,6 +50,7 @@
   #:export     (lexp
                 lexp?
                 lexp-base
+                lexp-make
                 lexp-rest
                 lexp-append
                 lexp-serialize
@@ -58,10 +59,10 @@
                 set-lexp
                 set-child-lexps
                 discipline-tree
+                discipline-tree-base
                 discipline-tree->serialized
                 discipline-serialized->tree
-                discipline-serialized-tree
-                discipline-ancestry-tree))
+                discipline-serialized-tree))
 
 
 ;;;; Section Heading 1
@@ -243,42 +244,6 @@ Output should hence be:
           (lexp . ((lexp . '())))))"
   (discipline-tree-base discipline
                         (lambda (id foundation set)
-(define (discipline-ancestry-tree discipline ancestor)
-  "Return a tree providing a schema by which an ancestor lexp-tree could be
-modified to the equivalent tree for discipline.
-
-Ancestry trees always operate on serialized trees, as their primary function
-relates to their being read/written to/from files and passed to the lounge.
-
-Finally, the hashes we use here are shallow hashes: they capture changes to
-the structure of the discipline and version changes.  The hashing procedure
-that will be used is set-shallow-hash (a hash of the set's lexp, each direct
-child lexp, and its version).  For now we use set-fullhash (in the long term
-this is undesirable as it will force lounge updates on a far to frequent
-basis).
-
-The format is as follows:
- ((ancestor-hash . disc-hash) . ((ancestor-hash . disc-hash) ...))
-
-The resulting tree may contain nothings of id 'lexp-unknown, if some lexp's in
-DISCIPLINE did not resolve to sets in ANCESTOR."
-
-  (define (node-id id foundation)
-    (match (lexp-set-resolve discipline
-                             (lexp-make (reverse (cons id foundation))))
-      ((? (lambda (set) (and (set? set) (lexp? (set-lineage set)))) set)
-       (cons (match (lexp-set-resolve ancestor (set-lineage set))
-               ((? set? set) (set-fullhash set))
-               (otherwise otherwise))
-             (set-fullhash set)))
-      ((? set? set)
-       (cons #f (set-fullhash set)))
-      (($ <nothing> 'lexp-unknown context)
-       (nothing 'lexp-unknown context))
-      (_ (error "DISCIPLINE-ANCESTRY-TREE: BUG: unexpected behaviour."))))
-
-  (discipline-tree-base discipline node-id))
-
                           (lexp-make (reverse (cons id foundation))))))
 
 ;;; lexp ends here
