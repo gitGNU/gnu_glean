@@ -30,12 +30,16 @@
 
 (define-module (glean library set-tools)
   #:use-module (glean common hash)
+  #:use-module (glean common utils)
   #:use-module (glean library sets)
   #:use-module (glean library lexp)
   #:use-module (ice-9 match)
-  #:export     (shallow-hash
+  #:use-module (srfi srfi-1)
+  #:use-module (srfi srfi-26)
+  #:export     (discipline-ancestry-tree
                 deep-hash
-                dag-hash))
+                dag-hash
+                shallow-hash))
 
 
 ;;;; Discipline Hashes
@@ -120,5 +124,53 @@ This approach should guarantee robust upgrade (and downgrade) paths for the
 lounge, unique entries in a lounge's database for each set in any discipline,
 unambiguous addressing between the lounge and the library."
   (sha256-string-strict (object->string (discipline-tree discipline))))
+
+
+;;;; Hash using procedures
+
+(define (discipline-ancestry-tree discipline ancestor-discipline)
+  "Return a tree providing a schema by which an ancestor lexp-tree could be
+modified to the equivalent tree for discipline.
+
+Ancestry trees always operate on serialized trees, as their primary function
+relates to their being read/written to/from files and passed to the lounge.
+
+Finally, the hashes we use here are shallow hashes: they capture changes to
+the structure of the discipline and version changes.  The hashing procedure
+that will be used is set-shallow-hash (a hash of the set's lexp, each direct
+child lexp, and its version).  For now we use set-fullhash (in the long term
+this is undesirable as it will force lounge updates on a far to frequent
+basis).
+
+The format is as follows:
+ ((ancestor-hash . disc-hash) . ((ancestor-hash . disc-hash) ...))
+
+The resulting tree may contain nothings of id 'lexp-unknown, if some lexp's in
+DISCIPLINE did not resolve to sets in ANCESTOR-DISCIPLINE."
+  (let ((resolve-ancestor (cut lexp-set-resolve ancestor-discipline <>)))
+
+    (define (node-id id foundation set)
+      ;; We must provide ancestor's shallow-hash, if ...
+      (let* ((lxp    (lexp-make (reverse (cons id foundation))))
+             (hasher (cut shallow-hash lxp <>))
+             (hash   (hasher set)))
+
+        (cond ((set-lineage set)     ; ... set has set-lineage
+               (match (resolve-ancestor (set-lineage set))
+                 ((? set? ancestor)
+                  `(,(shallow-hash (set-lineage set) ancestor) . ,hash))
+                 (($ <nothing> 'lexp-unknown context)
+                  `(,(nothing 'problematic-set-lineage context) . ,hash))))
+
+              (else (match (resolve-ancestor lxp)
+                      (($ <nothing> 'lexp-unknown) ; new subset
+                       `("" . ,hash))
+                      ((? (compose (cut hash=? <> hash)
+                                   (cut hasher <>))) ; no change
+                       `(#f . ,hash))
+                      (ancestor ; subset, or its children, changed
+                       `(,(hasher ancestor) . ,hash)))))))
+
+    (discipline-tree-base discipline node-id)))
 
 ;;; set-tools ends here

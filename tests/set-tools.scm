@@ -33,6 +33,8 @@
 ;;; Code:
 
 (define-module (tests set-tools)
+  #:use-module (glean common hash)
+  #:use-module (glean common utils)
   #:use-module (glean library lexp)
   #:use-module (glean library set-tools)
   #:use-module (glean library sets)
@@ -57,36 +59,36 @@
 (test-assert "shallow-hash-equal"
   (let ((set ($mk-set)))
     (and
-     (string=? (shallow-hash (set-lexp set) set)
-               (shallow-hash (set-lexp set) set))
-     (string=? (shallow-hash (set-lexp set) set)
-               (shallow-hash
-                (set-lexp set)
-                ((compose (cut set-set-creator <> (string-reverse
-                                                   (set-creator set)))
-                          (cut set-set-description <> (string-reverse
-                                                       (set-description set)))
-                          (cut set-set-synopsis <> (string-reverse
-                                                    (set-synopsis set)))
-                          (cut set-set-keywords <> (reverse
-                                                    (set-keywords set)))
-                          (cut set-set-name <> (string-reverse
-                                                (set-name set)))) set))))))
+     (hash=? (shallow-hash (set-lexp set) set)
+             (shallow-hash (set-lexp set) set))
+     (hash=? (shallow-hash (set-lexp set) set)
+             (shallow-hash
+              (set-lexp set)
+              ((compose (cut set-set-creator <> (string-reverse
+                                                 (set-creator set)))
+                        (cut set-set-description <> (string-reverse
+                                                     (set-description set)))
+                        (cut set-set-synopsis <> (string-reverse
+                                                  (set-synopsis set)))
+                        (cut set-set-keywords <> (reverse
+                                                  (set-keywords set)))
+                        (cut set-set-name <> (string-reverse
+                                              (set-name set)))) set))))))
 
 (test-assert "shallow-hash-not-equal"
-  (let ((set ($mk-set 2 2))
-        (ne? (negate string=?)))
+  (let ((set ($mk-set 2 2)))
     (and
-     (ne? (shallow-hash (set-lexp set) set) ; lexp diff
-          (shallow-hash (lexp (set target)) set))
-     (ne? (shallow-hash (set-lexp set) set) ; version diff
-          (shallow-hash (set-lexp set)
-                        (set-set-version set
-                                         (string-reverse (set-version set)))))
-     (ne? (shallow-hash (set-lexp set) set) ; child-lexp diff
-          (shallow-hash (set-lexp set)
-                        (set-set-contents set (cons ($mk-rootset)
-                                                    (set-contents set))))))))
+     (hash&!=? (shallow-hash (set-lexp set) set) ; lexp diff
+               (shallow-hash (lexp (set target)) set))
+     (hash&!=? (shallow-hash (set-lexp set) set) ; version diff
+               (shallow-hash (set-lexp set)
+                             (set-set-version
+                              set (string-reverse (set-version set)))))
+     (hash&!=? (shallow-hash (set-lexp set) set) ; child-lexp diff
+               (shallow-hash (set-lexp set)
+                             (set-set-contents set
+                                               (cons ($mk-rootset)
+                                                     (set-contents set))))))))
 
 ;;;;; Deep-hash
 ;;;
@@ -96,7 +98,7 @@
 ;;; Are we the same if we deep-hash the same disc twice?
 (test-assert "deep-hash-equal"
   (let ((disc ($mk-discipline 2 2)))
-    (string=? (deep-hash disc) (deep-hash disc))))
+    (hash=? (deep-hash disc) (deep-hash disc))))
 
 (define (ltrans l) (cons '(test) l))
 (define (strans s) (string-append "test" s))
@@ -116,35 +118,34 @@
 
 ;;; Are we different if we change a field (at a time) in disc?
 (test-assert "deep-hash-not-equal"
-  (let ((disc ($mk-discipline 2 2))
-        (ne?  (negate string=?)))
+  (let ((disc ($mk-discipline 2 2)))
     (fold (lambda (procs result)
             (if result
                 (match procs
                   ((setter accessor transformer)
-                   (ne? (deep-hash disc)
-                        (deep-hash (setter disc (transformer
-                                                 (accessor disc)))))))
+                   (hash&!=? (deep-hash disc)
+                             (deep-hash (setter disc (transformer
+                                                      (accessor disc)))))))
                 result))
           #t proc-list)))
 
 ;;; Are we different if we have the same disc, but change fields in the child?
 (test-assert "deep-hash-not-equal-child"
-  (let ((disc ($mk-discipline 2 2))
-        (ne?  (negate string=?)))
+  (let ((disc ($mk-discipline 2 2)))
     (fold (lambda (procs result)
             (if result
                 (match procs
                   ((setter accessor transformer)
-                   (ne? (deep-hash disc)
-                        (deep-hash
-                         (set-set-contents
-                          disc
-                          `(,(car (set-contents disc))
-                            ,(setter (cadr (set-contents disc))
-                                     (transformer
-                                      (accessor
-                                       (cadr (set-contents disc)))))))))))
+                   (hash&!=? (deep-hash disc)
+                             (deep-hash
+                              (set-set-contents
+                               disc
+                               `(,(car (set-contents disc))
+                                 ,(setter (cadr (set-contents disc))
+                                          (transformer
+                                           (accessor
+                                            (cadr
+                                             (set-contents disc)))))))))))
                 result))
           #t proc-list)))
 
@@ -159,26 +160,26 @@
 ;;; Are we still the same if we change some fields?
 (test-assert "dag-hash-equal"
   (let ((disc ($mk-discipline 2 2)))
-    (and (string=? (dag-hash disc) (dag-hash disc))
-         (string=? (dag-hash disc)
-                   (dag-hash 
-                    ((compose (cut set-set-creator <> (string-reverse
-                                                       (set-creator disc)))
-                              (cut set-set-description <> (string-reverse
-                                                           (set-description disc)))
-                              (cut set-set-synopsis <> (string-reverse
-                                                        (set-synopsis disc)))
-                              (cut set-set-keywords <> (reverse
-                                                        (set-keywords disc)))
-                              (cut set-set-name <> (string-reverse
-                                                    (set-name disc)))) disc))))))
+    (and (hash=? (dag-hash disc) (dag-hash disc))
+         (hash=? (dag-hash disc)
+                 (dag-hash
+                  ((compose (cut set-set-creator <> (string-reverse
+                                                     (set-creator disc)))
+                            (cut set-set-description <> (string-reverse
+                                                         (set-description disc)))
+                            (cut set-set-synopsis <> (string-reverse
+                                                      (set-synopsis disc)))
+                            (cut set-set-keywords <> (reverse
+                                                      (set-keywords disc)))
+                            (cut set-set-name <> (string-reverse
+                                                  (set-name disc)))) disc))))))
 
 ;;; Are we still the same if we change some fields in the child?
 (test-assert "dag-hash-equal-child"
   (let* ((disc ($mk-discipline 2 2))
          (chld (cadr (set-contents disc))))
-    (and (string=? (dag-hash disc) (dag-hash disc))
-         (string=?
+    (and (hash=? (dag-hash disc) (dag-hash disc))
+         (hash=?
           (dag-hash disc)
           (dag-hash 
            (set-set-contents
@@ -203,12 +204,13 @@
 ;;; - we remove a set from a child
 ;;; - we exchange the 2 sets from the 2 children?
 (test-assert "dag-hash-not-equal"
-  (let* ((disc ($mk-discipline 2 2))
-         (ne? (negate string=?)))
+  (let* ((disc ($mk-discipline 2 2)))
     (match (set-contents disc)
       ((1st 2nd)
        (fold (lambda (new-disc result)
-               (if result (ne? (dag-hash disc) (dag-hash new-disc)) result))
+               (if result
+                   (hash&!=? (dag-hash disc) (dag-hash new-disc))
+                   result))
              #t
              (list
               (set-set-contents disc (cons ($mk-rootset) (set-contents disc)))
@@ -227,6 +229,303 @@
                                           ,(set-set-contents
                                             2nd (cons 1st-1st
                                                       rest-2nd))))))))))))
+;;;; Discipline Ancestry Tree testing.
+
+(define test-ancestor
+  (module 'root
+    #:contents `(,(set 'one
+                       #:contents `(,(set 'one-one)))
+                 ,(set 'two
+                       #:contents `(,(problem (q "test")
+                                              (s "test"))))
+                 ,(set 'three
+                       #:contents `(,(tutorial 'three-one)
+                                    ,(set 'three-two))))))
+
+(define test-module
+  (module 'root
+    ;; some of root's children have moved and have had their ids changed ->
+    ;; new shallow-hash
+    #:contents `(
+                 ;; This set's id has been changed -> new shallow-hash.
+                 ,(set 'four
+                       #:lineage (lexp (root one))
+                       #:contents
+                       `(
+                         ;; this set's id has been changed -> new shallow-hash
+                         ,(set 'one-four
+                               #:lineage (lexp (root one one-one)))))
+                 ;; this subtree remains identical -> (#f . hash) for all.
+                 ,(set 'two
+                       #:contents `(,(problem (q "test")
+                                              (s "test"))))
+                 ;; This set's id has been changed -> new shallow-hash.
+                 ,(set 'seven
+                       #:lineage (lexp (root three))
+                       ;; these are essentially new sets (no lineage to link
+                       ;; to previous) -> ("" . hash) for both.
+                       #:contents `(,(tutorial 'seven-one)
+                                    ,(set 'seven-two))))))
+(define test-module-false
+  (module 'root
+    #:contents `(,(set 'four
+                       ;; This should trigger lexp resolution problems.
+                       #:lineage (lexp (root unknown))
+                       #:contents `(,(set 'one-four)))
+                 ,(set 'two
+                       #:contents `(,(problem (q "test")
+                                              (s "test"))))
+                 ,(set 'seven
+                       ;; This too.
+                       #:lineage (lexp (root blah))
+                       #:contents `(,(tutorial 'seven-one)
+                                    ,(set 'seven-two))))))
+
+;;; This is the usual scenario: some subsets of a DISCIPLINE contain lexps
+;;; that resolve to their direct relations in ANCESTOR.  This being the case,
+;;; those subsets, and any direct parents of such will have a mapping from
+;;; ANCESTOR -> DISCIPLINE.
+;;; FIXME: as we are using no inheritance (and as inheritance of lineage is
+;;; not yet implemented in core-templates, we must either specify the lineage
+;;; paths for alll subsets or expect "" rather than #f.)
+(test-assert "discipline-ancestry-tree"
+  (match (discipline-ancestry-tree test-module test-ancestor)
+    (
+     (("gdigdhz4r6n4fih6rsgcjorqqhahvxv4i57ondemq4wsz7jenduq"
+       . "hfg7shivdryi7zvcm73gq3dwnnvjw2mbfeg7dqrce66rvlqx4yoa")
+      (("6356y5sz5njak5d2sg5tz3ydx2gto23ensuroivjqdxdskq4ydua"
+        . "kum54szklilnuouk2ptpfwlu6q7lz4djjuczh6jbsfigbz6cfqfa")
+       (("wjq3zaldphyakhomojrtoq3pi3ongwypn4vu3bca2qfdmgq2tvlq"
+         . "4gttoxgr354ty2e5fjezmguuor32xr76jezki34ijj7f7psienpq")))
+      ((#f . "nxr2ofrijjleetfnplyqjpols5y63viafulrpel2x23xjtfvomnq"))
+      (("vd5t3awvrjulipmsndlmqfihwi3anquok6xbbyo6wytxohcu7m3a"
+        . "bjxqhdjzd6uhezz6fvowu7qlitlt7oaukv22tjgff6hcywgxduna")
+       (("" . "i3g7uge6ebyjmbt7px2moiezatyrujii3jgmg5yczpf5c7agdntq"))
+       (("" . "5wsdwho6enzlc4fgc4knxcjxddmffpvl5rjfah4p6wz2lbpya75a"))))
+     #t)
+    (otherwise otherwise)))
+
+;;; We're testing what happens when DISCIPLINE contains lineage fields that
+;;; have unresolvable lexps with regards to ANCESTOR.
+(test-assert "discipline-ancestry-tree-unresolvable"
+  (match (discipline-ancestry-tree test-module-false test-ancestor)
+    (
+     (("gdigdhz4r6n4fih6rsgcjorqqhahvxv4i57ondemq4wsz7jenduq"
+       . "hfg7shivdryi7zvcm73gq3dwnnvjw2mbfeg7dqrce66rvlqx4yoa")
+      ((($ <nothing> 'problematic-set-lineage)
+        . "kum54szklilnuouk2ptpfwlu6q7lz4djjuczh6jbsfigbz6cfqfa")
+       ((#f . "4gttoxgr354ty2e5fjezmguuor32xr76jezki34ijj7f7psienpq")))
+      ((#f . "nxr2ofrijjleetfnplyqjpols5y63viafulrpel2x23xjtfvomnq"))
+      ((($ <nothing> 'problematic-set-lineage)
+        . "bjxqhdjzd6uhezz6fvowu7qlitlt7oaukv22tjgff6hcywgxduna")
+       ((#f . "i3g7uge6ebyjmbt7px2moiezatyrujii3jgmg5yczpf5c7agdntq"))
+       ((#f . "5wsdwho6enzlc4fgc4knxcjxddmffpvl5rjfah4p6wz2lbpya75a"))))
+     #t)
+    (otherwise otherwise)))
+
+;;; More generally:
+
+(test-assert "discipline-ancestry-tree-random-new-child"
+  ;; A random scenario in which we have added a new rootset to the first child
+  ;; of the discipline.
+  ;; - The crownhash should have a new hash (because we have a new child).
+  ;; - The first child of the discipline is new ("" . hash).
+  ;; - All else should be unchanged (#f . hash).
+  (let* ((ancestor ($mk-discipline 2 2))
+         (discipline (set-set-contents ancestor
+                                       (cons ($mk-rootset)
+                                             (set-contents ancestor)))))
+    (match (discipline-ancestry-tree discipline ancestor)
+      (
+       ((? hash&!=?)
+        ((? new.hash?))
+        ((? false.hash?)
+         ((? false.hash?))
+         ((? false.hash?)))
+        ((? false.hash?)
+         ((? false.hash?))
+         ((? false.hash?))))
+       #t)
+      (otherwise otherwise))))
+
+(test-assert "discipline-ancestry-tree-random-switch-order"
+  ;; A random scenario in which we simply reversed the order of the ancestor's
+  ;; children.
+  ;; - The crownhash should have a new hash (because the order of set-contents
+  ;;   has changed)
+  ;; - All else should remain identical (#f . hash) no other structure has
+  ;;   changed at all.
+  (let* ((ancestor ($mk-discipline 2 2))
+         (discipline (set-set-contents ancestor
+                                       `(,(cadr (set-contents ancestor))
+                                         ,(car (set-contents ancestor))))))
+
+    (match (discipline-ancestry-tree discipline ancestor)
+      (
+       ((? hash&!=?)
+        ((? false.hash?)
+         ((? false.hash?))
+         ((? false.hash?)))
+        ((? false.hash?)
+         ((? false.hash?))
+         ((? false.hash?))))
+       #t)
+      (otherwise #f))))
+
+(test-assert "discipline-ancestry-tree-random-switch-order-add-child"
+  ;; A random scenario in which we reversed the order of the ancestor's
+  ;; children, and added a child to the first child of discipline.
+  ;; - The crownhash should have a new hash (because the order of set-contents
+  ;;   hash changed),
+  ;; - The first child should have a new hash (because a new child was added)
+  ;; - The first child of the first child should have ("" . hash), because it
+  ;;   is new.
+  ;; - All others should be (#f . hash)
+  (let* ((ancestor ($mk-discipline 2 2))
+         (discipline (set-set-contents
+                      ancestor
+                      `(,(set-set-contents
+                          (cadr (set-contents ancestor))
+                          (cons ($mk-rootset)
+                                (set-contents
+                                 (cadr (set-contents ancestor)))))
+                        ,(car (set-contents ancestor))))))
+
+    (match (discipline-ancestry-tree discipline ancestor)
+      (
+       ((? hash&!=?)
+        ((? hash&!=?)
+         ((? new.hash?))
+         ((? false.hash?))
+         ((? false.hash?)))
+        ((? false.hash?)
+         ((? false.hash?))
+         ((? false.hash?))))
+       #t)
+      (otherwise #f))))
+
+(test-assert "discipline-ancestry-tree-random-cut-child"
+  ;; A random scenario in which we remove the first child of the first child
+  ;; of discipline.
+  ;; - The crownhash should remain unchanged (#f . hash).
+  ;; - The first child should have a new hash (because a child was removed).
+  ;; - All others should be (#f . hash)
+  (let* ((ancestor ($mk-discipline 2 2))
+         (discipline (set-set-contents
+                      ancestor
+                      (cons (set-set-contents
+                             (car (set-contents ancestor))
+                             (cdr (set-contents
+                                   (car (set-contents ancestor)))))
+                            (cdr (set-contents ancestor))))))
+
+    (match (discipline-ancestry-tree discipline ancestor)
+      (
+       ((? false.hash?)
+        ((? hash&!=?)
+         ((? false.hash?)))
+        ((? false.hash?)
+         ((? false.hash?))
+         ((? false.hash?))))
+       #t)
+      (otherwise #f))))
+
+;;;;; The reason we introduced set-lineage:
+;;;
+;;; In the following scenarios we simply want to move a child from the first
+;;; child in discipline to the second child in discipline.
+;;;
+;;; Without using lineage (the first test), Glean will conclude that the
+;;; first child of discipline has lost a child, and the second discipline has
+;;; gained a new child.
+;;;
+;;; This is obviously undesirable: the child has simply moved, so all stats
+;;; associated with that child should be retained.  See the next test for the
+;;; solution to this.
+
+(test-assert "discipline-ancestry-tree-random-move-child"
+  ;; A random scenario in which we move the first child of the first child to
+  ;; the beginning of the children of the second child of discipline.
+  ;; - The crownhash should remain unchanged (#f . hash).
+  ;; - The first child should have a new hash (because a child was removed).
+  ;; - The second child should have a new hash (a child was added).
+  ;; - The first child of the second child should have ("" . hash): it's new.
+  ;; - All others should be (#f . hash)
+  (let* ((ancestor ($mk-discipline 2 2))
+         (discipline (set-set-contents
+                      ancestor
+                      `(,(set-set-contents
+                          (car (set-contents ancestor))
+                          (cdr (set-contents
+                                (car (set-contents ancestor)))))
+                        ,(set-set-contents
+                          (cadr (set-contents ancestor))
+                          (cons (car (set-contents
+                                      (car (set-contents ancestor))))
+                                (set-contents
+                                 (cadr (set-contents ancestor)))))))))
+
+    (match (discipline-ancestry-tree discipline ancestor)
+      (
+       ((? false.hash?)
+        ((? hash&!=?)
+         ((? false.hash?)))
+        ((? hash&!=?)
+         ((? new.hash?))
+         ((? false.hash?))
+         ((? false.hash?))))
+       #t)
+      (otherwise #f))))
+
+(test-assert "discipline-ancestry-tree-random-move-child-linked"
+  ;; A random scenario in which we move the first child of the first child to
+  ;; the beginning of the children of the second child of discipline.  In this
+  ;; case we use lineage to track the transfer.
+  ;; - The crownhash should remain unchanged (#f . hash).
+  ;; - The first child should have a new hash (because a child was removed).
+  ;; - The second child should have a new hash (a child was added).
+  ;; - The first child of the second child should have:
+  ;;   `(,(shallow-hash (first-child-first-child)) . hash)
+  ;; - All others should be (#f . hash)
+  (let* ((ancestor ($mk-discipline 2 2))
+         (lxp (lexp-make (list (set-id ancestor)
+                               (set-id (car (set-contents ancestor)))
+                               (set-id (car (set-contents
+                                             (car (set-contents
+                                                   ancestor))))))))
+         (discipline (set-set-contents
+                      ancestor
+                      `(,(set-set-contents
+                          (car (set-contents ancestor))
+                          (cdr (set-contents
+                                (car (set-contents ancestor)))))
+                        ,(set-set-contents
+                          (cadr (set-contents ancestor))
+                          (cons (set-set-lineage
+                                 (car (set-contents
+                                       (car (set-contents ancestor))))
+                                 lxp)
+                                (set-contents
+                                 (cadr (set-contents ancestor)))))))))
+
+    (match (discipline-ancestry-tree discipline ancestor)
+      (
+       ((? false.hash?)
+        ((? hash&!=?)
+         ((? false.hash?)))
+        ((? hash&!=?)
+         ((? (lambda (pair)
+               (match pair
+                 ((a . b)
+                  (and (hash=? a
+                               (shallow-hash lxp
+                                             (lexp-set-resolve ancestor lxp)))
+                       (string? b)))
+                 (_ #f)))))
+         ((? false.hash?))
+         ((? false.hash?))))
+       #t)
+      (otherwise #f))))
 
 (test-end "set-tools")
 
