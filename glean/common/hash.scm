@@ -32,6 +32,7 @@
 (define-module (glean common hash)
   #:use-module (glean config)
   #:use-module (glean common base32)
+  #:use-module (ice-9 match)
   #:use-module (rnrs bytevectors)
   #:use-module (rnrs io ports)
   #:use-module (system foreign)
@@ -44,6 +45,11 @@
             sha256-string
             sha256-string-strict
             sha256-symbol
+
+            hash&!=?
+            hash=?
+            false.hash?
+            new.hash?
             ))
 
 
@@ -187,6 +193,41 @@ character."
   "Return a sha256 hash, as a symbol, of the strings joined by a simple space
 character."
   (string->symbol (apply sha256-string strings)))
+
+
+;;;; Hash predicates
+;;; These predicates are specifically about string hash comparisons.
+
+(define* (hash=? pair-or-a #:optional b)
+  ((hash-compare (lambda (a b)
+                   (and (string? a) (string? b)
+                        (not (string-null? a)) (not (string-null? b))
+                        (string=? a b))))
+   pair-or-a b))
+
+(define* (hash&!=? pair-or-a #:optional b)
+  ((hash-compare (lambda (a b)
+                   (and (string? a) (string? b)
+                        (not (string-null? a)) (not (string-null? b))
+                        (not (string=? a b)))))
+   pair-or-a b))
+
+(define* (false.hash? pair-or-a #:optional b)
+  ((hash-compare (lambda (a b)
+                   (and (not a) (string? b) (not (string-null? b)))))
+   pair-or-a b))
+
+(define* (new.hash? pair-or-a #:optional b)
+  ((hash-compare (lambda (a b)
+                   (and (string? a) (string? b)
+                        (string-null? a) (not (string-null? b)))))
+   pair-or-a b))
+
+(define (hash-compare predicate)
+  (lambda (pair-or-a b)
+    (match pair-or-a
+      ((a . b) (predicate a b))
+      (_ (predicate pair-or-a b)))))
 
 ;;; hash.scm ends here
 
