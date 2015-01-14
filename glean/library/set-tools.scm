@@ -59,10 +59,12 @@ bumps for the set or LXP changes.
 The primary use for this hash is in the provision of 2 types of trees for the
 lounge: hashtrees when disciplines are first enabled, and ancestrytrees when
 already known disciplines need to be shifted to use a new structure."
-  (sha256-string-strict
-   (string-join `(,(object->string lxp) ,(set-version set)
-                  ,(object->string (set-child-lexps set lxp)))
-                "-")))
+  (if (and (lexp? lxp) (set? set))
+      (sha256-string-strict
+       (string-join `(,(object->string lxp) ,(set-version set)
+                      ,(object->string (set-child-lexps set lxp)))
+                    "-"))
+      (_ (throw 'glean-type-error "SHALLOW-HASH: incorrect types" lxp set))))
 
 (define (deep-hash discipline)
   "Return the hash which is the result of recursively turning each element in
