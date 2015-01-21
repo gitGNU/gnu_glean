@@ -32,6 +32,7 @@
 
 (define-module (glean common utils)
   #:use-module (ice-9 match)
+  #:use-module (ice-9 format)
   #:use-module (rnrs records inspection)
   #:use-module (srfi srfi-9)
   #:use-module (srfi srfi-26)
