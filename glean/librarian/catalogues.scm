@@ -50,11 +50,16 @@
   #:use-module (glean common config-utils)
   #:use-module (glean common monads)
   #:use-module (glean common utils)
+  #:use-module (glean library library-store)
+  #:use-module (glean library sets)
+  #:use-module (glean library set-tools)
   #:use-module (ice-9 ftw)
   #:use-module (ice-9 match)
   #:use-module (ice-9 regex)
   #:use-module (ice-9 vlist)
+  #:use-module (srfi srfi-1)
   #:use-module (srfi srfi-9 gnu)
+  #:use-module (srfi srfi-26)
   #:export     (catalogue
                 catalogue?
                 get-catalogue-id
@@ -116,7 +121,7 @@ with an error if we encounter a problem."
   (match (mcatalogue-show cat-dir cat-id)
     ((? nothing? nothing)
      (emit-error (nothing-id nothing) (nothing-context nothing)))
-    (((? catalogue? catalogue))
+    ((? catalogue? catalogue)
      (emit-catalogue catalogue))))
 
 (define (catalogue-list cat-dir)
@@ -174,6 +179,40 @@ discipline id to the discipline in the store."
               ", ")))))
 
 
+;;;; Library/Catalogue Intersection
+;;;
+;;; This procedure is special: it makes use of procedures defined in `(glean
+;;; library library-store)', as it creates a temporary library to retrieve
+;;; details about the set identified by SET-ID, which can only be retrieved
+;;; once set is loaded in the context of a library.
+;;;
+;;; This procedure will allow us to resolve lexps against actual content in
+;;; the library for instance.
+
+(define (store-name tmp-lib set-id)
+  "Return the 'store-name', a string of the format \"$hash-$id-$version\", for
+the discipline identified by set-id ID as found in the library built out of
+the store pointed towards by tmp-lib, a library-hash-pair.
+
+See (glean library library-store) for more details on the latter
+data-structure."
+  (let ((discipline (fetch-set
+                     (fold (lambda (entry result)
+                             (if result
+                                 result
+                                 (match entry
+                                   ((hash (? (cut eqv? set-id <>)) . rest)
+                                    hash)
+                                   (_ #f))))
+                           #f
+                           (known-crownsets tmp-lib '()))
+                     tmp-lib)))
+    (string-join `(,(deep-hash discipline)
+                   ,(symbol->string set-id)
+                   ,(set-version discipline))
+                 "-")))
+
+
 ;;;; Atomic Catalogue Operations
 
 (define (make-bare-catalogue catalogue-id catalogue-dir)
@@ -181,69 +220,53 @@ discipline id to the discipline in the store."
 CATALOGUE-DIR as its catalologue-dir."
   (make-catalogue catalogue-id vlist-null catalogue-dir))
 
-(define (catalogue-add-discipline old-catalogue new-discipline)
-  "Generate a new catalogue based on the catalogue OLD-CATALOGUE, which now
-includes the discipline pair NEW-DISCIPLINE in it.  If NEW-DISCIPLINE's id was
-already part of OLD-CATALOGUE, simply update that discipline's target to the
-one provided by NEW-DISCIPLINE."
-  (match old-catalogue
-    (($ catalogue id disciplines)
-     (match new-discipline
+(define* (catalogue-add-discipline cat disc-pair #:optional new-id new-dir)
+  "Generate a new catalogue based on catalogue CAT, augmented by the
+discipline identified by pair DISC-PAIR of the form (discipline-id . path).
+
+If DISC-PAIR's id was already part of CAT, simply update that discipline's
+target to the one provided by DISC-PAIR.
+
+If NEW-ID is provided, use this as the name of the resulting catalogue; if
+NEW-DIR is provided, use this as the new directory associated with the new
+catalogue."
+  (match cat
+    (($ catalogue id disciplines dir)
+     (match disc-pair
        ((name . target)
-        (if (vhash-assoc name disciplines)
-            (set-disciplines old-catalogue
-                             (vhash-fold (lambda (fold-name fold-target result)
-                                           (if (string=? fold-name name)
-                                               (vhash-cons name target result)
-                                               (vhash-cons fold-name
-                                                           fold-target
-                                                           result)))
-                                         vlist-null
-                                         disciplines))
-            (set-disciplines old-catalogue
-                             (vhash-cons name target disciplines))))))))
+        (make-catalogue (or new-id id)
+                        (if (vhash-assoc name disciplines)
+                            (vhash-fold (lambda (fold-name fold-target result)
+                                          (if (string=? fold-name name)
+                                              (vhash-cons name target result)
+                                              (vhash-cons fold-name
+                                                          fold-target
+                                                          result)))
+                                        vlist-null
+                                        disciplines)
+                            (vhash-cons name target disciplines))
+                        (or new-dir dir)))))))
 
-(define (catalogue-remove-discipline old-catalogue discipline-id)
-  "Generate a new catalogue based on the catalogue OLD-CATALOGUE, which now
-no longer containes the discipline identified by DISCIPLINE-ID."
-  (match old-catalogue
-    (($ catalogue id disciplines)
-     (set-disciplines old-catalogue
-                      (vhash-delete discipline-id disciplines)))))
+(define* (augment-catalogue cat counter new-discipline #:optional tmp)
+  "Return a new catalogue, incorporating the disciplines of catalogue CAT,
+named with COUNTER, and augmented by NEW-DISCIPLINE.
 
-(define* (augment-catalogue old-catalogue counter new-discipline
-                            #:key (cat-dir #f))
-  "Return a new catalogue, incorporating the disciplines of OLD-CATALOGUE,
-named with COUNTER, and augmented by NEW-DISCIPLINE.  OLD-CATALOGUE should be
-a catalogue or '().  If the latter we build the resulting catalogue out of a
-bare catalogue.
+If tmp is provided it should be a string to a temporary directory.  This is
+provided for the creation of temporary catalogues."
+  (catalogue-add-discipline cat
+                            (discipline-catalogue-pair new-discipline)
+                            (make-catalogue-name counter)
+                            tmp))
 
-If CAT-DIR is provided as a string, then we'll create the new catalogue with
-CAT-DIR as its catalogue-dir."
-  (let ((cat-dir (or cat-dir (get-catalogue-dir (car old-catalogue)))))
-    (catalogue-add-discipline (if (null? old-catalogue)
-                                  (make-bare-catalogue
-                                   (make-catalogue-name counter)
-                                   cat-dir)
-                                  (make-catalogue
-                                   (make-catalogue-name counter)
-                                   (get-disciplines (car old-catalogue))
-                                   cat-dir))
-                              (cons (basename new-discipline) new-discipline))))
-
-(define (impair-catalogue old-catalogue counter old-id)
-  "Return a new catalogue, incorporating all disciplines of OLD-CATALOGUE,
-except for the one identified by OLD-ID.  This catalogue will be named using
-COUNTER.  If OLD-CATALOGUE is '(), create a new, empty catalogue."
-  (catalogue-remove-discipline (if (null? old-catalogue)
-                                   (make-bare-catalogue
-                                    (make-catalogue-name counter)
-                                    (get-catalogue-dir (car old-catalogue)))
-                                   (make-catalogue
-                                    (make-catalogue-name counter)
-                                    (get-disciplines (car old-catalogue))
-                                    (get-catalogue-dir (car old-catalogue))))
-                               old-id))
+(define (impair-catalogue cat counter id)
+  "Return a new catalogue, incorporating all disciplines from catalogue CAT,
+except for the one identified by set-id ID.  This new catalogue will be named
+using COUNTER."
+  (match cat
+    (($ catalogue name disciplines dir)
+     (make-catalogue (make-catalogue-name counter)
+                     (vhash-delete id disciplines)
+                     dir))))
 
 ;;;; Catalogue File System Semantics
 ;;;
@@ -267,6 +290,17 @@ system's filename separator."
   "Disciplines in catalogue stores are identified by them being a
 symlink.  Return #t if so, #f otherwise."
   (eqv? (stat:type stat) 'symlink))
+
+(define (discipline-catalogue-pair discipline-store-name)
+  "Return a pair of the form (discipline-id . store-path), derived from the
+string DISCIPLINE-STORE-NAME, which is the full filename of a discipline in
+the store — of the format \"path/to/store/$hash-$id-$version\".
+
+Alternatively DISCIPLINE-STORE-NAME may be simplistic: \"path/to/store/$id\".
+This may be the case when we're installing in a temporary directory."
+  (match (string-split (basename discipline-store-name) #\-)
+    ((hash id version) (cons id discipline-store-name))
+    ((id) (cons id discipline-store-name))))
 
 (define (catalogue-directory catalogue-dir catalogue-id)
   "Return a catalogue directory string; a string pointing towards the
@@ -431,8 +465,10 @@ catalogue, if we find ourselves at the appropriate depth."
   "Return a procedure of one argument, a string identifying a catalogue
 directory, which when applied, returns a list containing the catalogue record
 identified by the string CATALOGUE-ID in the catalogue directory, or a nothing
-value with the id catalogue-detailer if that catalogue cannot be found or if
-CATALOGUE-ID is #f."
+value with the id catalogue-detailer if that catalogue cannot be found.
+
+If CATALOGUE-ID is #f, then we assume that no catalogues have been created
+thus far, as no current-catalogue link exists."
   (define (local-enter? path stat journey)
     (or (ok-depth? journey)
         (throw 'invalid-catalogue-store path)))
@@ -451,10 +487,15 @@ catalogue: we cons (name '()) to the front of journey."
                                       (make-bare-journey 1 catalogue-dir)
                                       (discipline-directory catalogue-dir
                                                             catalogue-id))
-          (() (nothing 'catalogue-detailer (cons catalogue-id catalogue-dir)))
-          (otherwise otherwise))
-        ;; catalogue-id is #f if current-catalogue does not yet exist.
-        '())))
+          ((or () ($ <nothing> 'unknown-catalogue))
+           (nothing 'catalogue-detailer (cons catalogue-id catalogue-dir)))
+          ((catalogue) catalogue)
+          (strange (throw 'glean-logic-error 'CATALOGUE-DETAILER strange)))
+        ;; current-catalogue does not yet exist.
+        ;; -> we assume no catalogues yet exist, so we start at 0.
+        (make-bare-catalogue "catalogue-0"
+                             (catalogue-directory catalogue-dir
+                                                  "catalogue-0")))))
 
 
 ;;;; Install Discipline
@@ -462,41 +503,42 @@ catalogue: we cons (name '()) to the front of journey."
 ;;; To install a new discipline we must install the discipline files in the
 ;;; store, and then instantiate a new catalogue, superseding the
 ;;; current-catalogue with one that encompasses it and a pointer to the newly
-;;; installed discipline.
+;;; installed discipline.  This procedure only handles installing the
+;;; discipline in the store.
 
-(define* (discipline-installer store-dir source-dir #:key (naive? #f))
+(define* (discipline-installer store-dir source-dir #:optional target-file)
   "Return a procedure of one argument, which when applied, installs the
 discipline SOURCE-DIR in the store STORE-DIR, after which it activates a new
 catalogue augmenting the current catalogue with a new catalogue stored at the
 procedure's argument, which contains a pointer to the newly installed
 discipline.
 
-If NAIVE? is true then we simply install SOURCE-DIR in STORE-DIR under the
-discipline's id.  if it is #f then we install it using its deep-hash.  NAIVE?
-is used for temporary catalogue creation."
-  (define (write-discipline store-dir source-dir)
-    "Copy the discipline located at SOURCE-DIR into the store at STORE-DIR."
-    ;; XXX: Should we be doing this in Scheme?
-    (system* "cp" "-r" source-dir store-dir))
+If TARGET-FILE is a string then the procedure will attempt to install from
+source-dir into TARGET-FILE; otherwise we will simply install under the
+basename of SOURCE-DIR in the store.  The former is used for a read-only store
+with deep-hashes, the latter for a naive store, or the temporary store."
+  (let* ((target (if (string? target-file) target-file (basename source-dir)))
+         (name-in-store (relative-filename store-dir target)))
 
-  (lambda (catalogue-dir)
-    ;; XXX: We need to check source-dir in all imaginable ways to ensure it is
-    ;; a real and safe discipline.
-    (catch #t
-      (lambda ()
-        (write-discipline store-dir source-dir)
-        (relative-filename store-dir (basename source-dir)))
-      (lambda (key . args)
-        (nothing 'discipline-installer `(,key ,args))))))
+    (define (write-discipline)
+      "Copy the discipline located at SOURCE-DIR into the store at STORE-DIR."
+      ;; XXX: Should we be doing this in Scheme?
+      (system* "cp" "-r" source-dir name-in-store))
+
+    (lambda (catalogue-dir)
+      (if (and target-file (file-exists? name-in-store))
+          ;; We have a duplicate hash in the read-only store.  We won't install.
+          (nothing 'discipline-installer `(duplicate . ,name-in-store))
+          ;; XXX: We need to check source-dir in all imaginable ways to ensure
+          ;; it is a real and safe discipline.
+          (catch #t
+            (lambda ()
+              (write-discipline)
+              name-in-store)
+            (lambda (key . args)
+              (nothing 'discipline-installer `(,key ,args))))))))
 
 ;;;; Install Catalogue
-;;;
-;;; Catalogue Bearer will be used by utilities that perform store
-;;; manipulations (after each-store manipulation it is likely that a new
-;;; catalogue must be created).  It returns a procedure, so hopefully we can
-;;; mitigate impurity this way.  The actual ugly IO is performed in
-;;; write-catalogue, so as long as that is delayed, we could simply use
-;;; bearer directly.
 
 (define* (catalogue-installer catalogue #:key (fake-dir #f))
   "Return a procedure of one argument, which when applied, installs a new
@@ -658,7 +700,13 @@ overview of the catalogue identified by the string CATALOGUE-ID."
   "Generate a procedure to install the discipline SOURCE-DIR in the store at
 STORE-DIR, and activate the newly created catalogue at CATALOGUE-DIR."
   ((mlet* catalogue-monad
-       ((store-path (discipline-installer store-dir source-dir #:naive? #t))
+       ((tmp-cat -> (mcatalogue-tmp catalogue-dir curr-cat-link source-dir))
+        (tmp-lib -> (catalogue-hash (relative-filename
+                                     (get-catalogue-dir tmp-cat)
+                                     (get-catalogue-id  tmp-cat))))
+        (target  -> (store-name tmp-lib (string->symbol
+                                         (basename source-dir))))
+        (store-path (discipline-installer store-dir source-dir target))
         (name       (current-catalogue-namer curr-cat-link))
         (curr-cat   (catalogue-detailer name))
         (counter    (next-catalogue-counter-maker))
@@ -668,18 +716,23 @@ STORE-DIR, and activate the newly created catalogue at CATALOGUE-DIR."
      (return catalogue))
    catalogue-dir))
 
+;;; FIXME: we should install mechanisms for deleting the temporary files again.
+;;; Prbly something along the lines of inspecting tmp-cat, to find its dir,
+;;; then deleting all temporary directories referenced in by symlinks in that
+;;; dir (we should find a reliable way of distinguishing tmp from normal
+;;; dirs!), after which we can delete tmp-cat's dir itself.
 (define (mcatalogue-tmp catalogue-dir curr-cat-link source-dir)
   "Generate a procedure to install the discipline at SOURCE-DIR in a temporary
-store."
+store.  This tmp-store can be used by procedures that need to perform
+set/discipline introspection, without having the discipline we are installing
+in the store proper."
   ((mlet* catalogue-monad
        ((tmp-store-dir (tmp-dir-fetcher))
-        (store-path    (discipline-installer tmp-store-dir source-dir
-                                             #:naive? #t))
+        (store-path    (discipline-installer tmp-store-dir source-dir))
         (name          (current-catalogue-namer curr-cat-link))
         (curr-cat      (catalogue-detailer name))
         (tmp-cat-dir   (tmp-dir-fetcher))
-        (new-cat   ->  (augment-catalogue curr-cat 0 store-path
-                                          #:cat-dir tmp-cat-dir))
+        (new-cat   ->  (augment-catalogue curr-cat 0 store-path tmp-cat-dir))
         (catalogue ->  ((catalogue-installer new-cat) tmp-cat-dir)))
      (return catalogue))
    catalogue-dir))
