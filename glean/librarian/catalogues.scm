@@ -139,7 +139,7 @@ encounter a problem."
   (match id
     ('catalogue-detailer
      (match context ((cat-id . cat-dir)
-                     (leave (_ "Catalogue ~a could not be found in ~a.~%")
+                     (leave (_ "Catalogue '~a' could not be found in ~a.~%")
                             cat-id cat-dir))))
     ('catalogue-installer
      (leave (_ "A problem occured creating the new catalogue.\n")))
@@ -151,7 +151,16 @@ encounter a problem."
     ('current-catalogue-namer
      (leave (_ "Unable to establish current catalogue's name.\n")))
     ('discipline-installer
-     (leave (_ "We encountered a problem installing the discipline.\n")))
+     (match context
+       (('duplicate . target)
+        (leave (_ "A discipline with the unique name~%\t'~a'
+already exists in the store.~%
+Instead of installing the discipline again, you can simply re-activate it.
+Alternatively, if you know what you are doing, delete the discipline from the
+store and try again.~%")
+               target))
+       (_
+        (leave (_ "We encountered a problem installing the discipline.~%")))))
     ('invalid-catalogue-store
      (match context
        ((path) (leave (_ "Invalid catalogue found at ~a.~%") path))))
