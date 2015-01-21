@@ -33,16 +33,14 @@
 ;; catalogues from the filesystem, writing new catalogues, etc.).
 ;;
 ;; An additional symlink, current-catalogue, stored in the `library-dir', is
-;; additionally used to always point to the catalogue currently in use.
+;; used to always point to the catalogue currently in use by `glean library'.
 ;;
-;; Catalogues are the data-stores actually used by the library at any given
-;; point.  That is, the library normally never has a complete view of all the
-;; disciplines in the store: only of those in the `current-catalogue.'
+;; The current-catalogue is the data-store actually used by the library at any
+;; given point.  That is, the library normally never has a complete view of
+;; all the disciplines in the store, only of those in the `current-catalogue.'
 ;;
 ;; Procedures interacting with the file-system itself, i.e. IO procedures, are
-;; named actively (e.g. catalogue-install -> catalogue-installer).  These
-;; procedures can be used in an IO monad passing around the
-;; catalogue-directory, which will be implemented in the future.
+;; named actively (e.g. catalogue-install -> catalogue-installer).
 ;;
 ;;; Code:
 
@@ -93,7 +91,10 @@
 
 ;;;; UI
 ;;;
-;;; High level UI procedures.  These should be the only emitting output.
+;;; High level UI procedures.  These should be the only procedures emitting
+;;; output directly to the user.
+;;; These procedures are also the points of entry for this module as used by
+;;; `(glean librarian boot)'.
 
 (define (catalogue-install cat-dir curr-cat lib-dir target)
   "Attempt to install TARGET in the store at LIB-DIR, create a new catalogue
@@ -445,7 +446,8 @@ record; DIR would normally be the default catalogue-dir."
 (define (catalogue-lister)
   "Return a procedure of one argument, a string identifying a catalogue
 directory, which when applied, returns a list of catalogues found in that
-directory, or null."
+directory, or a nothing with id 'catalogue-lister and information suitable for
+creating output messages."
   (define (local-enter? path stat journey)
     "Return #t if we're not too deep, raise an error otherwise."
     (or (ok-depth? journey)
@@ -639,16 +641,11 @@ JOURNEY as is."
 (define (current-catalogue-namer curr-cat-link)
   "Return a procedure of one argument, a string identifying a catalouge
 directory, which when applied, returns the name of the catalogue current
-pointed to by CURR-CAT-LINK, or a nothing with id 'current-catalogue-namer."
+pointed to by CURR-CAT-LINK, or #f if CURR-CAT-LINK does not yet exist."
   (lambda (catalogue-dir)
     (catch 'system-error
       (lambda () (basename (readlink curr-cat-link)))
-      (lambda (key . args)
-        ;; This normally means that current-catalogue does not yet exist.  For
-        ;; now we return #f in this case, to allow catalogue-detailer to
-        ;; return '().
-        ;; (nothing 'current-catalogue-namer `(,key ,args))))))
-        #f))))
+      (lambda (key . args) #f))))      ; Current Catalogue does not yet exist.
 
 (define (tmp-dir-fetcher)
   "Return a procedure of one argument, a string identifying a catalogue
