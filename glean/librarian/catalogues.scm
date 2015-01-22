@@ -264,7 +264,7 @@ named with COUNTER, and augmented by NEW-DISCIPLINE.
 If tmp is provided it should be a string to a temporary directory.  This is
 provided for the creation of temporary catalogues."
   (catalogue-add-discipline cat
-                            (discipline-catalogue-pair new-discipline)
+                            (discipline-catalogue-pair new-discipline tmp)
                             (make-catalogue-name counter)
                             tmp))
 
@@ -301,16 +301,18 @@ system's filename separator."
 symlink.  Return #t if so, #f otherwise."
   (eqv? (stat:type stat) 'symlink))
 
-(define (discipline-catalogue-pair discipline-store-name)
+(define* (discipline-catalogue-pair discipline-store-name #:optional tmp)
   "Return a pair of the form (discipline-id . store-path), derived from the
 string DISCIPLINE-STORE-NAME, which is the full filename of a discipline in
 the store — of the format \"path/to/store/$hash-$id-$version\".
 
 Alternatively DISCIPLINE-STORE-NAME may be simplistic: \"path/to/store/$id\".
 This may be the case when we're installing in a temporary directory."
-  (match (string-split (basename discipline-store-name) #\-)
-    ((hash id version) (cons id discipline-store-name))
-    ((id) (cons id discipline-store-name))))
+  (if tmp
+      (cons (basename discipline-store-name) discipline-store-name)
+      (match (string-split (basename discipline-store-name) #\-)
+        ((hash id version) (cons id discipline-store-name))
+        (otherwise (throw 'glean-logic-error 'discipline-catalogue-pair)))))
 
 (define (catalogue-directory catalogue-dir catalogue-id)
   "Return a catalogue directory string; a string pointing towards the
