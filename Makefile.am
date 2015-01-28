@@ -25,35 +25,38 @@ nodist_noinst_SCRIPTS =					\
 
 MODULES =						\
   glean/boot.scm					\
-  glean/client/boot.scm					\
-  glean/client/components/repl-client-core.scm	     	\
+  glean/client/boot.scm				\
+  glean/client/components/repl-client-core.scm		\
   glean/client/monadic-min.scm				\
-  glean/common/base32.scm			     	\
+  glean/common/base32.scm				\
   glean/common/base-server.scm				\
-  glean/common/components.scm			   	\
+  glean/common/components.scm				\
   glean/common/comtools.scm				\
-  glean/common/config-utils.scm				\
-  glean/common/base-requests.scm	     		\
-  glean/common/library-requests.scm	   		\
+  glean/common/config-utils.scm			\
+  glean/common/base-requests.scm			\
+  glean/common/library-requests.scm			\
   glean/common/lounge-requests.scm			\
-  glean/common/hash.scm					\
+  glean/common/hash.scm				\
   glean/common/monads.scm				\
   glean/common/utils.scm				\
   glean/librarian/boot.scm				\
   glean/librarian/catalogues.scm			\
   glean/library/core-templates.scm			\
   glean/library/lexp.scm				\
-  glean/library/set-tools.scm			  	\
-  glean/library/sets.scm			  	\
-  glean/library/boot.scm			     	\
+  glean/library/set-tools.scm				\
+  glean/library/sets.scm				\
+  glean/library/boot.scm				\
   glean/library/library-store.scm			\
-  glean/library/server.scm			    	\
-  glean/lounge/profiles.scm		   		\
-  glean/lounge/scorecards.scm		  		\
-  glean/lounge/boot.scm					\
+  glean/library/server.scm				\
+  glean/lounge/profiles.scm				\
+  glean/lounge/scorecards.scm				\
+  glean/lounge/boot.scm				\
   glean/lounge/lounge-filesystem.scm			\
-  glean/lounge/lounge-store.scm				\
-  glean/lounge/server.scm
+  glean/lounge/lounge-store.scm			\
+  glean/lounge/server.scm				\
+  glean/maker/boot.scm					\
+  glean/maker/engrave.scm				\
+  glean/maker/source.scm
 
 GOBJECTS = $(MODULES:%.scm=%.go) glean/config.go
 
@@ -65,21 +68,21 @@ clean-go:
 	-$(RM) -f $(GOBJECTS)
 
 SCM_TESTS =						\
-  tests/sets.scm					\
-  tests/scorecards.scm				 	\
-  tests/base32.scm				     	\
+  tests/base32.scm					\
   tests/catalogues.scm					\
+  tests/comtools-offline.scm				\
   tests/hash.scm					\
-  tests/lexp.scm				    	\
-  tests/set-tools.scm				    	\
-  tests/lounge-store.scm			     	\
-  tests/lounge-server.scm			    	\
-  tests/library-store.scm			    	\
-  tests/library-server.scm			   	\
+  tests/lexp.scm					\
+  tests/library-server.scm				\
+  tests/library-store.scm				\
+  tests/lounge-server.scm				\
+  tests/lounge-store.scm				\
+  tests/monadic-min.scm				\
   tests/monads.scm					\
-  tests/monadic-min.scm					\
-  tests/utils.scm					\
-  tests/comtools-offline.scm
+  tests/scorecards.scm					\
+  tests/sets.scm					\
+  tests/set-tools.scm					\
+  tests/utils.scm
 
 TESTS = $(SCM_TESTS)
 
