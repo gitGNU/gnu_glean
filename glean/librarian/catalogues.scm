@@ -99,7 +99,15 @@
 (define (catalogue-install cat-dir curr-cat lib-dir target)
   "Attempt to install TARGET in the store at LIB-DIR, create a new catalogue
 in CAT-DIR and update CURR-CAT.  We will exit with an error if we encounter a
-problem."
+problem.
+
+CAT-DIR:  string pointing to the directory in which catalogues are to be
+          created.
+CURR-CAT: string pointing to the current-catalogue symlink.
+LIB-DIR:  string pointing to the directory into which disciplines can be
+          installed (store).
+TARGET:   string pointing to a discipline directory.
+"
   (match (mcatalogue-install cat-dir curr-cat lib-dir target)
     ((? nothing? nothing)
      (emit-error (nothing-id nothing) (nothing-context nothing)))
@@ -109,7 +117,13 @@ problem."
 (define (catalogue-remove cat-dir curr-cat disc-id)
   "Attempt to create and activate a new catalogue with the discipline
 identified by DISC-ID removed from it.  We will exit with an error if we
-encounter a problem."
+encounter a problem.
+
+CAT-DIR:  string pointing to the directory in which catalogues are to be
+          created.
+CURR-CAT: string pointing to the current-catalogue symlink.
+DISC-ID:  string corresponding to a disciplines id (#:id & directory-name).
+"
   (match (mcatalogue-remove cat-dir curr-cat disc-id)
     ((? nothing? nothing)
      (emit-error (nothing-id nothing) (nothing-context nothing)))
@@ -118,7 +132,12 @@ encounter a problem."
 
 (define (catalogue-show cat-dir cat-id)
   "Attempt to show details about catalogue CAT-ID stored in CAT-DIR.  Exit
-with an error if we encounter a problem."
+with an error if we encounter a problem.
+
+CAT-DIR:  string pointing to the directory in which catalogues are to be
+          created.
+CAT-ID:   string naming the catalogue as installed in CAT-DIR.
+"
   (match (mcatalogue-show cat-dir cat-id)
     ((? nothing? nothing)
      (emit-error (nothing-id nothing) (nothing-context nothing)))
@@ -127,7 +146,11 @@ with an error if we encounter a problem."
 
 (define (catalogue-list cat-dir)
   "Attempt to list all catalogues stored in CAT-DIR.  Exit with an error if we
-encounter a problem."
+encounter a problem.
+
+CAT-DIR:  string pointing to the directory in which catalogues are to be
+          created.
+"
   (match (mcatalogue-list cat-dir)
     ((? nothing? nothing)
      (emit-error (nothing-id nothing) (nothing-context nothing)))
@@ -205,7 +228,11 @@ the discipline identified by set-id ID as found in the library built out of
 the store pointed towards by tmp-lib, a library-hash-pair.
 
 See (glean library library-store) for more details on the latter
-data-structure."
+data-structure.
+
+TMP-LIB: a library structure (glean library library-store).
+SET-ID:  a symbol naming a discipline through its #:id.
+"
   (let ((discipline (fetch-set
                      (fold (lambda (entry result)
                              (if result
@@ -225,10 +252,15 @@ data-structure."
 
 ;;;; Atomic Catalogue Operations
 
-(define (make-bare-catalogue catalogue-id catalogue-dir)
-  "Return a fresh catalogue, with CATALOGUE-ID as the catalogue's id and
-CATALOGUE-DIR as its catalologue-dir."
-  (make-catalogue catalogue-id vlist-null catalogue-dir))
+(define (make-bare-catalogue cat-id cat-dir)
+  "Return a fresh catalogue, with CAT-ID as the catalogue's id and CAT-DIR as
+its catalologue-dir.
+
+CAT-ID:   string naming the catalogue as installed in CAT-DIR.
+CAT-DIR:  string pointing to the directory in which catalogues are to be
+          created.
+"
+  (make-catalogue cat-id vlist-null cat-dir))
 
 (define* (catalogue-add-discipline cat disc-pair #:optional new-id new-dir)
   "Generate a new catalogue based on catalogue CAT, augmented by the
@@ -239,7 +271,15 @@ target to the one provided by DISC-PAIR.
 
 If NEW-ID is provided, use this as the name of the resulting catalogue; if
 NEW-DIR is provided, use this as the new directory associated with the new
-catalogue."
+catalogue.
+
+CAT:       <catalogue> to which the discipline will be added.
+DISC-PAIR: pair of strings, the discipline's ID as a string, and a pointer to
+           its location in the store.
+NEW-ID:    either a string containing the new name for the catalogue, or #f.
+NEW-DIR:   either a string pointing to the catalogue directory containing this
+           catalogue or #f.
+"
   (match cat
     (($ catalogue id disciplines dir)
      (match disc-pair
@@ -264,7 +304,14 @@ catalogue."
 named with COUNTER, and augmented by NEW-DISCIPLINE.
 
 If tmp is provided it should be a string to a temporary directory.  This is
-provided for the creation of temporary catalogues."
+provided for the creation of temporary catalogues.
+
+CAT:            <catalogue> to which the discipline will be added.
+COUNTER:        number identifying the suffix of the revised catalogue.
+NEW-DISCIPLINE: string pointing to the discipline to be added in the store.
+TMP:            string pointing to an alternative catalogue directory or #f.
+                This is used when working with a temp-library.
+"
   (catalogue-add-discipline cat
                             (discipline-catalogue-pair new-discipline tmp)
                             (make-catalogue-name counter)
@@ -273,7 +320,12 @@ provided for the creation of temporary catalogues."
 (define (impair-catalogue cat counter id)
   "Return a new catalogue, incorporating all disciplines from catalogue CAT,
 except for the one identified by set-id ID.  This new catalogue will be named
-using COUNTER."
+using COUNTER.
+
+CAT:     <catalogue> to which the discipline will be added.
+COUNTER: number identifying the suffix of the revised catalogue.
+ID:      string naming the discipline to be deleted by its #:id.
+"
   (match cat
     (($ catalogue name disciplines dir)
      (make-catalogue (make-catalogue-name counter)
@@ -287,7 +339,9 @@ using COUNTER."
 
 (define (relative-filename . components)
   "Return the string which consists of COMPONENTS, joined by this operating
-system's filename separator."
+system's filename separator.
+
+COMPONENTS: list of string(s) to be joined."
   (string-join components file-name-separator-string))
 
 ;;; Catalogues contain disciplines which will be loaded by the library.
@@ -300,51 +354,80 @@ system's filename separator."
 
 (define (discipline? stat)
   "Disciplines in catalogue stores are identified by them being a
-symlink.  Return #t if so, #f otherwise."
+symlink.  Return #t if so, #f otherwise.
+
+STAT: stat object as returned by (stat).
+"
   (eqv? (stat:type stat) 'symlink))
 
-(define* (discipline-catalogue-pair discipline-store-name #:optional tmp)
+(define* (discipline-catalogue-pair store-name #:optional tmp)
   "Return a pair of the form (discipline-id . store-path), derived from the
-string DISCIPLINE-STORE-NAME, which is the full filename of a discipline in
+string STORE-NAME, which is the full filename of a discipline in
 the store — of the format \"path/to/store/$hash-$id-$version\".
 
-Alternatively DISCIPLINE-STORE-NAME may be simplistic: \"path/to/store/$id\".
-This may be the case when we're installing in a temporary directory."
+Alternatively STORE-NAME may be simplistic: \"path/to/store/$id\".
+This may be the case when we're installing in a temporary directory.
+
+STORE-NAME: string pointing to a discipline in the store.
+TMP:        either string or #f.  We only use tmp to deduce the format that
+            our return value should take: tmp indicates that we're working
+            with a tmp-library.
+"
   (if tmp
-      (cons (basename discipline-store-name) discipline-store-name)
-      (match (string-split (basename discipline-store-name) #\-)
-        ((hash id version) (cons id discipline-store-name))
+      (cons (basename store-name) store-name)
+      (match (string-split (basename store-name) #\-)
+        ((hash id version) (cons id store-name))
         (else (throw 'glean-logic-error 'discipline-catalogue-pair else)))))
 
-(define (catalogue-directory catalogue-dir catalogue-id)
+(define (catalogue-directory cat-dir cat-id)
   "Return a catalogue directory string; a string pointing towards the
-catalogue named by CATALOGUE-ID in CATALOGUE-DIR."
-  (relative-filename catalogue-dir catalogue-id))
+catalogue named by CAT-ID in CAT-DIR.
 
-(define (discipline-directory catalogue-dir catalogue-id)
+CAT-DIR: string pointing to the directory in which catalogues are to be
+         created.
+CAT-ID:  string naming the catalogue as installed in CAT-DIR.
+"
+  (relative-filename cat-dir cat-id))
+
+(define (discipline-directory cat-dir cat-id)
   "Return a catalogue directory string which includes the standard glean
 load-path-suffix for disciplines; a string pointing towards the catalogue
-disciplines in the catalogue identified by CATALOGUE-ID in CATALOGUE-DIR.
+disciplines in the catalogue identified by CAT-ID in CAT-DIR.
 
 In contrast to `catalogue-directory', this points to the folder, within a
-specific catalogue, which contains disciplines.  `catalogue-directory' points
-to the catalogue itself within the catalogue store."
-  (relative-filename (catalogue-directory catalogue-dir catalogue-id)
+specific catalogue, which contains disciplines.  `catalouge-directory' points
+to the catalogue itself within the catalogue store.
+
+CAT-DIR: string pointing to the catalogue directory.
+CAT-ID:  string naming the catalogue as installed in CAT-DIR.
+"
+  (relative-filename (catalogue-directory cat-dir cat-id)
                      (load-path-suffix)))
 
 (define (discipline-filename catalogue-dir discipline-id)
   "Return a discipline file name: a string pointing towards the discipline
-named by DISCIPLINE-ID in the catalogue identified by CATALOGUE-DIR."
+named by DISCIPLINE-ID in the catalogue identified by CATALOGUE-DIR.
+
+CATALOGUE-DIR: string pointing to the directory in which catalogues are to be
+               created.
+DISCIPLINE-ID: string identifying a discipline through its #:set-id.
+"
   (relative-filename catalogue-dir discipline-id))
 
 (define (make-catalogue-name counter)
-  "Return a new catalogue-name of the form `catalogue-COUNTER'."
+  "Return a new catalogue-name of the form `catalogue-COUNTER'.
+
+COUNTER: number.
+"
   (string-append "catalogue-" (number->string counter)))
 
 (define (cataloguename path)
   "Return the string identifying the catalogue portion of PATH or raise an
 error.  This procedure works similar to basename, except it does not return
-the filename part of PATH, but the part that would identify the catalogue."
+the filename part of PATH, but the part that would identify the catalogue.
+
+PATH: string pointing to a directory containing a catalogue.
+"
   (basename (string-drop-right path (string-length (load-path-suffix)))))
 
 ;;; The catalogue folder contains catalogues, which in turn contains the
@@ -356,61 +439,106 @@ the filename part of PATH, but the part that would identify the catalogue."
 ;;; relating to depth & catalogue path which displease me.
 
 (define (ok-depth? journey)
-  "Return #t if the gauge in JOURNEY indicates an acceptable depth."
+  "Return #t if the gauge in JOURNEY indicates an acceptable depth.
+
+JOURNEY: <journey>."
   (< (get-depth journey) 4))
 
 (define (go-deeper depth)
-  "Increase the depth of the gauge in JOURNEY."
+  "Increase the depth of the gauge in JOURNEY.
+
+DEPTH: number identifying the number of times we've descended into directories
+       since we started the traversal.
+"
   (1+ depth))
 
 (define (come-up depth)
-  "Decrease the depth of the gauge in JOURNEY."
+  "Decrease the depth of the gauge in JOURNEY.
+
+DEPTH: number identifying the number of times we've descended into directories
+       since we started the traversal.
+"
   (1- depth))
 
-;;;; Journey/Filesystem Traversal Operations
+;;;; Journey/Filesystem Traversal Operations: I/O operations
 
 (define* (make-bare-journey depth cat-dir #:key (state '()))
-  "Return a fresh journey."
+  "Return a fresh journey.
+
+DEPTH:   number identifying the number of times we've descended into
+         directories since we started the traversal.
+CAT-DIR: string pointing to a directory containing catalogues.
+STATE:   list containing additional information relevant to this <journey>.
+"
   (make-journey depth state cat-dir))
 
 (define (log-add-catalogue catalogue-id log catalogue-dir)
-  "Return JOURNEY-LOG augmented by a fresh catalogue for CATALOGUE-ID."
+  "Return JOURNEY-LOG augmented by a fresh catalogue for CATALOGUE-ID.
+
+CATALOGUE-DIR: string pointing to the directory in which catalogues are to be
+               created.
+LOG:           list containing accrued results so far, for use in <journey>s.
+CATALOGUE-ID:  string naming the catalogue as installed in CATALOGUE-DIR.
+"
   (cons (make-bare-catalogue catalogue-id catalogue-dir) log))
 
-(define (log-add-discipline discipline-filename log)
-  "Return LOG with the first catalogue in it augmented by DISCIPLINE."
-  ;; XXX: We have an ugly readlink call here, which is direct IO.  As
-  ;; file-system fold is IO anyway, and as it is always embedded in the
-  ;; catalogue-monad, this is not a problem, but it does escape this module's
-  ;; naming pattern.
+(define (log-add-discipline disc-link log)
+  "Return LOG with the first catalogue in it augmented by the discipline
+pointed to by DISCIPLINE-LINK.
+
+DISC-LINK: string pointing to a symlink in a catalogue directory pointing
+           towards a discipline in the store.
+LOG:       list containing accrued results so far, for use in <journey>s.
+"
   (match log
     ((incomplete-catalogue . rest)
      (cons (catalogue-add-discipline incomplete-catalogue
-                                     (cons (basename discipline-filename)
-                                           (readlink discipline-filename)))
+                                     (cons (basename disc-link)
+                                           (readlink disc-link)))
            rest))))
 
 (define (catalogue-leaf path stat journey)
   "Add the discipline to the skeleton and return journey, or throw an
-error — if it is not a symlink we have an invalid Catalogues store."
+error — if it is not a symlink we have an invalid Catalogues store.
+
+PATH:    string pointing to the leaf currently being handled.
+STAT:    object as returned by (stat).
+JOURNEY: <journey> object summarizing the traversal.
+"
   (if (discipline? stat)
       (set-log journey (log-add-discipline path
                                            (get-log journey)))
       (throw 'invalid-catalogue-store path)))
 
 (define (catalogue-up path stat journey)
-  "Simply return JOURNEY unchanged."
+  "Simply return JOURNEY unchanged.
+
+PATH:    string pointing to the leaf currently being handled.
+STAT:    object as returned by (stat).
+JOURNEY: <journey> object summarizing the traversal.
+"
   (set-depth journey (come-up (get-depth journey))))
 
 (define (catalogue-skip path stat journey)
-  "Emit warning, as unexpected, but simply return JOURNEY."
+  "Emit warning, as unexpected, but simply return JOURNEY.
+
+PATH:    string pointing to the leaf currently being handled.
+STAT:    object as returned by (stat).
+JOURNEY: <journey> object summarizing the traversal.
+"
   (warning (_ "We unexpectedly skipped a directory: ~a") path)
   journey)
 
 (define (catalogue-error path stat errno journey)
   "Unless ERRNO is 2, which would mean that we cannot find the precise file we
 are looking for, emit a warning and proceed by returning JOURNEY.  In the
-former case, raise an error."
+former case, raise an error.
+
+PATH:    string pointing to the leaf currently being handled.
+STAT:    object as returned by (stat).
+ERRNO:   number reflecting the error just encountered.
+JOURNEY: <journey> object summarizing the traversal.
+"
   (if (= errno 2)
       (throw 'unknown-catalogue '())
       (warning (_ "Encountered error while accessing ~a: ~a.~%") path errno))
@@ -424,7 +552,15 @@ procedures are set to procedures that make sense in the catalogues context,
 and where other procedures (LOCAL-LEAF, LOCAL-SKIP) default to such that make
 sense.  LOCAL-ENTER? and LOCAL-DOWN should be procedures corresponding to
 `enter?' and `down' in `file-system-fold'.  INIT would normally be a journey
-record; DIR would normally be the default catalogue-dir."
+record; DIR would normally be the default catalogue-dir.
+
+LOCAL-ENTER?: procedure (predicate) telling us whether to descend.
+LOCAL-DOWN:   procedure telling us what to do upon descent.
+INIT:         <journey> containing state to start this fold with.
+DIR:          string pointing to the directory to start the fold from.
+LOCAL-LEAF:   procedure telling us what to do upon hitting a leaf.
+LOCAL-SKIP:   procedure telling us what to do when we do not descend.
+"
   (catch #t
     (lambda ()
       (call-with-values
@@ -483,7 +619,11 @@ identified by the string CATALOGUE-ID in the catalogue directory, or a nothing
 value with the id catalogue-detailer if that catalogue cannot be found.
 
 If CATALOGUE-ID is #f, then we assume that no catalogues have been created
-thus far, as no current-catalogue link exists."
+thus far, as no current-catalogue link exists.
+
+CATALOGUE-ID:  string naming a catalogue as installed in a catalogue
+               directory.
+"
   (define (local-enter? path stat journey)
     (or (ok-depth? journey)
         (throw 'invalid-catalogue-store path)))
@@ -531,7 +671,14 @@ discipline.
 If TARGET-FILE is a string then the procedure will attempt to install from
 source-dir into TARGET-FILE; otherwise we will simply install under the
 basename of SOURCE-DIR in the store.  The former is used for a read-only store
-with deep-hashes, the latter for a naive store, or the temporary store."
+with deep-hashes, the latter for a naive store, or the temporary store.
+
+STORE-DIR:   string pointing to a store dir into which we will install.
+SOURCE-DIR:  string pointing to the directory containing a discipline to be
+             installed.
+TARGET-FILE: string pointing to the name under which we should install the
+             discipline to be installed in the store, or #f.
+"
   (let* ((target (if (string? target-file) target-file (basename source-dir)))
          (name-in-store (relative-filename store-dir target)))
 
@@ -555,14 +702,19 @@ with deep-hashes, the latter for a naive store, or the temporary store."
 
 ;;;; Install Catalogue
 
-(define* (catalogue-installer catalogue #:key (fake-dir #f))
+(define* (catalogue-installer catalogue #:key fake-dir)
   "Return a procedure of one argument, which when applied, installs a new
 catalogue in the directory pointed to by its argument, based on CURR-CAT, and
 returns this newly created catalogue or a nothing value with id
 'catalogue-installer.
 
 If FAKE-DIR is a string we will install CATALOGUE in FAKE-DIR instead. This is
-used, for instance, for temporary catalogue creation."
+used, for instance, for temporary catalogue creation.
+
+CATALOGUE: <catalogue> object to be installed.
+FAKE-DIR:  string pointing to an alternate directory into which the catalogue
+           should be installed, or #f.
+"
   (lambda (catalogue-dir)
     (let ((target-dir (discipline-directory (or fake-dir catalogue-dir)
                                             (get-catalogue-id catalogue))))
@@ -585,20 +737,24 @@ used, for instance, for temporary catalogue creation."
 ;;; These procedures derive and maintain catalogue state from the underlying
 ;;; filesystem.  At some point in the future results could be cached.
 
-(define (current-catalogue-setter new-catalogue current-catalogue-link)
+(define (current-catalogue-setter new-catalogue curr-cat-link)
   "Return a procedure of one argument, a string identifying a catalogue
 directory, which when applied returns NEW-CATALOGUE after ensuring that the
 filesystem symlink to `current-catalogue' identified by the string
-CURRENT-CATALOGUE-LINK has been updated to point to NEW-CATALOGUE.  Return a
-nothing value with id 'current-catalogue-setter if we run into trouble."
+CURR-CAT-LINK has been updated to point to NEW-CATALOGUE.  Return a nothing
+value with id 'current-catalogue-setter if we run into trouble.
+
+NEW-CATALOGUE: <catalogue> object which will be the new current catalogue.
+CURR-CAT-LINK: string pointing to the current catalogue symlink.
+"
   (lambda (catalogue-dir)
     (catch 'system-error
       (lambda ()
-        (when (file-exists? current-catalogue-link)
-          (delete-file current-catalogue-link))
+        (when (file-exists? curr-cat-link)
+          (delete-file curr-cat-link))
         (symlink (catalogue-directory catalogue-dir
                                       (get-catalogue-id new-catalogue))
-                 current-catalogue-link)
+                 curr-cat-link)
         new-catalogue)                  ; Return new-catalogue.
       (lambda (key . args)
         (nothing 'current-catalogue-setter `(,key ,args))))))
@@ -645,7 +801,10 @@ JOURNEY as is."
 (define (current-catalogue-namer curr-cat-link)
   "Return a procedure of one argument, a string identifying a catalouge
 directory, which when applied, returns the name of the catalogue current
-pointed to by CURR-CAT-LINK, or #f if CURR-CAT-LINK does not yet exist."
+pointed to by CURR-CAT-LINK, or #f if CURR-CAT-LINK does not yet exist.
+
+CURR-CAT-LINK: string pointing to the current catalogue symlink.
+"
   (lambda (catalogue-dir)
     (catch 'system-error
       (lambda () (basename (readlink curr-cat-link)))
@@ -692,7 +851,10 @@ directory on the filesystem."
 
 (define (mcatalogue-list catalogue-dir)
   "Analyze the directory identified by the string CATALOGUE-DIR and emit a
-summary message for each catalogue encountered there."
+summary message for each catalogue encountered there.
+
+CATALOGUE-DIR: string pointing to the catalogue directory.
+"
   ((mlet* catalogue-monad
        ((catalogues (catalogue-lister)))
      (return catalogues))
@@ -700,7 +862,11 @@ summary message for each catalogue encountered there."
 
 (define (mcatalogue-show catalogue-dir catalogue-id)
   "Analyze the directory identified by the string CATALOGUE-DIR and emit an
-overview of the catalogue identified by the string CATALOGUE-ID."
+overview of the catalogue identified by the string CATALOGUE-ID.
+
+CATALOGUE-DIR: string pointing to the catalogue directory.
+CATALOGUE-ID:  string naming the catalogue as installed in CATALOGUE-DIR.
+"
   ((mlet* catalogue-monad
        ((catalogue (catalogue-detailer catalogue-id)))
      (return catalogue))
@@ -708,7 +874,15 @@ overview of the catalogue identified by the string CATALOGUE-ID."
 
 (define (mcatalogue-install catalogue-dir curr-cat-link store-dir source-dir)
   "Generate a procedure to install the discipline SOURCE-DIR in the store at
-STORE-DIR, and activate the newly created catalogue at CATALOGUE-DIR."
+STORE-DIR, and activate the newly created catalogue at CATALOGUE-DIR.
+
+CATALOGUE-DIR: string pointing to the catalogue directory.
+CURR-CAT-LINK: string pointing to the current catalogue symlink.
+STORE-DIR:     string pointing to a store dir into which we will install the
+               discipline.
+SOURCE-DIR:    string pointing to the directory containing a discipline to be
+               installed.
+"
   ((mlet* catalogue-monad
        ((tmp-cat -> (mcatalogue-tmp catalogue-dir curr-cat-link source-dir))
         (tmp-lib -> (catalogue-hash (relative-filename
@@ -735,7 +909,13 @@ STORE-DIR, and activate the newly created catalogue at CATALOGUE-DIR."
   "Generate a procedure to install the discipline at SOURCE-DIR in a temporary
 store.  This tmp-store can be used by procedures that need to perform
 set/discipline introspection, without having the discipline we are installing
-in the store proper."
+in the store proper.
+
+CATALOGUE-DIR: string pointing to the catalogue directory.
+CURR-CAT-LINK: string pointing to the current catalogue symlink.
+SOURCE-DIR:    string pointing to the directory containing a discipline to be
+               installed.
+"
   ((mlet* catalogue-monad
        ((tmp-store-dir (tmp-dir-fetcher))
         (store-path    (discipline-installer tmp-store-dir source-dir))
@@ -749,7 +929,13 @@ in the store proper."
 
 (define (mcatalogue-remove catalogue-dir curr-cat-link disc-id)
   "Create and activate a new revision of current catalogue, with the
-discipline identified by DISC-ID removed."
+discipline identified by DISC-ID removed.
+
+CATALOGUE-DIR: string pointing to the catalogue directory.
+CURR-CAT-LINK: string pointing to the current catalogue symlink.
+DISC-ID:       string naming the discipline we want to remove through its
+               #:set-id.
+"
   ((mlet* catalogue-monad
        ((name       (current-catalogue-namer curr-cat-link))
         (curr-cat   (catalogue-detailer name))
