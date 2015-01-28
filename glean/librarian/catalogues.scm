@@ -255,7 +255,9 @@ catalogue."
                                         vlist-null
                                         disciplines)
                             (vhash-cons name target disciplines))
-                        (or new-dir dir)))))))
+                        (or new-dir dir)))))
+    (_ (throw 'glean-type-error 'catalogue-add-discipline cat
+              "Expected: <catalogue>"))))
 
 (define* (augment-catalogue cat counter new-discipline #:optional tmp)
   "Return a new catalogue, incorporating the disciplines of catalogue CAT,
@@ -312,7 +314,7 @@ This may be the case when we're installing in a temporary directory."
       (cons (basename discipline-store-name) discipline-store-name)
       (match (string-split (basename discipline-store-name) #\-)
         ((hash id version) (cons id discipline-store-name))
-        (otherwise (throw 'glean-logic-error 'discipline-catalogue-pair)))))
+        (else (throw 'glean-logic-error 'discipline-catalogue-pair else)))))
 
 (define (catalogue-directory catalogue-dir catalogue-id)
   "Return a catalogue directory string; a string pointing towards the
@@ -536,7 +538,9 @@ with deep-hashes, the latter for a naive store, or the temporary store."
     (define (write-discipline)
       "Copy the discipline located at SOURCE-DIR into the store at STORE-DIR."
       ;; XXX: Should we be doing this in Scheme?
-      (system* "cp" "-r" source-dir name-in-store))
+      (if (zero? (system* "cp" "-r" source-dir name-in-store))
+          name-in-store
+          (nothing 'discipline-installer "Error copying file.")))
 
     (lambda (catalogue-dir)
       (if (and target-file (file-exists? name-in-store))
@@ -545,9 +549,7 @@ with deep-hashes, the latter for a naive store, or the temporary store."
           ;; XXX: We need to check source-dir in all imaginable ways to ensure
           ;; it is a real and safe discipline.
           (catch #t
-            (lambda ()
-              (write-discipline)
-              name-in-store)
+            write-discipline
             (lambda (key . args)
               (nothing 'discipline-installer `(,key ,args))))))))
 
