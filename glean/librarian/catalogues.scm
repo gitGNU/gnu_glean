@@ -299,21 +299,22 @@ NEW-DIR:   either a string pointing to the catalogue directory containing this
     (_ (throw 'glean-type-error 'catalogue-add-discipline cat
               "Expected: <catalogue>"))))
 
-(define* (augment-catalogue cat counter new-discipline #:optional tmp)
+(define* (augment-catalogue cat counter name filename #:optional tmp)
   "Return a new catalogue, incorporating the disciplines of catalogue CAT,
-named with COUNTER, and augmented by NEW-DISCIPLINE.
+named with COUNTER, and augmented by FILENAME.
 
 If tmp is provided it should be a string to a temporary directory.  This is
 provided for the creation of temporary catalogues.
 
 CAT:            <catalogue> to which the discipline will be added.
 COUNTER:        number identifying the suffix of the revised catalogue.
-NEW-DISCIPLINE: string pointing to the discipline to be added in the store.
+NAME:           string identifying the catalogue name for the discipline.
+FILENAME:       string pointing to the discipline to be added in the store.
 TMP:            string pointing to an alternative catalogue directory or #f.
                 This is used when working with a temp-library.
 "
   (catalogue-add-discipline cat
-                            (discipline-catalogue-pair new-discipline tmp)
+                            (cons name filename)
                             (make-catalogue-name counter)
                             tmp))
 
@@ -359,25 +360,6 @@ symlink.  Return #t if so, #f otherwise.
 STAT: stat object as returned by (stat).
 "
   (eqv? (stat:type stat) 'symlink))
-
-(define* (discipline-catalogue-pair store-name #:optional tmp)
-  "Return a pair of the form (discipline-id . store-path), derived from the
-string STORE-NAME, which is the full filename of a discipline in
-the store — of the format \"path/to/store/$hash-$id-$version\".
-
-Alternatively STORE-NAME may be simplistic: \"path/to/store/$id\".
-This may be the case when we're installing in a temporary directory.
-
-STORE-NAME: string pointing to a discipline in the store.
-TMP:        either string or #f.  We only use tmp to deduce the format that
-            our return value should take: tmp indicates that we're working
-            with a tmp-library.
-"
-  (if tmp
-      (cons (basename store-name) store-name)
-      (match (string-split (basename store-name) #\-)
-        ((hash id version) (cons id store-name))
-        (else (throw 'glean-logic-error 'discipline-catalogue-pair else)))))
 
 (define (catalogue-directory cat-dir cat-id)
   "Return a catalogue directory string; a string pointing towards the
@@ -661,26 +643,23 @@ catalogue: we cons (name '()) to the front of journey."
 ;;; installed discipline.  This procedure only handles installing the
 ;;; discipline in the store.
 
-(define* (discipline-installer store-dir source-dir #:optional target-file)
+(define* (discipline-installer store-dir source-dir target-file)
   "Return a procedure of one argument, which when applied, installs the
 discipline SOURCE-DIR in the store STORE-DIR, after which it activates a new
 catalogue augmenting the current catalogue with a new catalogue stored at the
 procedure's argument, which contains a pointer to the newly installed
 discipline.
 
-If TARGET-FILE is a string then the procedure will attempt to install from
-source-dir into TARGET-FILE; otherwise we will simply install under the
-basename of SOURCE-DIR in the store.  The former is used for a read-only store
-with deep-hashes, the latter for a naive store, or the temporary store.
+TARGET-FILE is the name under which we'll install the discipline in
+STORE-DIR.
 
 STORE-DIR:   string pointing to a store dir into which we will install.
 SOURCE-DIR:  string pointing to the directory containing a discipline to be
              installed.
 TARGET-FILE: string pointing to the name under which we should install the
-             discipline to be installed in the store, or #f.
+             discipline to be installed in the store.
 "
-  (let* ((target (if (string? target-file) target-file (basename source-dir)))
-         (name-in-store (relative-filename store-dir target)))
+  (let ((name-in-store (relative-filename store-dir target-file)))
 
     (define (write-discipline)
       "Copy the discipline located at SOURCE-DIR into the store at STORE-DIR."
@@ -884,17 +863,18 @@ SOURCE-DIR:    string pointing to the directory containing a discipline to be
                installed.
 "
   ((mlet* catalogue-monad
-       ((tmp-cat -> (mcatalogue-tmp catalogue-dir curr-cat-link source-dir))
+       ((name    -> (basename source-dir))
+        (tmp-cat -> (mcatalogue-tmp catalogue-dir curr-cat-link source-dir))
         (tmp-lib -> (catalogue-hash (relative-filename
                                      (get-catalogue-dir tmp-cat)
                                      (get-catalogue-id  tmp-cat))))
         (target  -> (store-name tmp-lib (string->symbol
                                          (basename source-dir))))
         (store-path (discipline-installer store-dir source-dir target))
-        (name       (current-catalogue-namer curr-cat-link))
-        (curr-cat   (catalogue-detailer name))
+        (cat-name   (current-catalogue-namer curr-cat-link))
+        (curr-cat   (catalogue-detailer cat-name))
         (counter    (next-catalogue-counter-maker))
-        (new-cat -> (augment-catalogue curr-cat counter store-path))
+        (new-cat -> (augment-catalogue curr-cat counter name store-path))
         (new-curr   (catalogue-installer new-cat))
         (catalogue  (current-catalogue-setter new-curr curr-cat-link)))
      (return catalogue))
@@ -917,12 +897,14 @@ SOURCE-DIR:    string pointing to the directory containing a discipline to be
                installed.
 "
   ((mlet* catalogue-monad
-       ((tmp-store-dir (tmp-dir-fetcher))
-        (store-path    (discipline-installer tmp-store-dir source-dir))
-        (name          (current-catalogue-namer curr-cat-link))
-        (curr-cat      (catalogue-detailer name))
+       ((name      ->  (basename source-dir))
+        (tmp-store-dir (tmp-dir-fetcher))
+        (store-path    (discipline-installer tmp-store-dir source-dir name))
+        (cat-name      (current-catalogue-namer curr-cat-link))
+        (curr-cat      (catalogue-detailer cat-name))
         (tmp-cat-dir   (tmp-dir-fetcher))
-        (new-cat   ->  (augment-catalogue curr-cat 0 store-path tmp-cat-dir))
+        (new-cat   ->  (augment-catalogue curr-cat 0 name store-path
+                                          tmp-cat-dir))
         (catalogue ->  ((catalogue-installer new-cat) tmp-cat-dir)))
      (return catalogue))
    catalogue-dir))

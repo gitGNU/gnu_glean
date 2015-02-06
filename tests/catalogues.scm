@@ -75,21 +75,21 @@
 ;;;;; Augment Catalogue
 (test-assert "augment-catalogue"
   (match (augment-catalogue (make-bare-catalogue "catalogue-1" "tmpcat")
-                            5 "/tmp/test/hash-id-version")
+                            5 "id" "/tmp/test/hash-id-version")
     (($ catalogue "catalogue-5" disciplines "tmpcat")
      (equal? (vlist->list disciplines)
              '(("id" . "/tmp/test/hash-id-version"))))))
 
 (test-assert "augment-catalogue-tmp"
   (match (augment-catalogue (make-bare-catalogue "catalogue-1" "tmpcat")
-                            5 "/tmp/test/id" "/tmp/cat")
+                            5 "id" "/tmp/test/id" "/tmp/cat")
     (($ catalogue "catalogue-5" disciplines "/tmp/cat")
      (equal? (vlist->list disciplines)
              '(("id" . "/tmp/test/id"))))))
 
 (test-assert "augment-catalogue-type-failure"
   (catch 'glean-type-error
-    (cut augment-catalogue '() 5 "/tmp/test/hash-id-version")
+    (cut augment-catalogue '() 5 "id" "/tmp/test/hash-id-version")
     (lambda args #t)))
 
 ;;;;; Impair Catalogue
@@ -101,7 +101,7 @@
             (null? (vlist->list disciplines))))
          (match (proc (augment-catalogue (make-bare-catalogue "catalogue-1"
                                                               "/tmp/cat")
-                                         5 "/tmp/test/hash-id-version")
+                                         5 "id" "/tmp/test/hash-id-version")
                       6 "id")
            (($ catalogue "catalogue-6" disciplines)
             (null? (vlist->list disciplines)))))))
