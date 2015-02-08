@@ -46,6 +46,7 @@
             sha256-string-strict
             sha256-symbol
 
+            hash?
             hash&!=?
             hash=?
             false.hash?
@@ -197,6 +198,9 @@ character."
 
 ;;;; Hash predicates
 ;;; These predicates are specifically about string hash comparisons.
+
+(define (hash? obj)
+  (and (string? obj) (not (string-null? obj))))
 
 (define* (hash=? pair-or-a #:optional b)
   ((hash-compare (lambda (a b)
