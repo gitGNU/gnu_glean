@@ -211,7 +211,7 @@ symbols plain symbols."
       (exclaim "GREAD: error:~%  port closed prematurely:~%  ~s~%  ~s.~%" k a)
       #f)))
 
-(define (gwrite object port)
+(define* (gwrite object #:optional (port (current-output-port)))
   "Return #t on success, #f on failure. write OBJECT to PORT, catching write
 errors and turning OBJECT from symbol into string if necessary."
 
@@ -234,7 +234,7 @@ symbols plain symbols."
       #t)
     (lambda (k . a)
       (exclaim "GWRITE: error:~%  port closed prematurely:~%  ~s~%  ~s.~%" k a)
-      $f)))
+      #f)))
 
 ;;;; Support Functions
 
