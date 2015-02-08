@@ -222,7 +222,7 @@ discipline id to the discipline in the store."
 ;;; This procedure will allow us to resolve lexps against actual content in
 ;;; the library for instance.
 
-(define (store-name tmp-lib set-id)
+(define (store-name tmp-lib id)
   "Return the 'store-name', a string of the format \"$hash-$id-$version\", for
 the discipline identified by set-id ID as found in the library built out of
 the store pointed towards by tmp-lib, a library-hash-pair.
@@ -231,21 +231,16 @@ See (glean library library-store) for more details on the latter
 data-structure.
 
 TMP-LIB: a library structure (glean library library-store).
-SET-ID:  a symbol naming a discipline through its #:id.
+ID:      a symbol naming a discipline through its #:id.
 "
-  (let ((discipline (fetch-set
-                     (fold (lambda (entry result)
-                             (if result
-                                 result
-                                 (match entry
-                                   ((hash (? (cut eqv? set-id <>)) . rest)
-                                    hash)
-                                   (_ #f))))
-                           #f
-                           (known-crownsets tmp-lib '()))
-                     tmp-lib)))
+  (let ((discipline (fold (lambda (set result)
+                            (cond (result result)
+                                  ((eqv? (set-id set) id) set)
+                                  (else #f)))
+                          #f
+                          (crownsets tmp-lib))))
     (string-join `(,(deep-hash discipline)
-                   ,(symbol->string set-id)
+                   ,(symbol->string id)
                    ,(set-version discipline))
                  "-")))
 

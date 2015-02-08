@@ -44,11 +44,13 @@
   #:use-module (glean common base-server)
   #:use-module (glean common base-requests)
   #:use-module (glean common comtools)
+  #:use-module (glean common hash)
   #:use-module (glean common library-requests)
   #:use-module (glean common lounge-requests)
   #:use-module (glean common utils)
   #:use-module (glean library sets)
   #:use-module (glean library library-store)
+  #:use-module (ice-9 match)
   #:use-module (ice-9 rdelim)
   #:use-module (srfi srfi-1)
   #:use-module (srfi srfi-26)
@@ -56,15 +58,6 @@
   #:export (library-server))
 
 
-;;;;; Blobhash?
-;;; This should not be needed here.  There should be a library side module
-;;; which provides this procedure.  After all, we know the great secret which
-;;; is that a blobhash is the same as a sethash.
-
-(define (blobhash? obj)
-  "Return #t if OBJ is a blobhash, #f otherwise."
-  (symbol? obj))
-
 ;;;;; Module Server Dispatch Logic
 ;;; Define the actual module server and the server-dispatcher used by it.
 
@@ -130,19 +123,18 @@ COUNTER, or raise 'invalid-set."
 
   (let ((bh (challq-hash rq))
         (c (challq-counter rq)))
-    (cond ((not (blobhash? bh))
+    (cond ((not (hash? bh))
            (raise 'invalid-blobhash))
           ((not (number? c))
            (raise 'invalid-counter))
           (else (challs (new-challenge (fetch-problem bh c)))))))
 
 (define (fetch-problem blobhash counter)
-  (let ((set (fetch-set blobhash (catalogue-hash %current-catalogue%))))
-    (if set
-        (let* ((problems (set-contents set))
-               (num-of-problems (length problems)))
-          (list-ref problems (modulo counter num-of-problems)))
-        (raise 'unknown-set))))
+  (match (fetch-set blobhash (catalogue-hash %current-catalogue%))
+    ((('set . set) ('lexp . lxp))
+     (let ((problems (set-contents set)))
+       (list-ref problems (modulo counter (length problems)))))
+    (#f (raise 'unknown-set))))
 
 (define (eval-provider rq)
   (define (eval-answer problem answer)
@@ -167,7 +159,7 @@ COUNTER, or raise 'invalid-set."
   (let ((bh (evalq-hash rq))
         (c (evalq-counter rq))
         (answer (evalq-answer rq)))
-    (cond ((not (blobhash? bh))
+    (cond ((not (hash? bh))
            (raise 'invalid-blobhash))
           ((not (number? c))
            (raise 'invalid-counter))
@@ -215,32 +207,31 @@ COUNTER, or raise 'invalid-set."
 
 (define (details-provider rq)
   (let ((hash (detailq-hash rq)))
-    (if (blobhash? hash)
+    (if (hash? hash)
         (details (set-details hash (catalogue-hash %current-catalogue%)))
         (raise 'invalid-sethash))))
 
 (define (hashmap-provider rq)
-  (let ((hashpairs (hashmapq-hashpairs rq)))
-    (if (and (list? hashpairs)
-             (fold (lambda (hashpair previous)
-                     (and previous (pair? hashpair)
-                          (blobhash? (car hashpair))   ; minhash
-                          (blobhash? (cdr hashpair)))) ; fullhash
-                   #t hashpairs))
-        (let ((sets (filter-map
-                     (lambda (hashpair)
-                       (fetch-set (cdr hashpair)
-                                  (catalogue-hash %current-catalogue%)))
-                     hashpairs)))
-          (if (not (null? sets))
-              (hashmaps (map make-hashtree sets))
-              (raise 'unknown-set-ids)))
-        (raise 'invalid-set-ids))))
+  (define (fetch-sets hashes)
+    (filter-map (lambda (hash)
+                  (match (fetch-set hash (catalogue-hash %current-catalogue%))
+                    ((('set . set) ('lexp . lxp))
+                     `(,set ,lxp))
+                    (_ #f)))
+                hashes))
+  (match (hashmapq-hashpairs rq)
+    ;; car will be a serialized lexp, but for now for backward compatibility,
+    ;; a string.
+    ((((? string? lxps) . (? hash? shallow-hashes)) ...)
+     (match (map (cut apply make-hashtree <>) (fetch-sets shallow-hashes))
+       (() (raise 'unknown-set-ids))
+       (hashtrees (hashmaps hashtrees))))
+    (else (raise 'invalid-set-ids))))
 
 (define (sethashes-provider rq)
   (let ((fullhashes (sethashesq-fullhashes rq)))
     (if (and (list? fullhashes)
-             (null? (filter (negate blobhash?) fullhashes)))
+             (null? (filter (negate hash?) fullhashes)))
         (sethashess (set-hashpairs fullhashes
                                    (catalogue-hash %current-catalogue%)))
         (raise 'invalid-fullhashes))))

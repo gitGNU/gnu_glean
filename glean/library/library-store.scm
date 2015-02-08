@@ -51,43 +51,48 @@
   #:use-module (glean common monads)
   #:use-module (glean common utils)
   #:use-module (glean library core-templates)
+  #:use-module (glean library lexp)
   #:use-module (glean library sets)
+  #:use-module (glean library set-tools)
   #:use-module (ice-9 ftw)
   #:use-module (ice-9 match)
   #:use-module (ice-9 vlist)
   #:use-module (rnrs bytevectors)
   #:use-module (srfi srfi-1)
   #:use-module (srfi srfi-9)
+  #:use-module (srfi srfi-26)
   #:export (
             compile-library
             catalogue-hash
 
             fetch-set
-            set-fullhash
             set-hashpairs
+            crownsets
             known-crownsets
             search-sets
             set-details
-            hashtree?
             make-hashtree
             ))
 
 
 ;;;;; The Library
+;;;
 ;;; A library is a database of two tables:
-;;; 1) All known modules are indexed by their fullhashes.
+;;; 1) All known modules are indexed by their fullhashes (=> shallow-hash)
 ;;; 2) A secondary reference from minhash to fullhash.  The latter can contain
 ;;;    one to many mappings and can be used to ensure continuity even after
 ;;;    module upgrades.
+;;; 2) Revised: A secondary reference of discipline-lexp -> dag-hash.  This
+;;;    can be used, in conjunction with the three fields provided in a request
+;;;    (shallow-hash, dag-hash & base-lexp), to generate an upgrade map on the
+;;;    basis of a shallow-hash that has been superseded.
 ;;;
-;;; A fullhash is a hash of a module's meta-data as well as its contents.
+;;; A shallow-hash is the hash of a set's lexp, version and the lexp's of its
+;;; direct descendants, concatenated.
 ;;;
-;;; A minhash is a hash of a module's author and id data.  Normally modules are
-;;; identified using fullhashes only, but these will change when any changes to
-;;; the module are made (e.g. version bumps).
+;;; A dag hash is a hash capituring the full dag of a single discipline.
 ;;;
-;;; To allow mapping of hashes supplied by the lounge server from before the
-;;; version bump, the minhash will be used instead of the fullhash.
+;;; For more details on hashes see (glean libarry set-tools).
 
 (define-record-type <library>
   (library catalogue reference)
@@ -208,25 +213,37 @@ to us before, return the previously computed library.  Else, re-compute."
 
 ;;;;; Library Convenience
 
-(define (library-cons set lib)
-  "Return a new library consisting of LIBRARY augmented by SET."
-  (let ((fullhash (set-fullhash set))
-        (minhash  (crownset-minhash  set))
-        (cat      (library-cat  lib))
-        (ref      (library-ref  lib)))
-    (library (fold (lambda (hash-set-pair cat-so-far)
-                     (if (lib-assoc (car hash-set-pair) cat-so-far)
-                         cat-so-far
-                         (lib-cons (car hash-set-pair)
-                                   (cdr hash-set-pair)
-                                   cat-so-far)))
-                   cat
-                   (crownset-hash-index set))
-      (if (lib-assoc minhash ref) ; if minhash exists, append
-          (let ((kv-pair (lib-assoc minhash ref)))
-            (lib-cons minhash (cons fullhash (cdr kv-pair))
-                      (lib-delete minhash ref)))
-          (lib-cons minhash (list fullhash) ref)))))
+(define (library-cons discipline current-library)
+  "Return a new library consisting of CURRENT-LIBRARY augmented by DISCIPLINE.
+
+In practice this means that we:
+- add DISCIPLINE to library's Reference '(base-lexp -> discipline)
+- recursively add discipline and all subsets to library's Catalogue
+  '(shallow-hash -> set)"
+
+  (define (add-if-missing entry index)
+    "Return index, augmented by ENTRY if it does not yet exist in INDEX."
+    (match entry
+      ((shallow-hash set lxp)
+       (if (lib-assoc shallow-hash index)
+           index              ; set added previously
+           (lib-cons shallow-hash `((set . ,set) (lexp . ,lxp)) index)))
+      (_ (throw 'glean-type-error 'add-if-missing
+                "Expected pair, got:" entry))))
+
+  (let ((lxp (set-lexp discipline)))
+    (match current-library
+      (($ <library> index reference)
+       (library (fold add-if-missing index (index-set discipline lxp))
+         (if (lib-assoc lxp reference)
+             ;; This should only happen if a discipline loaded
+             ;; into library at an earlier time uses the same
+             ;; base-lexp, which is not supported.
+             (throw 'glean-logic-error 'library-cons
+                    "Duplicate base-lxp entry!")
+             (lib-cons lxp discipline reference))))
+      (_ (throw 'glean-type-error 'library-cons
+                "Expected <library>, got:" library)))))
 
 (define (lib-cat library-pair)
   "Return the catalogue of sets derived from LIBRARY-PAIR."
@@ -262,25 +279,30 @@ value of RESULT for the first call to PROC."
 ;;;;; Porcelain Library Procedures
 ;;; These are procedures most likely to be used outside of this module.
 
-(define (fetch-set hash library-pair)
+(define* (fetch-set hash library-pair #:optional full?)
   "Return the set identified by HASH from the library derived from
 LIBRARY-PAIR."
-  (let ((set-pair? (lib-assoc hash (lib-cat library-pair))))
-    (if set-pair? (cdr set-pair?) #f)))
+  (match (lib-assoc hash (lib-cat library-pair))
+    (((? hash? hash) . set-assoc)
+     (cond ((eqv? full? 'sets) (cdar set-assoc))
+           (full? `(,hash . ,set-assoc))
+           (else set-assoc)))
+    (#f #f)))
 
 (define (known-crownsets library-pair config-ignore-keywords)
   "Return a list containing summary information on all known crownsets
 in the library derived from LIBRARY-PAIR, ignoring those that contain
 keywords blacklisted in CONFIG-IGNORE-KEYWORDS."
-  (fold (lambda (hash sets)
-          (let ((set (fetch-set hash library-pair)))
-            (if (null? (lset-intersection string=?
-                                          config-ignore-keywords
-                                          (set-keywords set)))
-                (cons (set-summary set hash) sets)
-                sets)))
+  (fold (lambda (entry sets)
+          (match entry
+            ((lxp . set)
+             (if (null? (lset-intersection string=?
+                                           config-ignore-keywords
+                                           (set-keywords set)))
+                 (cons (set-summary set (shallow-hash lxp set)) sets)
+                 sets))))
         '()
-        (known-crownset-hashes library-pair)))
+        (vlist->list (lib-ref library-pair))))
 
 (define (search-sets operator search library-pair)
   "Return a list containing summary information for all sets matching
@@ -288,14 +310,11 @@ the criteria specified by OPERATOR and SEARCH in LIBRARY-PAIR."
   (define (search-by-hash hashes)
     "Return the set summary of any sets identified by one of the
 hashes in HASHES."
-    (map (lambda (hash/set-pair)
-           (set-summary (car hash/set-pair)   ; set
-                        (cdr hash/set-pair))) ; fullhash
-         (filter-map (lambda (hash)
-                       (let ((set (fetch-set hash library-pair)))
-                         (if set
-                             (cons set hash)
-                             #f)))
+    (map (lambda (entry)
+           (match entry
+             ((hash . '(('set . set) ('lexp . lxp)))
+              (set-summary set hash))))
+         (filter-map (cut fetch-set <> library-pair #t)
                      hashes)))
   (define (search-by-name strings)
     "Return the set summary of any sets matching a string in STRINGS
@@ -311,12 +330,12 @@ in their name."
         (else                           ; no other operation yet
          '())))
 
-(define* (set-summary set #:optional (hash #f))
+(define* (set-summary set hash)
   "Return a list containing summary information on SET."
-  (list (if hash hash (set-fullhash set))
-        (set-id set)
-        (set-name set)
-        (set-version set)
+  (list hash
+        (set-id       set)
+        (set-name     set)
+        (set-version  set)
         (set-keywords set)
         (set-synopsis set)
         (set-logo     set)))
@@ -324,40 +343,47 @@ in their name."
 (define (set-details hash library-pair)
   "Return a list containing detailed information on SET, or #f if it
 cannot be found in LIBRARY-PAIR."
-  (let ((set (fetch-set hash library-pair)))
-    (if set
-        (list hash
-              (set-id set)
-              (set-name set)
-              (set-version set)
-              (set-keywords set)
-              (set-synopsis set)
-              (set-description set)
-              (set-creator set)
-              (set-attribution set)
-              (set-resources set)
-              (set-properties set)
-              (if (rootset? set)
-                  '()
-                  (map set-summary (set-contents set)))
-              (set-logo set))
-        #f)))
+  (define (summarize child lxp)
+    (set-summary child
+                 (shallow-hash (lexp-append lxp (set-id child)) child)))
 
-(define (known-crownset-hashes library-pair)
-  "Return a list of all known crownset hashes in lib-ref derived
-from LIBRARY-PAIR."
-  (flatten (vlist->list (vlist-map cdr
-                                   (lib-ref library-pair)))))
+  (match (fetch-set hash library-pair)
+    ((('set . set) ('lexp . lxp))
+     (list hash
+           (set-id set)
+           (set-name set)
+           (set-version set)
+           (set-keywords set)
+           (set-synopsis set)
+           (set-description set)
+           (set-creator set)
+           ;; FIXME: I've disabled passing back of media for now — they need
+           ;; to be reworked anyway.
+           'resources
+           'attributes
+           (set-properties set)
+           (if (rootset? set)
+               '()
+               (map (cut summarize <> lxp) (set-contents set)))
+           (set-logo set)))
+    (#f #f)))
+
+
+(define (crownsets library-pair)
+  "Return the list of disciplines currently stored in the library identified
+by LIBRARY-PAIR."
+  (vlist->list (vlist-map cdr (lib-ref library-pair))))
 
 (define (set-hashpairs fullhashes library-pair)
   "Return a list of (minhash . fullhash) for each hash in FULLHASH, if
 it is known in LIBRARY-PAIR."
   (map (lambda (fullhash)
-         (let ((minhash (and=> (fetch-set fullhash library-pair)
-                               crownset-minhash)))
-           (if minhash
-               (cons minhash fullhash)    ; valid hashpair
-               (cons #f      fullhash)))) ; invalid fullhash
+         (match (fetch-set fullhash library-pair)
+           ((('set . set) ('lexp . lxp))
+            ;; For tmp backwards compatibility
+            (cons (object->string (lexp-serialize lxp)) fullhash))        ; found
+           (#f
+            (cons #f fullhash))))       ; invalid fullhash
        fullhashes))
 
 
@@ -471,81 +497,49 @@ that provide content for the library. These modules are then parsed using
 ;;; appropriate 'install', 'delete', 'compile' procedures, which implement the
 ;;; above features reliably.
 
-;;; Exported, not used here
 (define (hashtree? obj)
   "Return #t if OBJ is a hashtree, #f otherwise.
 
 A hashtree is a list with a pair of the form '(blobhash . properties)as its
 car, and either '() or a list containing hashtrees as its cdr."
   (match obj
-    ((((? blobhash?) . (? list?)) ((? hashtree?) ...)) #t)
-    ((((? blobhash?) . (? list?))) #t)
+    ((((? hash?) . (? list?)) ((? hashtree?) ...)) #t)
+    ((((? hash?) . (? list?))) #t)
     (_ #f)))
 
-(define (make-hashtree set)
+;;; FIXME: currently returns a shallow-hash tree for now (for backward
+;;; compatibility).  Next stage is introducing dag-hash and base-lexp here
+;;; too….
+(define (make-hashtree set lxp)
   "Return a hashtree, starting with SET."
+  (define (hashtree set)
+    (make-hashtree set (lexp-append lxp (set-id set))))
   (cond ((rootset? set)
-         (list (cons (rootset-hash set)
+         (list (cons (shallow-hash lxp set)
                      (set-properties set))))
-        (else (list (cons (set-fullhash set)
+        (else (list (cons (shallow-hash lxp set)
                           (set-properties set))
-                    (map make-hashtree (set-contents set))))))
-
-;;; Exported, used here
-(define (set-fullhash set)
-  "Return a sha256 hash of the product of recursively concatenating
-all of SET's children."
-  (define (hashtraverse-set set)
-    (cond ((rootset? set)
-           (symbol->string (rootset-hash set)))
-          ((set? set)
-           (apply sha256-symbol
-                  (cons (symbol->string (set-id set))
-                             (map hashtraverse-set
-                                  (set-contents set)))))
-          (else
-           (error "HASHTRAVERSE-SET -- SET is not a set" set))))
-  (hashtraverse-set set))
+                    (map hashtree (set-contents set))))))
 
 ;; used here.
-(define (crownset-minhash set)
-  "Return a sha256 hash of SET's creator prefixed with its id."
-  (sha256-symbol (string-append (symbol->string (set-id set))
-                                (set-creator set))))
+(define* (index-set set #:optional (lxp (set-lexp set)))
+  "Return a list of '(shallow-hash . set) for SET and recursively all its
+children.  If LXP is not provided then we assume that SET is a crownset, and
+generate its base-lexp."
 
-(define (crownset-hash-index set)
-  "Return a list containing pairs of the form '(fullhash . set) for  SET and
-every set referred to in SET's contents field."
-  (define (minor-index set index)
-    (cond ((rootset? set)
-           (cons (cons (rootset-hash set) set) index))
-          (else (cons (cons (set-fullhash set) set)
-                      (fold minor-index index (set-contents set))))))
+  (define* (index set lxp #:optional (indx '()))
+    "Return INDX after appending a pair of form '(shallow-hash set lxp) to it.
+shallow-hash is composed of LXP and SET, set is SET and lxp is LXP."
+    (cons (list (shallow-hash lxp set) set lxp) indx))
 
-  (cons (cons (set-fullhash set) set) (fold minor-index '() (set-contents set))))
+  (define (index-child child indx)
+    "Return INDX after augmenting it by recursively indexing CHILD and
+appending the resulting index."
+    (if (rootset? child)
+        (index child (lexp-append lxp (set-id child)) indx)
+        (append (index-set child (lexp-append lxp (set-id child)))
+                indx)))
 
-(define (rootset-hash set)
-  "Return a sha256 hash of the set-id + the question, solution and
-options fields of every problem in set-contents."
-  (define (problem-composite problem)
-    (string-format "~a~a~a"
-                   (object->string (q-text (problem-q problem)))
-                   ;; FIXME: fix re: no solution: info
-                   (let ((solution (problem-s problem)))
-                     (cond ((and solution (list? solution))
-                            (string-join (map s-text solution)))
-                           ((and solution (s? solution))
-                            (object->string (s-text solution)))
-                           ((not solution)
-                            "false")
-                           (else
-                            (error "rootset-hash -- solution."))))
-                   (string-join (map (lambda (option)
-                                       (object->string
-                                        (o-text option)))
-                                     (problem-o problem)))))
-  (apply sha256-symbol (cons (symbol->string (set-id set))
-                             (map problem-composite
-                                  (set-contents set)))))
+  (fold index-child (index set lxp) (set-contents set)))
 
 ;;; library-story.scm ends here

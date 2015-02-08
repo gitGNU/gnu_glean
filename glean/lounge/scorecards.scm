@@ -161,7 +161,7 @@ ASSESSMENT-RESULT."
 
 (define (blobhash? obj)
   "Return #t if OBJ is a blobhash, #f otherwise."
-  (symbol? obj))
+  (string? obj))
 
 (define (update-blob blob assessment-result initial-blob
                      number-of-child-blobs)
@@ -332,7 +332,7 @@ otherwise."
     "An old-school, non-functional (hash-table based) non-persistent
 data-store to store scorecard data.  This is crufty, and should be abandoned
 ASAP!"
-    (let ([data (make-eqv-hashtable)])
+    (let ([data (make-hashtable string-hash string=?)])
       (lambda (message . args)
         "Return the value associated with (car ARGS) if MESSAGE is
 'get, or #f if the (car ARGS) is not a key in the hashtable.

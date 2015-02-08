@@ -24,31 +24,61 @@
 ;;
 ;; Library-store unit tests.
 ;;
+;; Source-file: glean/library/library-store.scm
+;;
 ;;; Code:
 
 (define-module (tests library-store)
   #:use-module (srfi srfi-64)      ; Provide test suite
   #:use-module (glean common base-requests)
+  #:use-module (glean common hash)
   #:use-module (glean common library-requests)
+  #:use-module (glean library lexp)
   #:use-module (glean library library-store)
   #:use-module (glean library server)
+  #:use-module (glean library sets)
   #:use-module (ice-9 match)
+  #:use-module (ice-9 vlist)
   #:use-module (tests quickcheck-defs)
   #:use-module (quickcheck quickcheck))
 
-(define (server-dispatcher rq)
-  ((@@  (glean library server) server-dispatcher) rq))
+(define server-dispatcher (@@  (glean library server) server-dispatcher))
+
+(define index-set (@@ (glean library library-store) index-set))
+(define library-cons (@@ (glean library library-store) library-cons))
+(define empty-library (@@ (glean library library-store) empty-library))
+(define <library> (@@ (glean library library-store) <library>))
+(define hashtree? (@@ (glean library library-store) hashtree?))
 
 (test-begin "library-store")
 
+(test-assert "index-set"
+  (let loop ((rslt (index-set ($mk-discipline 3 3))))
+    (match rslt
+      ((((? hash?) (? set?) (? lexp?)) . rest)
+       (if (null? rest) #t (loop rest)))
+      (_ #f))))
+
+(test-assert "library-cons"
+  (let ((disc ($mk-discipline 3 3)))
+    (match (library-cons disc (empty-library))
+      (($ <library> catalogue reference)
+       (match (vlist->list catalogue)
+         ((((? hash?) ('set . (? set?)) ('lexp . (? lexp?))) ...)
+          (match (vlist->list reference)
+            ((((? lexp?) . (? set?)) ...)
+             #t)
+            (_  #f)))
+         (_ #f)))
+      (_ #f))))
+
 (test-assert "make hashmap"
-  (quickcheck (lambda (_)
-                (hashtree? (make-hashtree _)))
-              50 $mk-rootset))
+  (let ((disc ($mk-rootset 10)))
+    (hashtree? (make-hashtree disc (lexp-make (set-id disc))))))
+
 (test-assert "make deep hashmap"
-  (quickcheck (lambda (_)
-                (hashtree? (make-hashtree _)))
-              50 $mk-set))
+  (let ((disc ($mk-discipline 3 3)))
+    (hashtree? (make-hashtree disc (lexp-make (set-id disc))))))
 
 (test-end "library-store")
 
