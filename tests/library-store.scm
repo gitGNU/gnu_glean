@@ -52,12 +52,16 @@
 
 (test-begin "library-store")
 
+;;;; Tests for: index-set
+
 (test-assert "index-set"
   (let loop ((rslt (index-set ($mk-discipline 3 3))))
     (match rslt
       ((((? hash?) (? set?) (? lexp?)) . rest)
        (if (null? rest) #t (loop rest)))
       (_ #f))))
+
+;;;; Tests for: library-cons
 
 (test-assert "library-cons"
   (let ((disc ($mk-discipline 3 3)))
@@ -71,6 +75,19 @@
             (_  #f)))
          (_ #f)))
       (_ #f))))
+
+;;;; Tests for: hashtree?
+
+(test-assert "hashtree-true"
+  (hashtree? '(("hash" . (test)))))
+
+(test-assert "hashtree-deeper-true"
+  (hashtree? '(("hash" . (test)) ((("hash" . (test)))))))
+
+(test-assert "hashtree-false"
+  (not (hashtree? '(blah blah))))
+
+;;;; Tests for: make-hashtree
 
 (test-assert "make hashmap"
   (let ((disc ($mk-rootset 10)))
