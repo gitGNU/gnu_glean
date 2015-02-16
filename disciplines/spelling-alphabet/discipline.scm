@@ -29,7 +29,7 @@
 
 (define-module (glean disciplines spelling-alphabet discipline)
   #:use-module (glean library core-templates)
-  #:export (icao-module))
+  #:export (spelling-alphabet))
 
 
 ;;;; Local Template
@@ -392,15 +392,15 @@ which letter of the alphabet."))))
 ;;; We have defined the exercises above, so we now we can simply define the
 ;;; discipline's meta data
 
-(define icao-module
+(define spelling-alphabet
   (module
-   'icao-spelling
-    #:name "ICAO Spelling Alphabet"
-    #:version "0.1"
-    #:keywords '("language")
-    #:synopsis "Learn to use the ICAO / NATO spelling alphabet for
+      'spelling-alphabet
+      #:name "ICAO Spelling Alphabet"
+      #:version "0.1"
+      #:keywords '("language")
+      #:synopsis "Learn to use the ICAO / NATO spelling alphabet for
 spelling words."
-    #:description "The NATO phonetic alphabet, more accurately known
+      #:description "The NATO phonetic alphabet, more accurately known
 as the International Radiotelephony Spelling Alphabet and also called
 the ICAO phonetic or ICAO spelling alphabet, as well as the ITU
 phonetic alphabet, is the most widely used spelling alphabet. Although
@@ -413,22 +413,22 @@ combinations of letters and numbers can be pronounced and understood
 by those who transmit and receive voice messages by radio or telephone
 regardless of language barriers or the presence of transmission
 static."
-    #:creator "Alex Sassmannshausen"
-    #:contents
-    (list introduction alfa bravo charlie delta echo foxtrot golf
-          hotel india juliett kilo lima mike november oscar papa
-          quebec romeo sierra tango uniform victor whiskey x-ray
-          yankee zulu)
-    #:attribution
-    (list
-     (media
-      #:urls
-      (list "http://en.wikipedia.org/wiki/ICAO_spelling_alphabet")))
-    #:resources
-    (list
-     (media
-      #:urls
-      (list "http://en.wikipedia.org/wiki/ICAO_spelling_alphabet"
-            "http://en.wikipedia.org/wiki/Book:NATO_phonetic_alphabet")))))
+      #:creator "Alex Sassmannshausen"
+      #:contents
+      (list introduction alfa bravo charlie delta echo foxtrot golf
+            hotel india juliett kilo lima mike november oscar papa
+            quebec romeo sierra tango uniform victor whiskey x-ray
+            yankee zulu)
+      #:attribution
+      (list
+       (media
+        #:urls
+        (list "http://en.wikipedia.org/wiki/ICAO_spelling_alphabet")))
+      #:resources
+      (list
+       (media
+        #:urls
+        (list "http://en.wikipedia.org/wiki/ICAO_spelling_alphabet"
+              "http://en.wikipedia.org/wiki/Book:NATO_phonetic_alphabet")))))
 
 ;;; spelling-alphabet.scm ends here
