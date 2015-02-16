@@ -125,16 +125,21 @@
             #t)))))
 
 ;;;; Tmp directory Stateful tests
-;;;
-;;; The following tests cause tmp files to be left in the temporary file
-;;; directory of the system running the tests.  Similarly to mcatalogue-tmp,
-;;; we have no logic to tidy used tmp files yet.
 
-;;;; Tests for: mcatalogue-tmp
+;;;; Tests for: tmp-cleaner
 
-(test-assert "tmp-catalogue"
-  (match (mcatalogue-tmp tmpcat tmpcurr (tdisc))
-    (($ catalogue "catalogue-0" (? vhash?) (? string? tmp)) #t)
+(test-assert "tmp-cleaner"
+  (let ((file1 (tmpnam))
+        (file2 (tmpnam)))
+    (for-each mkdir `(,file1 ,file2))
+    (= (((@@ (glean librarian catalogues) tmp-cleaner) file1 file2) tmpcat)
+       2)))
+
+;;;; Tests for: manalyzer
+
+(test-assert "manalyzer"
+  (match ((@@ (glean librarian catalogues) manalyzer) tmpcat tmpcurr (tdisc))
+    ((? string?) #t)
     (_ #f)))
 
 ;;;; Tests for: mcatalogue-install
@@ -151,17 +156,11 @@
 (test-end "catalogues")
 
 (for-each (lambda (filename)
-            (if (file-exists? filename)
-                (system* "rm" "-r" filename)))
-          (list tmpcat tmpcurr tmpstore))
-
-;;; Naive deletion of temporary files in attempt to restrain number of test
-;;; files in tmp
-;; (for-each (lambda (file)
-;;             (when (and (file-exists? file)
-;;                        (string=? (dirname file) "/tmp"))
-;;               (system* "rm" "-r" file)))
-;;           `(,tmpcurr ,tmpcat))
+            (when (file-exists? filename)
+              (system* "rm" "-r" filename)))
+          ;; Order of deletion is important, as a different order would break
+          ;; symlinks and broken symlinks fail `file-exists?'
+          (list tmpcurr tmpcat tmpstore))
 
 ;;;; Missing Tests
 ;;;

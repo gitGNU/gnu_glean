@@ -66,8 +66,7 @@
                 catalogue-list
                 catalogue-remove
                 catalogue-show
-                catalogue-install
-                mcatalogue-tmp))
+                catalogue-install))
 
 
 ;;;; Catalogue Record Type Definition
@@ -808,6 +807,21 @@ directory on the filesystem."
       (lambda (key . args)
         ((tmp-dir-fetcher) catalogue-dir)))))
 
+;; (string ...) -> I/O
+(define (tmp-cleaner . args)
+  "Return a procedure of one argument, a string identifying a catalogue
+directory, which when applied, tries to recursively remove the each file
+identified by args."
+  (lambda (catalogue-dir)
+    (let ((check (tmpnam)))
+      (length (filter-map (lambda (filename)
+                          (if (and (file-exists? filename)
+                                   (apply string=?
+                                          (map dirname `(,check ,filename))))
+                              (zero? (system* "rm" "-r" filename))
+                              #f))
+                        args)))))
+
 
 ;;;; IO Catalogues Monad
 ;;;
@@ -870,12 +884,7 @@ SOURCE-DIR:    string pointing to the directory containing a discipline to be
 "
   ((mlet* catalogue-monad
        ((name    -> (basename source-dir))
-        (tmp-cat -> (mcatalogue-tmp catalogue-dir curr-cat-link source-dir))
-        (tmp-lib -> (catalogue-hash (relative-filename
-                                     (get-catalogue-dir tmp-cat)
-                                     (get-catalogue-id  tmp-cat))))
-        (target     (store-name tmp-lib (string->symbol
-                                         (basename source-dir))))
+        (target  -> (manalyzer catalogue-dir curr-cat-link source-dir))
         (store-path (discipline-installer store-dir source-dir target))
         (cat-name   (current-catalogue-namer curr-cat-link))
         (curr-cat   (catalogue-detailer cat-name))
@@ -886,16 +895,11 @@ SOURCE-DIR:    string pointing to the directory containing a discipline to be
      (return catalogue))
    catalogue-dir))
 
-;;; FIXME: we should install mechanisms for deleting the temporary files again.
-;;; Prbly something along the lines of inspecting tmp-cat, to find its dir,
-;;; then deleting all temporary directories referenced in by symlinks in that
-;;; dir (we should find a reliable way of distinguishing tmp from normal
-;;; dirs!), after which we can delete tmp-cat's dir itself.
-(define (mcatalogue-tmp catalogue-dir curr-cat-link source-dir)
-  "Generate a procedure to install the discipline at SOURCE-DIR in a temporary
-store.  This tmp-store can be used by procedures that need to perform
-set/discipline introspection, without having the discipline we are installing
-in the store proper.
+(define (manalyzer catalogue-dir curr-cat-link source-dir)
+  "Mechanism by which we can install the presumed discipline located at
+SOURCE-DIR in a temporary story, from which we can attempt to generate a
+library.  If all works well, we return the name under which the now verified
+discipline at SOURCE-DIR will be installed in the actual store.
 
 CATALOGUE-DIR: string pointing to the catalogue directory.
 CURR-CAT-LINK: string pointing to the current catalogue symlink.
@@ -911,8 +915,14 @@ SOURCE-DIR:    string pointing to the directory containing a discipline to be
         (tmp-cat-dir   (tmp-dir-fetcher))
         (new-cat   ->  (augment-catalogue curr-cat 0 name store-path
                                           tmp-cat-dir))
-        (catalogue ->  ((catalogue-installer new-cat) tmp-cat-dir)))
-     (return catalogue))
+        (cat       ->  ((catalogue-installer new-cat) tmp-cat-dir))
+        (tmp-lib   ->  (catalogue-hash (relative-filename
+                                        (get-catalogue-dir cat)
+                                        (get-catalogue-id  cat))))
+        (target        (store-name tmp-lib (string->symbol
+                                            (basename source-dir))))
+        (clean         (tmp-cleaner tmp-store-dir tmp-cat-dir)))
+     (return target))
    catalogue-dir))
 
 (define (mcatalogue-remove catalogue-dir curr-cat-link disc-id)
