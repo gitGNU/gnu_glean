@@ -189,7 +189,13 @@ store and try again.~%")
      (match context
        ((path) (leave (_ "Invalid catalogue found at ~a.~%") path))))
     ('next-catalogue-counter-maker
-     (leave (_ "A problem occured creating a new counter.")))))
+     (leave (_ "A problem occured creating a new counter.")))
+    ('store-name
+     (match context
+       (('missing-discipline . (id))
+        (leave (_ "Discipline '~a' could not be loaded.  Is it faulty?~%")
+               id))))
+    (_ (leave (_ "An unknown problem identified by '~a' occurred.~%") id))))
 
 (define* (emit-catalogue cat #:key (full? #t))
   "Emit a summary of the catalogue CAT, listing CAT's id and the id of each
@@ -223,7 +229,9 @@ discipline id to the discipline in the store."
 ;;; the library for instance.
 
 (define (store-name tmp-lib id)
-  "Return the 'store-name', a string of the format \"$hash-$id-$version\", for
+  "A monadic procedure in the catalogue-monad.
+
+Return the 'store-name', a string of the format \"$hash-$id-$version\", for
 the discipline identified by set-id ID as found in the library built out of
 the store pointed towards by tmp-lib, a library-hash-pair.
 
@@ -233,16 +241,19 @@ data-structure.
 TMP-LIB: a library structure (glean library library-store).
 ID:      a symbol naming a discipline through its #:id.
 "
-  (let ((discipline (fold (lambda (set result)
-                            (cond (result result)
-                                  ((eqv? (set-id set) id) set)
-                                  (else #f)))
-                          #f
-                          (crownsets tmp-lib))))
-    (string-join `(,(deep-hash discipline)
-                   ,(symbol->string id)
-                   ,(set-version discipline))
-                 "-")))
+  (lambda (catalogue-directory)
+    (let ((discipline (fold (lambda (set result)
+                              (cond (result result)
+                                    ((eqv? (set-id set) id) set)
+                                    (else #f)))
+                            #f
+                            (crownsets tmp-lib))))
+      (if discipline
+          (string-join `(,(deep-hash discipline)
+                         ,(symbol->string id)
+                         ,(set-version discipline))
+                       "-")
+          (nothing 'store-name `(missing-discipline ,id))))))
 
 
 ;;;; Atomic Catalogue Operations
@@ -665,7 +676,7 @@ TARGET-FILE: string pointing to the name under which we should install the
 
     (lambda (catalogue-dir)
       (if (and target-file (file-exists? name-in-store))
-          ;; We have a duplicate hash in the read-only store.  We won't install.
+          ;; This hash already exists in the read-only store => no install.
           (nothing 'discipline-installer `(duplicate . ,name-in-store))
           ;; XXX: We need to check source-dir in all imaginable ways to ensure
           ;; it is a real and safe discipline.
@@ -863,7 +874,7 @@ SOURCE-DIR:    string pointing to the directory containing a discipline to be
         (tmp-lib -> (catalogue-hash (relative-filename
                                      (get-catalogue-dir tmp-cat)
                                      (get-catalogue-id  tmp-cat))))
-        (target  -> (store-name tmp-lib (string->symbol
+        (target     (store-name tmp-lib (string->symbol
                                          (basename source-dir))))
         (store-path (discipline-installer store-dir source-dir target))
         (cat-name   (current-catalogue-namer curr-cat-link))
