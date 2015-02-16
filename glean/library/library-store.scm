@@ -180,8 +180,9 @@
         (cached-library (empty-library)))
     (lambda (catalogue-hash-pair)
       "Return library (a vhash) corresponding to the file-system state
-represented by CATALOGUE-HASH-PAIR.  If the hash in CATALOGUE-HASH-PAIR was passed
-to us before, return the previously computed library.  Else, re-compute."
+represented by CATALOGUE-HASH-PAIR.  If the hash in CATALOGUE-HASH-PAIR was
+passed to us before, return the previously computed library.  Else,
+re-compute."
       (match catalogue-hash-pair
         ((catalogue-dir . catalogue-hash)
          (define (compile)
@@ -191,23 +192,16 @@ to us before, return the previously computed library.  Else, re-compute."
                          library                     ; library thus far
                          (sets-from-module module))) ; these sets
                  (empty-library)                     ; new library
-                 ;; If cached-library is not empty then we must force a reload
-                 ;; of modules to be loaded as glean will be using cached
-                 ;; modules otherwise.
-                 ;; (This will be executed if the library catalogue has changed
-                 ;; since the last time it was checked.)
-                 (if (empty-library? cached-library)
-                     (library-modules catalogue-dir) ; plain load
-                     (filter-map (lambda (module)  ; force reload
-                                   (false-if-exception (reload-module module)))
-                                 (library-modules catalogue-dir)))))
+                 (library-modules catalogue-dir)))
 
          ;; If CATALOGUE-HASH has not changed, return cached library.
          (if (bytevector=? catalogue-hash cached-hash)
              cached-library
-             (begin (set! cached-hash    catalogue-hash)
-                    (set! cached-library (compile))
-                    cached-library)))
+             (begin
+               (set! cached-hash    catalogue-hash)
+               (set! cached-library (empty-library))
+               (set! cached-library (compile))
+               cached-library)))
         (#f cached-library)))))
 
 
