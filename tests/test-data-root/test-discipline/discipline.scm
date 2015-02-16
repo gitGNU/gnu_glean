@@ -36,13 +36,13 @@
 
 (define test-discipline
   (module
-    'test
-    #:name "A unit test fixture."
-    #:version "0.1"
-    #:keywords '("education" "code" "tests")
-    #:synopsis "Merely used for unit tests."
-    #:description "Really, that's it. Just unit tests."
-    #:creator "Alex Sassmannshausen"
-    #:contents `()))
+      'test-discipline
+      #:name "A unit test fixture."
+      #:version "0.1"
+      #:keywords '("education" "code" "tests")
+      #:synopsis "Merely used for unit tests."
+      #:description "Really, that's it. Just unit tests."
+      #:creator "Alex Sassmannshausen"
+      #:contents `()))
 
 ;;; discipline.scm ends here

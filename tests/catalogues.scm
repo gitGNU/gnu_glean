@@ -42,28 +42,31 @@
   (@@ (glean librarian catalogues) make-bare-catalogue))
 (define augment-catalogue
   (@@ (glean librarian catalogues) augment-catalogue))
-(define tdisc (string-join '("tests" "test-data-root" "test-discipline")
-                           file-name-separator-string))
 (define tmpcat (tmpnam))
 (define tmpcurr (tmpnam))
-;;; Naive attempt to ensure we run from correct directory, so that naive
-;;; deletion at EOF works.
-;; (when (not (file-exists? tdisc))
-;;   (format #t "We did not run the tests from the expected directory. problem
-;; that we hoped might not occur occurred...")
-;;   (exit 1))
+(define tmpstore (tmpnam))
+
+(define (tdisc)
+  (define tdisc1 (string-join '("tests" "test-data-root" "test-discipline")
+                              file-name-separator-string))
+  (define tdisc2 (string-join '("test-data-root" "test-discipline")
+                              file-name-separator-string))
+  (if (file-exists? tdisc1) tdisc1 tdisc2))
 
 
 ;;;; Tests
 
 (test-begin "catalogues")
 
+;;;; Tests for: make-bare-catalogue
+
 (test-assert "make-bare-catalogue"
   (match (make-bare-catalogue "test-cat" "tmpcat")
     (($ catalogue "test-cat" (? vlist-null?) "tmpcat") #t)
     (_ #f)))
 
-;;;;; Catalogue Add Discipline
+;;;; Tests for: catalogue-add-discipline
+
 (test-assert "catalogue-add-discipline"
   (let ((proc (@@ (glean librarian catalogues) catalogue-add-discipline)))
     (match (proc (make-bare-catalogue "test-catalogue-1" "tmpcat")
@@ -72,7 +75,8 @@
        (equal? (vlist->list disciplines)
                '(("test-disc" . "/tmp/test/path")))))))
 
-;;;;; Augment Catalogue
+;;;; Tests for: augment-catalogue
+
 (test-assert "augment-catalogue"
   (match (augment-catalogue (make-bare-catalogue "catalogue-1" "tmpcat")
                             5 "id" "/tmp/test/hash-id-version")
@@ -92,7 +96,8 @@
     (cut augment-catalogue '() 5 "id" "/tmp/test/hash-id-version")
     (lambda args #t)))
 
-;;;;; Impair Catalogue
+;;;; Tests for: impair-catalogue
+
 (test-assert "impair-catalogue"
   (let ((proc (@@ (glean librarian catalogues) impair-catalogue)))
     (and (match (proc (make-bare-catalogue "catalogue-1" "/tmp/cat")
@@ -106,7 +111,8 @@
            (($ catalogue "catalogue-6" disciplines)
             (null? (vlist->list disciplines)))))))
 
-;;;;; Log Add Catalogue
+;;;; Tests for: log-add-catalogue
+
 (test-assert "log-add-catalogue"
   (let ((proc (@@ (glean librarian catalogues) log-add-catalogue)))
     (and (match (proc "test-cat" '() "/tmp/cat")
@@ -118,15 +124,36 @@
              ($ catalogue "test-cat" vlist-null "/tmp/cat"))
             #t)))))
 
+;;;; Tmp directory Stateful tests
+;;;
+;;; The following tests cause tmp files to be left in the temporary file
+;;; directory of the system running the tests.  Similarly to mcatalogue-tmp,
+;;; we have no logic to tidy used tmp files yet.
+
+;;;; Tests for: mcatalogue-tmp
+
 (test-assert "tmp-catalogue"
-  (match (mcatalogue-tmp tmpcat tmpcurr tdisc)
-    (($ catalogue "catalogue-0" (? vhash?) (? string? tmp))
-     ;; Once again, we're leaving behind random tmp files as long as we have
-     ;; no tmp-catalogue cleaner procedure.
-     #t)
+  (match (mcatalogue-tmp tmpcat tmpcurr (tdisc))
+    (($ catalogue "catalogue-0" (? vhash?) (? string? tmp)) #t)
     (_ #f)))
 
-(test-end)
+;;;; Tests for: mcatalogue-install
+
+(test-assert "mcatalogue-install"
+  (begin
+    (mkdir tmpstore)                    ; destination dir must exist.
+    (mkdir tmpcat)                      ; catalogues dir must exist.
+    (match ((@@ (glean librarian catalogues) mcatalogue-install) tmpcat tmpcurr
+            tmpstore (tdisc))
+      (($ catalogue "catalogue-1" (? vhash?) (? string?)) #t)
+      (_ #f))))
+
+(test-end "catalogues")
+
+(for-each (lambda (filename)
+            (if (file-exists? filename)
+                (system* "rm" "-r" filename)))
+          (list tmpcat tmpcurr tmpstore))
 
 ;;; Naive deletion of temporary files in attempt to restrain number of test
 ;;; files in tmp
