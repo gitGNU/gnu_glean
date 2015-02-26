@@ -49,6 +49,7 @@
   #:use-module (glean common lounge-requests)
   #:use-module (glean common utils)
   #:use-module (glean library sets)
+  #:use-module (glean library set-tools)
   #:use-module (glean library library-store)
   #:use-module (ice-9 match)
   #:use-module (ice-9 rdelim)
@@ -223,9 +224,9 @@ COUNTER, or raise 'invalid-set."
     ;; car will be a serialized lexp, but for now for backward compatibility,
     ;; a string.
     ((((? string? lxps) . (? hash? shallow-hashes)) ...)
-     (match (map (cut apply make-hashtree <>) (fetch-sets shallow-hashes))
+     (match (map (cut apply make-hashmap <>) (fetch-sets shallow-hashes))
        (() (raise 'unknown-set-ids))
-       (hashtrees (hashmaps hashtrees))))
+       (hashmps (hashmaps hashmps))))
     (else (raise 'invalid-set-ids))))
 
 (define (sethashes-provider rq)

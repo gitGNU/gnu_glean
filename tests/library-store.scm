@@ -48,11 +48,10 @@
 (define library-cons (@@ (glean library library-store) library-cons))
 (define empty-library (@@ (glean library library-store) empty-library))
 (define <library> (@@ (glean library library-store) <library>))
-(define hashtree? (@@ (glean library library-store) hashtree?))
 
 (test-begin "library-store")
 
-;;;; Tests for: index-set
+;;;;; Tests for: index-set
 
 (test-assert "index-set"
   (let loop ((rslt (index-set ($mk-discipline 3 3))))
@@ -61,7 +60,7 @@
        (if (null? rest) #t (loop rest)))
       (_ #f))))
 
-;;;; Tests for: library-cons
+;;;;; Tests for: library-cons
 
 (test-assert "library-cons"
   (let ((disc ($mk-discipline 3 3)))
@@ -75,27 +74,6 @@
             (_  #f)))
          (_ #f)))
       (_ #f))))
-
-;;;; Tests for: hashtree?
-
-(test-assert "hashtree-true"
-  (hashtree? '(("hash" . (test)))))
-
-(test-assert "hashtree-deeper-true"
-  (hashtree? '(("hash" . (test)) ((("hash" . (test)))))))
-
-(test-assert "hashtree-false"
-  (not (hashtree? '(blah blah))))
-
-;;;; Tests for: make-hashtree
-
-(test-assert "make hashmap"
-  (let ((disc ($mk-rootset 10)))
-    (hashtree? (make-hashtree disc (lexp-make (set-id disc))))))
-
-(test-assert "make deep hashmap"
-  (let ((disc ($mk-discipline 3 3)))
-    (hashtree? (make-hashtree disc (lexp-make (set-id disc))))))
 
 (test-end "library-store")
 

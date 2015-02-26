@@ -36,9 +36,13 @@
   #:use-module (ice-9 match)
   #:use-module (srfi srfi-1)
   #:use-module (srfi srfi-26)
-  #:export     (discipline-ancestry-tree
+  #:export     (dag-hash
                 deep-hash
-                dag-hash
+                discipline-ancestry-tree
+                hashmap?
+                hashtree?
+                make-hashmap
+                make-hashtree
                 shallow-hash))
 
 
@@ -89,6 +93,7 @@ revisions of the same discipline."
      (sha256-string-strict (object->string discipline)))
     (otherwise (throw 'glean-type-error "DEEP-HASH: Wrong type:" discipline))))
 
+
 (define (dag-hash discipline)
   "Return the hash summarizing the dag represented by LEXP-TREE.  LEXP-TREE in
 turn represents an entire discipline's abstract structure (the relation
@@ -172,5 +177,44 @@ DISCIPLINE did not resolve to sets in ANCESTOR-DISCIPLINE."
                        `(,(hasher ancestor) . ,hash)))))))
 
     (discipline-tree-base discipline node-id)))
+
+
+;;;; Hashtrees and Hashmaps: abstract representations for the lounge.
+
+(define (hashtree? obj)
+  "return #t if obj is a hashtree, #f otherwise.
+
+a hashtree is a list with a pair of the form '(blobhash . properties) as its
+car, and either '() or a list containing hashtrees as its cdr."
+  (match obj
+    ((((? hash?) . (? list?)) ((? hashtree?) ...)) #t)
+    ((((? hash?) . (? list?))) #t)
+    (_ #f)))
+
+(define (make-hashtree set lxp)
+  "return a hashtree, starting with set, and accumulated lexp lxp."
+  (define (hashtree set)
+    (make-hashtree set (lexp-append lxp (set-id set))))
+  (cond ((rootset? set)
+         (list (cons (shallow-hash lxp set)
+                     (set-properties set))))
+        (else (list (cons (shallow-hash lxp set)
+                          (set-properties set))
+                    (map hashtree (set-contents set))))))
+
+(define (hashmap? obj)
+  "return #t if obj is a hashmap, #f otherwise.
+
+a hashmap is a hashtree of a discipline, prepended by the discipline's
+base-lexp, and its dag-hash."
+  (match obj
+    (((base-id) (? hash?) (? hashtree?)) #t)
+    (_ #f)))
+
+(define (make-hashmap discipline)
+  "return a hashmap of discipline."
+  (let ((lxp (lexp-make (set-id discipline))))
+    (list (lexp-serialize lxp) (dag-hash discipline)
+          (make-hashtree discipline lxp))))
 
 ;;; set-tools ends here

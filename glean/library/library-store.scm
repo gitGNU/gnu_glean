@@ -71,7 +71,6 @@
             known-crownsets
             search-sets
             set-details
-            make-hashtree
             ))
 
 
@@ -388,13 +387,6 @@ it is known in LIBRARY-PAIR."
   (with-output-to-string
     (lambda () (apply format #t msg args))))
 
-(define (test-file filename)
-  "Return #t if FILENAME identifies a regular file that we have access to, #f
-otherwise."
-  (catch 'system-error
-    (lambda () (eqv? (stat:type (stat filename)) 'regular))
-    (lambda (key . args) #f)))
-
 (define (sets-from-module module)
   "Return a list containing each exported set in MODULE.  Ignore all exported
 bindings which are not sets.
@@ -458,64 +450,6 @@ that provide content for the library. These modules are then parsed using
   (filter-map data-files->modules (data-files)))
 
 
-;;;;; Procedures for inclusion in Set
-;;;
-;;; These procedures should really be located in (glean library sets), as they
-;;; pertain to sets in general rather than their storage in the library.
-;;;
-;;; A) I'm not sure whether these should actually be pushed down to the Set
-;;;    stack.  They feel library-store-like for me.
-;;; B) This module needs to be split consistently into a component node, and
-;;;    it's interface expectations (i.e., the reference implementation for the
-;;;    component.)
-
-;;;; Sethash Revisions: The Library Store, Upgrades & Set Identities
-;;;
-;;; Our new approach to set identities will be fully based on the set's
-;;; hash.  This hash is contained in the set's hash field and consists of all
-;;; other fields hashed together with the set's contents.  If the set's
-;;; contents are further sets, then we simply take their hashes. If the set's
-;;; contents are problems, then we hash each problem individually.
-;;;
-;;; We introduce a further new field, historic-hashes: a list of hashes, which
-;;; starts out empty. Every time a module is installed into a library that
-;;; contains that module, the hash of each set in that existing module is
-;;; extracted and inserted at the beginning of the new version's historic-hash
-;;; field.
-;;;
-;;; As a result we can do away with minhashes: upgrade paths are determined
-;;; entirely by a set's current hash and it's historic hashes.  Upgrade maps
-;;; can be described through these semantics too.
-;;;
-;;; It will be the responsibility of the file-store component to implement
-;;; appropriate 'install', 'delete', 'compile' procedures, which implement the
-;;; above features reliably.
-
-(define (hashtree? obj)
-  "Return #t if OBJ is a hashtree, #f otherwise.
-
-A hashtree is a list with a pair of the form '(blobhash . properties)as its
-car, and either '() or a list containing hashtrees as its cdr."
-  (match obj
-    ((((? hash?) . (? list?)) ((? hashtree?) ...)) #t)
-    ((((? hash?) . (? list?))) #t)
-    (_ #f)))
-
-;;; FIXME: currently returns a shallow-hash tree for now (for backward
-;;; compatibility).  Next stage is introducing dag-hash and base-lexp here
-;;; too….
-(define (make-hashtree set lxp)
-  "Return a hashtree, starting with SET."
-  (define (hashtree set)
-    (make-hashtree set (lexp-append lxp (set-id set))))
-  (cond ((rootset? set)
-         (list (cons (shallow-hash lxp set)
-                     (set-properties set))))
-        (else (list (cons (shallow-hash lxp set)
-                          (set-properties set))
-                    (map hashtree (set-contents set))))))
-
-;; used here.
 (define* (index-set set #:optional (lxp (set-lexp set)))
   "Return a list of '(shallow-hash . set) for SET and recursively all its
 children.  If LXP is not provided then we assume that SET is a crownset, and

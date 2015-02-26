@@ -42,7 +42,6 @@
 (define-module (glean library lexp)
   #:use-module (glean common utils)
   #:use-module (glean library sets)
-  #:use-module (glean library library-store)
   #:use-module (ice-9 match)
   #:use-module (srfi srfi-1)
   #:use-module (srfi srfi-9 gnu)

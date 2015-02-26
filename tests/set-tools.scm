@@ -50,7 +50,7 @@
 
 (test-begin "set-tools")
 
-;;;;; Shallow-hash
+;;;;; Tests for: shallow-hash
 ;;;
 ;;; We want shallow hash to be different only if #:version, lxp or the lxps of
 ;;; a given set's children change.  Conversely, any other field can change to
@@ -90,7 +90,7 @@
                                                (cons ($mk-rootset)
                                                      (set-contents set))))))))
 
-;;;;; Deep-hash
+;;;;; Tests for: deep-hash
 ;;;
 ;;; We want deep hash only to be string=? to exactly a set that contains
 ;;; equal? values in each field.
@@ -149,7 +149,7 @@
                 result))
           #t proc-list)))
 
-;;;;; Dag-hash
+;;;;; Tests for: dag-hash
 ;;;
 ;;; We want Dag-hash to equal as long as no new sets are added or removed in
 ;;; the discipline  or its children.
@@ -229,43 +229,43 @@
                                           ,(set-set-contents
                                             2nd (cons 1st-1st
                                                       rest-2nd))))))))))))
-;;;; Discipline Ancestry Tree testing.
+;;;;; Tests for: discipline-ancestry-tree
 
 (define test-ancestor
   (module 'root
-    #:contents `(,(set 'one
-                       #:contents `(,(set 'one-one)))
-                 ,(set 'two
-                       #:contents `(,(problem (q "test")
-                                              (s "test"))))
-                 ,(set 'three
-                       #:contents `(,(tutorial 'three-one)
-                                    ,(set 'three-two))))))
+      #:contents `(,(set 'one
+                         #:contents `(,(set 'one-one)))
+                   ,(set 'two
+                         #:contents `(,(problem (q "test")
+                                                (s "test"))))
+                   ,(set 'three
+                         #:contents `(,(tutorial 'three-one)
+                                      ,(set 'three-two))))))
 
 (define test-module
   (module 'root
-    ;; some of root's children have moved and have had their ids changed ->
-    ;; new shallow-hash
-    #:contents `(
-                 ;; This set's id has been changed -> new shallow-hash.
-                 ,(set 'four
-                       #:lineage (lexp (root one))
-                       #:contents
-                       `(
-                         ;; this set's id has been changed -> new shallow-hash
-                         ,(set 'one-four
-                               #:lineage (lexp (root one one-one)))))
-                 ;; this subtree remains identical -> (#f . hash) for all.
-                 ,(set 'two
-                       #:contents `(,(problem (q "test")
-                                              (s "test"))))
-                 ;; This set's id has been changed -> new shallow-hash.
-                 ,(set 'seven
-                       #:lineage (lexp (root three))
-                       ;; these are essentially new sets (no lineage to link
-                       ;; to previous) -> ("" . hash) for both.
-                       #:contents `(,(tutorial 'seven-one)
-                                    ,(set 'seven-two))))))
+      ;; some of root's children have moved and have had their ids changed ->
+      ;; new shallow-hash
+      #:contents `(
+                   ;; This set's id has been changed -> new shallow-hash.
+                   ,(set 'four
+                         #:lineage (lexp (root one))
+                         #:contents
+                         `(
+                           ;; this set's id has been changed -> new shallow-hash
+                           ,(set 'one-four
+                                 #:lineage (lexp (root one one-one)))))
+                   ;; this subtree remains identical -> (#f . hash) for all.
+                   ,(set 'two
+                         #:contents `(,(problem (q "test")
+                                                (s "test"))))
+                   ;; This set's id has been changed -> new shallow-hash.
+                   ,(set 'seven
+                         #:lineage (lexp (root three))
+                         ;; these are essentially new sets (no lineage to link
+                         ;; to previous) -> ("" . hash) for both.
+                         #:contents `(,(tutorial 'seven-one)
+                                      ,(set 'seven-two))))))
 (define test-module-false
   (module 'root
     #:contents `(,(set 'four
@@ -526,6 +526,38 @@
          ((? false.hash?))))
        #t)
       (otherwise #f))))
+
+;;;;; Tests for: hashtree?
+
+(test-assert "hashtree-true"
+  (hashtree? '(("hash" . (('prop . test))) ())))
+
+(test-assert "hashtree-deeper-true"
+  (hashtree? '(("hash" . (test)) ((("hash" . (test)))))))
+
+(test-assert "hashtree-false"
+  (not (hashtree? '(blah blah))))
+
+;;;;; Tests for: make-hashtree
+
+(test-assert "make-hashtree"
+  (let ((disc ($mk-rootset 10)))
+    (hashtree? (make-hashtree disc (lexp-make (set-id disc))))))
+
+(test-assert "make-deep-hashtree"
+  (let ((disc ($mk-discipline 3 3)))
+    (hashtree? (make-hashtree disc (lexp-make (set-id disc))))))
+
+;;;;; Tests for: hashmap?
+
+(test-assert "hashmap-true?"
+  (let ((set ($mk-discipline)))
+    (hashmap? `((test) "hash" ,(make-hashtree set (lexp-make (set-id set)))))))
+
+;;;;; Tests for: make-hashmap
+
+(test-assert "make-hashmap"
+  (hashmap? (make-hashmap ($mk-discipline 3 3))))
 
 (test-end "set-tools")
 
