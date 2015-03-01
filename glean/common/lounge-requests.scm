@@ -75,6 +75,7 @@
             views-details
 
             set!q
+            <set!q>
             set!q?
             set!q-token
             set!q-field
@@ -201,18 +202,16 @@
 ;; indicated for modification (e.g. 'active-modules, 'name,
 ;; 'prof-server, etc.) and an appropriate new value for that field.
 ;; If no further action is required, return auths, else set!s.
-(define set!q-rtd
-  (make-record-type-descriptor 'set!q #f #f #f #f
-                               '#((immutable token)
-                                  (immutable field)
-                                  (immutable value))))
-(define set!q-rcd
-  (make-record-constructor-descriptor set!q-rtd #f #f))
+(define <set!q> (make-record-type-descriptor '<set!q> #f #f #f #f
+                                             '#((immutable token)
+                                                (immutable field)
+                                                (immutable value))))
+(define set!q-rcd (make-record-constructor-descriptor <set!q> #f #f))
 (define set!q (record-constructor set!q-rcd))
-(define set!q? (record-predicate set!q-rtd))
-(define set!q-token (record-accessor set!q-rtd 0))
-(define set!q-field (record-accessor set!q-rtd 1))
-(define set!q-value (record-accessor set!q-rtd 2))
+(define set!q? (record-predicate <set!q>))
+(define set!q-token (record-accessor <set!q> 0))
+(define set!q-field (record-accessor <set!q> 1))
+(define set!q-value (record-accessor <set!q> 2))
 
 ;;;; Provide Set! Incomplete
 ;; Indicate to the client that further action is required.
@@ -283,15 +282,19 @@
 (define chauths-rtd
   (make-record-type-descriptor 'chauths #f #f #f #f
                                '#((immutable token)
-                                  (immutable hash)
+                                  (immutable lexp)
+                                  (immutable dag-hash)
+                                  (immutable shallow-hash)
                                   (immutable counter))))
 (define chauths-rcd
   (make-record-constructor-descriptor chauths-rtd #f #f))
 (define chauths (record-constructor chauths-rcd))
 (define chauths? (record-predicate chauths-rtd))
 (define chauths-token (record-accessor chauths-rtd 0))
-(define chauths-hash (record-accessor chauths-rtd 1))
-(define chauths-counter (record-accessor chauths-rtd 2))
+(define chauths-lexp (record-accessor chauths-rtd 1))
+(define chauths-dag-hash (record-accessor chauths-rtd 2))
+(define chauths-shallow-hash (record-accessor chauths-rtd 3))
+(define chauths-counter (record-accessor chauths-rtd 4))
 
 ;;;; Request Evaluation Profile Update
 ;; Evauth requests provide a token originally furnished in the most

@@ -198,7 +198,9 @@ $mk-rootset)."
              ($small)                           ; score
              ($integer)                         ; counter
              (($short-assoc $symbol $string))   ; properties
-             (($short-assoc $symbol $string)))) ; effects
+             (($short-assoc $symbol $string))   ; effects
+             (($short-list $symbol))
+             (($string))))
 
 (define* ($mk-blob #:optional child_num (depth 1) (parent '()))
   "Return a randomised blob containing DEPTH levels of children.  The final
@@ -221,7 +223,9 @@ child-blobs with each CHILD_NUM of children."
                ($small)                           ; score
                ($integer)                         ; counter
                (($short-assoc $symbol $string))   ; properties
-               (($short-assoc $symbol $string))))) ; effects
+               (($short-assoc $symbol $string))   ; effects
+               (($short-list $symbol))
+               (($string)))))
 
 
 ;;;;; Request Generators

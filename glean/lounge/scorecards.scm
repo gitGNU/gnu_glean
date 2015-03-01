@@ -51,6 +51,7 @@
             scorecard?
             scorecard-data
             
+            <blob>
             make-blob
             blob?
             blob-hash
@@ -60,6 +61,8 @@
             blob-counter
             blob-properties
             blob-effects
+            blob-base-lexp
+            blob-dag-hash
             
             make-empty-scorecard
             empty-scorecard?
@@ -79,14 +82,16 @@
 ;;;;; Record Type Definitions
 
 (define blob-rtd
-  (make-record-type-descriptor 'blob #f #f #f #f
+  (make-record-type-descriptor '<blob> #f #f #f #f
                                '#((immutable hash)
                                   (immutable parents)
                                   (immutable children)
                                   (immutable score)
                                   (immutable counter)
                                   (immutable properties)
-                                  (immutable effects))))
+                                  (immutable effects)
+                                  (immutable base-lxp)
+                                  (immutable dag-hash))))
 (define blob-rcd
   (make-record-constructor-descriptor blob-rtd #f #f))
 (define make-blob (record-constructor blob-rcd))
@@ -98,6 +103,8 @@
 (define blob-counter (record-accessor blob-rtd 4))
 (define blob-properties (record-accessor blob-rtd 5))
 (define blob-effects (record-accessor blob-rtd 6))
+(define blob-base-lexp (record-accessor blob-rtd 7))
+(define blob-dag-hash (record-accessor blob-rtd 8))
 
 (define scorecard-rtd
   (make-record-type-descriptor 'score-card #f #f #f #f
@@ -178,11 +185,13 @@ effects updated if INITIAL-BLOB contains 'tutorial key.."
                                assessment-result)
              (blob-properties blob)
              (consider-effects/properties blob assessment-result initial-blob
-                                          number-of-child-blobs)))
+                                          number-of-child-blobs)
+             (blob-base-lexp blob)
+             (blob-dag-hash blob)))
 
 (define (make-dummy-blob)
   "Return a score-blob with no real data."
-  (make-blob 'no-tag '() '() #f 0 '() '()))
+  (make-blob 'no-tag '() '() #f 0 '() '() '() ""))
 
 (define (dummy-blob? score-blob)
   "Return #t if score-mod-blob is a dummy-blob, #f otherwise."

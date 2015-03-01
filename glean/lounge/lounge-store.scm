@@ -43,6 +43,7 @@
   #:use-module (rnrs records inspection)
   #:use-module (srfi srfi-1)
   #:use-module (srfi srfi-9)
+  #:use-module (srfi srfi-26)
   #:export (
             store-profile
             lounge-monad
@@ -247,16 +248,15 @@ TOKEN is currently a valid token, or nothing if it is not."
   "Return a lounge mvalue which, when resolved, returns the next
 eligible challenge for the profile associated with TOKEN in LOUNGE."
   (lambda (lng-dir)
-    (let* ((profile (profile-from-token token lounge))
-           (diff (missing-blobs profile)))
-      (cond ((null? (profile-active-modules profile))
-             (statef #f lng-dir))       ; no active-modules yet
-            ;; If scorecard & active modules are in sync, proceed…
-            ((null? diff)
-             (statef (fetch-next-hash-counter-pair profile) lng-dir))
-            ;; else force sync.
-            (else
-             (statef diff lng-dir))))))
+    (let ((profile (profile-from-token token lounge)))
+      (if (null? (profile-active-modules profile))
+          (statef #f lng-dir)       ; no active-modules yet
+          (let ((diff (missing-blobs profile)))
+            (if (null? diff)
+                ;; scorecard & active modules in sync: proceed...
+                (statef (fetch-next-challenge-details profile) lng-dir)
+                ;; force re-sync.
+                (statef diff lng-dir)))))))
 
 (define (scorecard-diff token result lounge)
   "Return a lounge mvalue which, when resolved, returns a diff for the profile
@@ -300,43 +300,33 @@ identified by TOKEN in LOUNGE, where FIELD has been updated according to
 VALUE."
   (lambda (lng-dir)
     (let ((hash (hash-from-token token (lounge-tokens lounge))))
-      (cond ((eqv? field 'scorecard)    ; Scorecard
-             (statef (make-diff hash 'hashmap value)))
-            ((eqv? field 'active-modules) ; Active-modules
-             (statef (make-diff hash 'active-modules value)))
-            ((eqv? field 'prof-server)  ; Profile server
-             (statef (make-diff hash 'meta `(#f #f ,value #f #f))))
-            ((eqv? field 'mod-server)   ; Module server
-             (statef (make-diff hash 'meta `(#f #f #f ,value #f))))
-            ((eqv? field 'name)         ; Name change
-             (match value
-               ((name . password)
-                (cond ((name-taken? name (lounge-profiles lounge))
-                       (statef (nothing 'username-taken `(,name))))
-                      ;; double-check the supplied password.
-                      ((wrong-password? password ; supplied password
-                                        (profile-from-token token lounge)
-                                        (lounge-profiles lounge))
-                       (statef (nothing 'incorrect-password '())))
-                      (else
-                       (let ((newhash (profile-hash name password)))
-                         (statef (make-diff newhash
-                                            'meta
+      (match field
+        ('scorecard (statef (make-diff hash 'hashmap value)))
+        ('active-modules (statef (make-diff hash 'active-modules value)))
+        ('prof-server (statef (make-diff hash 'meta `(#f #f ,value #f #f))))
+        ('mod-server (statef (make-diff hash 'meta `(#f #f #f ,value #f))))
+        ('name (match value
+                 ((name . password)     ; guaranteed to be 2 strings.
+                  (cond ((name-taken? name (lounge-profiles lounge))
+                         (statef (nothing 'username-taken `(,name))))
+                        ((wrong-password? password
+                                          (profile-from-token token lounge)
+                                          (lounge-profiles lounge))
+                         (statef (nothing 'incorrect-password '())))
+                        (else
+                         (statef (make-diff (profile-hash name password) 'meta
                                             `(,name #f #f #f ,hash))
-                                 lng-dir)))))))
-            ((eqv? field 'password)     ; Password
-             (let* ((profile (profile-from-hash hash
-                                                (lounge-profiles
-                                                 lounge)))
-                    (newhash (profile-hash (profile-name profile)
-                                           value)))
-               (statef (make-diff newhash
-                                  'meta
-                                  `(#f #t #f #f ,hash))
-                       lng-dir)))
-
-            (else                       ; No other field allowed.
-             (statef (nothing 'unknown-field `(,field))))))))
+                                 lng-dir))))))
+        ('password (statef
+                    (make-diff (profile-hash
+                                (profile-name
+                                 (profile-from-hash hash
+                                                    (lounge-profiles lounge)))
+                                value)
+                               'meta
+                               `(#f #t #f #f ,hash))
+                    lng-dir))
+        (_ (statef (nothing 'unknown-field `(,field))))))))
 
 (define (delete-profile token lounge)
   "Return a lounge mvalue which, when resolved, returns a diff for the profile
@@ -374,24 +364,26 @@ the basis of DIFF. The return value is irrelevant."
 ;;; bottle-neck and requires further consideration. At the very least it might
 ;;; be worth considering to split tokens into a separately maintained
 ;;; procedure, allowing for more parrallelism.
+;;;
+;;; My current thinking is to replace tokens with a HMAC-SHA login based
+;;; system, removing their state altogether.
 
 (define lounge
   (let ((profiles vlist-null)
         (tokens   vlist-null))
     (lambda* (lng-dir #:optional operation #:key (save? #f)
                       (token #f))
-      "A weird twister of a dispatch, aiming to act as central lounge cache
-and interface to filesystem modules.  Rich in side-effects."
-      (if (vlist-null? profiles)
-          ;; Invocation of storage module's 'retrieve-lounge'.
-          (set! profiles (compile-lounge lng-dir)))
-      (cond ((not operation)
-             (make-lounge profiles tokens)) ; just return a lounge.
+      "Procedure maintaining local state.  This is the lounge's database.  It
+has side-effects and is not referentially transparent."
+      (when (vlist-null? profiles)
+        ;; Invocation of storage module's 'retrieve-lounge'.
+        (set! profiles (compile-lounge lng-dir)))
+      (cond ((not operation) (make-lounge profiles tokens)) ; lounge wanted.
             ;; Update Profile
             ((diff? operation)
              ;; Invocation of storage module's 'save-transaction'.
              ;; FIXME: use futures to write to disk as well as set!
-             (if save? (write-diff operation lng-dir (current-time)))
+             (when save? (write-diff operation lng-dir (current-time)))
              (match (store-profile operation profiles)
                ((profile . profilez)
                 (set! profiles profilez)
@@ -402,26 +394,18 @@ and interface to filesystem modules.  Rich in side-effects."
              (set! tokens (vhash-delete token tokens))
              'purge-ok)
             ;; Authenticate
-            ((token?        operation)
-             (let ((tk-pair (renew-tk operation
-                                      tokens
-                                      (current-time))))
-               (if tk-pair
-                   (begin
-                     (set! tokens (car tk-pair))
-                     (cdr tk-pair))
-                   #f)))
-            ;; Login
-            (else
-             (let ((tk-pair (fresh-tk operation
-                                      tokens
-                                      profiles
-                                      (current-time))))
-               (if tk-pair
-                   (begin
-                     (set! tokens (car tk-pair))
-                     (cdr tk-pair))
-                   #f)))))))
+            ((token? operation)
+             (match (renew-tk operation tokens (current-time)) ; XXX: impure
+               ((new-tks . new-tk)
+                (set! tokens new-tks)
+                new-tk)
+               (#f #f)))
+            ;; Login - impure
+            (else (match (fresh-tk operation tokens profiles (current-time))
+                    ((new-tks . new-tk)
+                     (set! tokens new-tks)
+                     new-tk)
+                    (#f #f)))))))
 
 
 ;;;; Safe I/O Helpers
@@ -429,105 +413,77 @@ and interface to filesystem modules.  Rich in side-effects."
 (define (store-profile diff profiles)
   "Return a new profiles vhash based on PROFILES, augmented by DIFF."
   (match diff
-    (('diff hash field value)
-     (cond ((eqv? field 'score)
-            (match value
-              ((blobhash . (? boolean? result))
-               (let* ((oldprofile (profile-from-hash hash profiles))
-                      (oldscc     (profile-scorecard oldprofile)))
-                 (save hash
-                       (update-profile 'scorecard
-                                       (update-scorecard oldscc
-                                                         blobhash
-                                                         result)
-                                       oldprofile)
-                       (vhash-delete hash profiles))))
-              (_ (error "store-profile -- invalid score value"))))
-           ((eqv? field 'meta)
-            (match value
-              ((name password lounge library oldhash)
-               (modify-meta hash name password lounge library oldhash
-                            profiles))
-              (() (cons #f (vhash-delete hash profiles))) ; Delete profile
-              (_  (error "store-profile -- invalid meta value"))))
-           ((eqv? field 'active-modules)
-            (match value
-              ((((? blobhash?) . (? blobhash?)) ...)
-               (let* ((oldprofile (profile-from-hash hash profiles))
-                      (actives    (profile-active-modules oldprofile)))
-                 (save hash
-                       (update-profile
-                        'active-modules
-                        (fold (lambda (mod-pair act-mods)
-                                (if (member mod-pair act-mods)
-                                    act-mods
-                                    (cons mod-pair act-mods)))
-                              actives
-                              value)
-                        oldprofile)
-                       (vhash-delete hash profiles))))
-              ;; FIXME: Quick 'n dirty active-mods de-activation: will
-              ;; not clean the scorecard, which should happen!
-              (('negate ((? blobhash?) . (? blobhash?)) ...)
-               (let* ((oldprofile (profile-from-hash hash profiles))
-                      (actives    (profile-active-modules oldprofile)))
-                 (save hash
-                       (update-profile
-                        'active-modules
-                        (lset-difference equal? actives (cdr value))
-                        oldprofile)
-                       (vhash-delete hash profiles))))
-              (_ (error "store-profile -- invalid active-modules"))))
-           ((eqv? field 'hashmap)
-            (let* ((blobs      (hashmap->blobs value))
-                   (oldprofile (profile-from-hash hash profiles))
-                   (scorecard  (profile-scorecard oldprofile)))
-              (save hash
-                    (update-profile 'scorecard
-                                    (add-blobs blobs scorecard)
-                                    oldprofile)
-                    (vhash-delete hash profiles))))
-           (else (error "store-profile -- invalid field."))))))
+    (('diff hash 'score (blobhash . (? boolean? result)))
+     (let ((oldp (profile-from-hash hash profiles)))
+       (save hash
+             (update-profile 'scorecard
+                             (update-scorecard (profile-scorecard oldp)
+                                               blobhash result)
+                             oldp)
+             (vhash-delete hash profiles))))
+    (('diff hash 'score _)
+     (error "store-profile -- invalid score value"))
+    (('diff hash 'meta (name password lounge library oldhash))
+     (modify-meta hash name password lounge library oldhash profiles))
+    (('diff hash 'meta ())
+     (cons #f (vhash-delete hash profiles)))
+    (('diff hash 'meta _)
+     (error "store-profile -- invalid meta value"))
+    (('diff hash 'active-modules (((? blobhash?) . (? blobhash?)) ...))
+     (let ((oldp (profile-from-hash hash profiles)))
+       (save hash
+             (update-profile 'active-modules
+                             (fold (lambda (mod-pair act-mods)
+                                     (if (member mod-pair act-mods)
+                                         act-mods
+                                         (cons mod-pair act-mods)))
+                                   (profile-active-modules oldp)
+                                   value)
+                             oldp)
+             (vhash-delete hash profiles))))
+    ;; FIXME: Quick 'n dirty active-mods de-activation: will
+    ;; not clean the scorecard, which should happen!
+    (('diff hash 'active-modules
+            ('negate ((? blobhash?) . (? blobhash?)) ...))
+     (let ((oldp (profile-from-hash hash profiles)))
+       (save hash
+             (update-profile 'active-modules
+                             (lset-difference equal?
+                                              (profile-active-modules oldp)
+                                              (cdr value))
+                             oldp)
+             (vhash-delete hash profiles))))
+    (('diff hash 'active-modules _)
+     (error "store-profile -- invalid active-modules"))
+    (('diff hash 'hashmap value)
+     (let ((oldp (profile-from-hash hash profiles)))
+       (save hash
+             (update-profile 'scorecard (add-blobs (hashmap->blobs value)
+                                                   (profile-scorecard oldp))
+                             oldp)
+             (vhash-delete hash profiles))))
+    (_ (error "store-profile -- invalid field."))))
 
 (define (save hash profile profiles)
   "Return a new profiles vhash based on PROFILES, augmented by HASH and
 PROFILE."
   (cons profile (vhash-cons hash profile profiles)))
 
-(define (modify-meta hash name password lounge library oldhash
-                     profiles)
+(define (modify-meta hash name password lounge lib oldhash profiles)
   "Return a new profiles vhash, based on PROFILES, augmented by the new
 profile resulting from processing the profile-hash HASH, NAME, PASSWORD,
 LOUNGE, LIBRARY and the profile's OLDHASH."
-  (cond ((and name password lounge
-              library)             ; Registration
-         (save hash
-               (make-bare-profile name lounge library)
-               profiles))
-        (lounge                    ; New lounge
-         (let ((oldprofile (profile-from-hash hash profiles)))
-           (save hash
-                 (update-profile 'prof-server lounge
-                                 oldprofile)
-                 (vhash-delete hash profiles))))
-        (library                   ; New library
-         (let ((oldprofile (profile-from-hash hash profiles)))
-           (save hash
-                 (update-profile 'mod-server library
-                                 oldprofile)
-                 (vhash-delete hash profiles))))
-        ((and name oldhash)        ; New name
-         (let ((oldprofile (profile-from-hash oldhash profiles)))
-           (save hash
-                 (update-profile 'name name oldprofile)
-                 (vhash-delete oldhash profiles))))
-        ((and password oldhash)    ; New password
-         (let ((oldprofile (profile-from-hash oldhash profiles)))
-           (if  (not oldprofile)
-                (error "modify-data -- failed to fetch oldprofile!")
-                (save hash
-                      oldprofile
-                      (vhash-delete oldhash profiles)))))
+  (define (update&save what new hash)
+    (save hash (update-profile what new (profile-from-hash hash profiles))
+          (vhash-delete oldhash profiles)))
+  (cond ((and name password lounge library) ; Registration
+         (save hash (make-bare-profile name lounge library) profiles))
+        ((and lounge oldhash) (update&save 'prof-server lounge hash))
+        ((and lib oldhash)    (update&save 'mod-server lib hash))
+        ((and name oldhash)   (update&save 'name name hash))
+        ((and password oldhash)
+         ;; Password is just stored as part of profile storage hash
+         (save hash oldprofile (vhash-delete oldhash profiles)))
         (else (error "modify-meta -- invalid values."))))
 
 
@@ -674,6 +630,27 @@ identified by CURRENT-BLOBHASH. Otherwise return the latter blob."
         #f
         (cons (blob-hash selected-blob) (blob-counter selected-blob)))))
 
+;;; <profile> -> '(lexp dag-hash shallow-hash counter) | #f
+(define (fetch-next-challenge-details profile)
+  "A replacement for `fetch-next-hash-counter-pair', which returns, on
+success, the crownset's lexp, the discipline's dag-hash, as well as the
+rootset's shallow-hash and counter."
+  (define (find-challenge hashes)
+    (match (most-urgent hashes)
+      (($ <blob> shallow p children s counter p e base-lxp dag)
+       (if (null? children)
+           `(,base-lxp ,dag ,shallow ,counter)
+           (find-challenge children)))))
+  (define (most-urgent hashes)
+    (fold (lambda (current winning)
+            (if (lower-score? winning current) winning current))
+          (make-dummy-blob)
+          (map (cute find-blob <> (profile-scorecard profile)) hashes)))
+
+  (match (find-challenge (map cdr (profile-active-modules profile)))
+    ((? dummy-blob?)   #f)
+    ((? list? details) details)))
+
 (define (name-taken? name profiles)
   "Return #t if NAME is already in use by a profile in
 PROFILES. Return #f otherwise."
@@ -719,29 +696,30 @@ key in profiles. Return #f otherwise."
 
 (define (hashmap->blobs hashmap)
   "Return a list of blobs, by converting each hashtree in HASHMAP to blobs."
-  (fold append '() (map hashtree->blobs hashmap)))
+  (match hashmap
+    ((base-lxp dag-hash hashtree)
+     ;; Flatten blobs tree after making blobs.
+     (fold append '() (map (cute hashtree->blobs base-lxp dag-hash <>)
+                           hashtree)))))
 
-(define* (hashtree->blobs hashtree #:optional (parents '()))
+(define* (hashtree->blobs base-lxp dag-hash hashtree #:optional (parents '()))
   "Return a list of blobs by converting HASHTREE into blobs recursively."
   ;; FIXME: this procedure is currently not tail-recursive. It is also an
   ;; expensive operation in general and would benefit from being
   ;; re-factored. A lot.
-  (define no-children '())
-  (define (qblob name parents children properties)
-    (make-blob name parents children 0 0 properties '()))
+  (define (qblob name children properties)
+    (make-blob name parents children 0 0 properties '() base-lxp dag-hash))
   (define (children subtrees) (map caar subtrees))
   (hashtree-apply hashtree
-                (lambda (hash properties subtrees) ; branch proc
-                  (cons (qblob hash parents
-                               (children subtrees)
-                               properties)
-                        (flatten
-                         (map (lambda (subtree)
-                                (hashtree->blobs subtree (list hash)))
-                              subtrees))))
-                (lambda (hash properties) ; leave proc
-                  (list (qblob hash parents no-children properties)))
-                (const #f)))            ; error proc
+                  (lambda (hash properties subtrees) ; branch proc
+                    (cons (qblob hash (children subtrees) properties)
+                          (flatten
+                           (map (cute hashtree->blobs base-lxp dag-hash <>
+                                      (list hash))
+                                subtrees))))
+                  (lambda (hash properties) ; leave proc
+                    (list (qblob hash '() properties)))
+                  (const #f)))            ; error proc
 
 (define (hashtree-apply hashtree branch-proc leaf-proc error-proc)
   "If HASHTREE is a hashtree, apply either BRANCH-PROC or LEAF-PROC to it,

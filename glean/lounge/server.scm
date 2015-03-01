@@ -134,27 +134,30 @@ server, module server and the message contained in RQ."
                           (profile-mod-server profile)))
             %lounge-dir%)))))
 
+;;; <chauthq tk> -> <chauths tk lxp dag shallow counter> |
+;;;                 <set!s tk 'active-modules '()>       |
+;;;                 <set!s tk 'schorecard diff>          |
+;;;                 <error '(process-chauthq invalid-token)>
 (define (process-chauthq rq)
   "Return a chauths, containing a new token and the next hash/counter
 pair. Return a set!s informing that scorecard and active-modules are
 out of sync if they are."
-  (let ((token (chauthq-token rq)))
-    (cond ((not (token? token))
-           (raise '(process-chauthq invalid-token)))
-          (else
-           ((mlet* lounge-monad
-                   ((new-tk            (authenticate token))
-                    (lng               (fetch-lounge))
-                    (hash/counter-pair (scorecard-next new-tk lng)))
-                   (cond ((pair? hash/counter-pair)
-                          (chauths new-tk (car hash/counter-pair)
-                                   (cdr hash/counter-pair)))
-                         ((not hash/counter-pair)
-                          (set!s new-tk 'active-modules '()))
-                         (else
-                          (set!s new-tk 'scorecard
-                                 hash/counter-pair))))
-            %lounge-dir%)))))
+  (match (chauthq-token rq)
+
+    ((? token? tk)
+     ((mlet* lounge-monad
+          ((new-tk            (authenticate tk))
+           (lng               (fetch-lounge))
+           (challenge-details (scorecard-next new-tk lng)))
+
+        (match challenge-details
+          ((lxp (? hash? dag) (? hash? shallow) (? number? counter))
+           (chauths new-tk lxp dag shallow counter))
+          (#f (set!s new-tk 'active-modules '()))
+          (_ (set!s new-tk 'scorecard challenge-details))))
+      %lounge-dir%))
+
+    (_ (raise '(process-chauthq invalid-token)))))
 
 (define (process-evauthq rq)
   (let ((token (evauthq-token rq))
@@ -205,62 +208,59 @@ if RQ parses correctly. Otherwise raise a an error."
   (let ((token (viewq-token rq)))
     (if (token? token)
         ((mlet* lounge-monad
-                ((new-tk  (authenticate token))
-                 (lng     (fetch-lounge))
-                 (details (view-profile new-tk lng)))
-                (views new-tk details)) %lounge-dir%)
+             ((new-tk  (authenticate token))
+              (lng     (fetch-lounge))
+              (details (view-profile new-tk lng)))
+           (views new-tk details)) %lounge-dir%)
         (raise '(process-viewq invalid-token)))))
 
+;;;;; set!q — request a change to a profile
+;;;
+;;; Fields which can be changed:
+;;; 'mod-server, 'prof-server, 'name, 'password, 'scorecard, 'active-modules
 (define (process-set!q rq)
-  (let ((token (set!q-token rq))
-        (field (set!q-field rq))
-        (value (set!q-value rq)))
-    (cond ((not (symbol? field))
-           (raise '(process-set!q invalid-field)))
-          ((not (token? token))
-           (raise '(process-set!q invalid-token)))
-          ;; Validate value:
-          ((and (eqv? field 'mod-server) ; mod-server
-                (not (string? value)))
-           (raise '(process-set!q invalid-mod-server)))
-          ((and (eqv? field 'prof-server) ; prof-server
-                (not (string? value)))
-           (raise '(process-set!q invalid-prof-server)))
-          ((and (eqv? field 'name)      ; name
-                (or (not (pair? value))
-                    (not (string? (car value)))
-                    (not (string? (cdr value)))))
-           (raise '(process-set!q invalid-name-password)))
-          ((and (eqv? field 'password)
-                (not (string? value)))
-           (raise '(process-set!q invalid-password)))
-          ;; Validate value: new hashmap->scorecard.
-          ;; FIXME: needs to be more rigorous
-          ((and (eqv? field 'scorecard) ; scorecard
-                (not (list? value)))
-           (raise '(process-set!q invalid-hashmap)))
-          ;; Validate value: new active-modules.
-          ((and (eqv? field 'active-modules) ; active-modules
-                (not (list? value))
-                (if (eqv? (car value) 'negate)
-                    (not (valid-active-modules? (cdr value)))
-                    (not (valid-active-modules? value))))
-           (raise '(process-set!q invalid-active-modules)))
-          (else
-           ((mlet* lounge-monad
-                   ((tmp-tk  (authenticate token))
-                    (lng     (fetch-lounge))
-                    (diff    (modify-profile tmp-tk field value lng))
-                    (profile (update-lounge diff %lounge-persist%))
-                    (sc-diff -> (missing-blobs profile))
-                    (ignore2 (purge-profile tmp-tk))
-                    (new-tk  (login (cadr diff))))
-                   (if (null? sc-diff)
-                       (auths new-tk
-                              (profile-prof-server profile)
-                              (profile-mod-server  profile))
-                       (set!s new-tk 'scorecard sc-diff)))
-            %lounge-dir%)))))
+  (match rq
+    (($ <set!q> token field value)
+     (cond ((not (symbol? field)) (raise '(process-set!q invalid-field)))
+           ((not (token? token))  (raise '(process-set!q invalid-token)))
+           ;; Validate value:
+           (else (match (cons field value)
+                   (('mod-server . (? (negate string?)))
+                    (raise '(process-set!q invalid-mod-server)))
+                   (('prof-server . (? (negate string?)))
+                    (raise '(process-set!q invalid-prof-server)))
+                   (('name . ((? (negate string?)) . (? (negate string?))))
+                    (raise '(process-set!q invalid-name-password)))
+                   (('password . (? (negate string?)))
+                    (raise '(process-set!q invalid-password)))
+                   ;; Validate value: new hashmap->scorecard.
+                   ;; FIXME: needs to be more rigorous
+                   (('scorecard . (? (negate list?)))
+                    (raise '(process-set!q invalid-hashmap)))
+                   ;; Validate value: new active-modules.
+                   (('active-modules
+                     . (? (lambda (value)
+                            (and ((negate list?) value)
+                                 (if (eqv? (car value) 'negate)
+                                     (not (valid-active-modules?
+                                           (cdr value)))
+                                     (not (valid-active-modules?
+                                           value)))))))
+                    (raise '(process-set!q invalid-active-modules)))
+                   ;; We should have a valid request
+                   (_ (mlet* lounge-monad
+                          ((tk         (authenticate token))
+                           (lng        (fetch-lounge))
+                           (diff       (modify-profile tk field value lng))
+                           (profile    (update-lounge diff %lounge-persist%))
+                           (sc-diff -> (missing-blobs profile))
+                           (ignore     (purge-profile tk))
+                           (new-tk     (login (cadr diff))))
+                        (if (null? sc-diff)
+                            (auths new-tk (profile-prof-server profile)
+                                   (profile-mod-server  profile))
+                            (set!s new-tk 'scorecard sc-diff)))
+                      %lounge-dir%)))))))
 
 (define (process-delpq rq)
   (let ((tk (delpq-token rq)))
