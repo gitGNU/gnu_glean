@@ -38,6 +38,7 @@
   #:use-module (srfi srfi-27)
   #:use-module (glean common comtools)
   #:use-module (glean lounge profiles)
+  #:use-module (glean library lexp)
   #:use-module (glean library sets)
   #:use-module (glean lounge scorecards)
   #:use-module (glean common base-requests)
@@ -144,7 +145,7 @@ child-sets with each BASE_NUM of children."
 (define* ($mk-hashtree #:optional (input $mk-set))
   "Return a randomised hashtree built of INPUT (should be $mk-set or
 $mk-rootset)."
-  ((@@ (glean library library-store) make-hashtree) (input)))
+  ((@@ (glean library library-store) make-hashtree) (input) (lexp-make 'test)))
 
 (define* ($mk-hashmap #:optional (num-trees 1) (input $mk-set))
   (($short-list (lambda () ($mk-hashtree input)) num-trees)))
@@ -267,11 +268,15 @@ GENERATOR."
   (lambda ()
     (build-list (if (number? num_problems) num_problems ($small))
                 (lambda (_) (generator)))))
-(define ($short-assoc key-generator value-generator)
+(define* ($short-assoc key-generator value-generator #:optional guarantee?)
   "Return an association list with up to ten members of type returned by
-KEY-GENERATOR and VALUE-GENERATOR"
+KEY-GENERATOR and VALUE-GENERATOR.  If GUARANTEE? then ensure the list
+contains at least one entry."
   (lambda ()
-    (($short-list ($pair key-generator value-generator)))))
+    (let gen ()
+      (let ((lst (($short-list ($pair key-generator value-generator)))))
+        (if (and guarantee? (null? lst))
+            (gen) lst)))))
 
 (define (quickname name)
   "Return is undefined. Print quickcheck intro message and NAME."
@@ -288,10 +293,10 @@ KEY-GENERATOR and VALUE-GENERATOR"
   "Return a random record enumerated in the list."
   ((from-list (list $profile $scorecard $mk-set))))
 
-(define ($simple-tagged-list)
-  "Return a random simple record (without without nested records)."
-  ((from-list (list (lambda () (record->list* ($mk-rootblob)))
-                    (lambda () (record->list* ($id ($string))))))))
+;; (define ($simple-tagged-list)
+;;   "Return a random simple record (without without nested records)."
+;;   ((from-list (list (lambda () (record->list* ($mk-rootblob)))
+;;                     (lambda () (record->list* ($id ($string))))))))
 
 (define ($tagged-list)
   "Return a random record enumerated in the list."
