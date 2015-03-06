@@ -107,7 +107,9 @@
             chauths
             chauths?
             chauths-token
-            chauths-hash
+            chauths-lexp
+            chauths-dag-hash
+            chauths-shallow-hash
             chauths-counter
 
             evauthq

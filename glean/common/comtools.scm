@@ -87,7 +87,7 @@
     (regq       . ,regq)
     (viewq      . ,viewq)
     (views      . ,views)
-    (set!q      . ,set!q)
+    (<set!q>    . ,set!q)
     (set!s      . ,set!s)
     (delpq      . ,delpq)
     (authq      . ,authq)
@@ -97,9 +97,9 @@
     (evauthq    . ,evauthq)
 
     ;; module requests
-    (challq     . ,challq)
+    (<challq>   . ,challq)
     (challs     . ,challs)
-    (evalq      . ,evalq)
+    (<evalq>    . ,evalq)
     (evals      . ,evals)
     (knownq     . ,knownq)
     (knowns     . ,knowns)

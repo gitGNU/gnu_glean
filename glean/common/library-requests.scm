@@ -48,15 +48,20 @@
 (define-module (glean common library-requests)
   #:use-module (rnrs records procedural)
   #:export (challq
+            <challq>
             challq?
-            challq-hash
+            challq-lexp
+            challq-dag-hash
+            challq-shallow-hash
             challq-counter
 
             evalq
+            <evalq>
             evalq?
-            evalq-hash
+            evalq-lexp
+            evalq-dag-hash
+            evalq-shallow-hash
             evalq-counter
-            evalq-answer
 
             challs
             challs?
@@ -105,16 +110,18 @@
 ;;;;; Game Requests
 
 ;;;; Request Challenge
-(define challq-rtd
-  (make-record-type-descriptor 'challq #f #f #f #f
-                               '#((immutable blobhash)
-                                  (immutable blobcounter))))
-(define challq-rcd
-  (make-record-constructor-descriptor challq-rtd #f #f))
+(define <challq> (make-record-type-descriptor '<challq> #f #f #f #f
+                                              '#((immutable lexp)
+                                                 (immutable dag-hash)
+                                                 (immutable shallow-hash)
+                                                 (immutable counter))))
+(define challq-rcd (make-record-constructor-descriptor <challq> #f #f))
 (define challq (record-constructor challq-rcd))
-(define challq? (record-predicate challq-rtd))
-(define challq-hash (record-accessor challq-rtd 0))
-(define challq-counter (record-accessor challq-rtd 1))
+(define challq? (record-predicate <challq>))
+(define challq-lexp (record-accessor <challq> 0))
+(define challq-dag-hash (record-accessor <challq> 1))
+(define challq-shallow-hash (record-accessor <challq> 2))
+(define challq-counter (record-accessor <challq> 3))
 
 ;;;; Provide Challenge
 (define challs-rtd
@@ -127,18 +134,20 @@
 (define challs-challenge (record-accessor challs-rtd 0))
 
 ;;;; Request Evaluation
-(define evalq-rtd
-  (make-record-type-descriptor 'evalq #f #f #f #f
-                               '#((immutable hash)
-                                  (immutable counter)
-                                  (immutable answer))))
-(define evalq-rcd
-  (make-record-constructor-descriptor evalq-rtd #f #f))
+(define <evalq> (make-record-type-descriptor '<evalq> #f #f #f #f
+                                             '#((immutable lexp)
+                                                (immutable dag-hash)
+                                                (immutable shallow-hash)
+                                                (immutable counter)
+                                                (immutable answer))))
+(define evalq-rcd (make-record-constructor-descriptor <evalq> #f #f))
 (define evalq (record-constructor evalq-rcd))
-(define evalq? (record-predicate evalq-rtd))
-(define evalq-hash (record-accessor evalq-rtd 0))
-(define evalq-counter (record-accessor evalq-rtd 1))
-(define evalq-answer (record-accessor evalq-rtd 2))
+(define evalq? (record-predicate <evalq>))
+(define evalq-lexp (record-accessor <evalq> 0))
+(define evalq-dag-hash (record-accessor <evalq> 1))
+(define evalq-shallow-hash (record-accessor <evalq> 2))
+(define evalq-counter (record-accessor <evalq> 3))
+(define evalq-answer (record-accessor <evalq> 4))
 
 ;;;; Provide Evaluation
 (define evals-rtd

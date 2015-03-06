@@ -429,30 +429,31 @@ viewq request."
                                  (state-lng     state)
                                  (state-lib     state))))
             (else
-             (stateful `(,(chauths-hash rs) ,(chauths-counter rs))
+             (stateful `(,(chauths-lexp rs) ,(chauths-dag-hash rs)
+                         ,(chauths-shallow-hash rs) ,(chauths-counter rs))
                        (mk-state (chauths-token rs)
                                  (state-lng     state)
                                  (state-lib     state))))))))
 
-(define (fetch-challenge blobhash blobcounter)
+(define (fetch-challenge lexp dag shallow counter)
   "Return challs or ERROR."
   (lambda (state)
     (let ((rs (call/exchange
-               (state-lib state)        ; library connection
-               challs? challq           ; predicate, constructor
-               blobhash blobcounter)))  ; inputs
+               (state-lib state)           ; library connection
+               challs? challq              ; predicate, constructor
+               lexp dag shallow counter))) ; inputs
       (if (nothing? rs)
           rs
           (stateful `(,(challs-challenge rs))
                     state)))))
 
-(define (fetch-evaluation answer blobhash blobcounter)
+(define (fetch-evaluation answer lexp dag shallow counter)
   "Return evals or ERROR."
   (lambda (state)
     (let ((rs (call/exchange
                (state-lib state)        ; library connection
                evals? evalq             ; predicate, constructor
-               blobhash blobcounter
+               lexp dag shallow counter
                answer)))                ; inputs
       (if (nothing? rs)
           rs
