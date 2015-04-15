@@ -412,15 +412,16 @@ has side-effects and is not referentially transparent."
 
 (define (store-profile diff profiles)
   "Return a new profiles vhash based on PROFILES, augmented by DIFF."
+  (define (update&save what hash new-proc)
+    (let ((oldp (profile-from-hash hash profiles)))
+      (save hash (update-profile what (new-proc oldp) oldp)
+            (vhash-delete hash profiles))))
+
   (match diff
     (('diff hash 'score (blobhash . (? boolean? result)))
-     (let ((oldp (profile-from-hash hash profiles)))
-       (save hash
-             (update-profile 'scorecard
-                             (update-scorecard (profile-scorecard oldp)
-                                               blobhash result)
-                             oldp)
-             (vhash-delete hash profiles))))
+     (update&save 'scorecard hash
+                  (lambda (oldp)
+                    (update-scorecard (profile-scorecard oldp) blobhash result))))
     (('diff hash 'score _)
      (error "store-profile -- invalid score value"))
     (('diff hash 'meta (name password lounge library oldhash))
@@ -429,39 +430,31 @@ has side-effects and is not referentially transparent."
      (cons #f (vhash-delete hash profiles)))
     (('diff hash 'meta _)
      (error "store-profile -- invalid meta value"))
-    (('diff hash 'active-modules (((? blobhash?) . (? blobhash?)) ...))
-     (let ((oldp (profile-from-hash hash profiles)))
-       (save hash
-             (update-profile 'active-modules
-                             (fold (lambda (mod-pair act-mods)
-                                     (if (member mod-pair act-mods)
-                                         act-mods
-                                         (cons mod-pair act-mods)))
-                                   (profile-active-modules oldp)
-                                   value)
-                             oldp)
-             (vhash-delete hash profiles))))
+    (('diff hash 'active-modules
+            ((? (lambda (x) (match x
+                              ((((? symbol?)) . (? blobhash?)) #t)
+                              (_ #f)))
+                new) ...))
+     (update&save 'active-modules hash
+                  (compose (cut modify-actives <> new)
+                           profile-active-modules)))
     ;; FIXME: Quick 'n dirty active-mods de-activation: will
     ;; not clean the scorecard, which should happen!
     (('diff hash 'active-modules
-            ('negate ((? blobhash?) . (? blobhash?)) ...))
-     (let ((oldp (profile-from-hash hash profiles)))
-       (save hash
-             (update-profile 'active-modules
-                             (lset-difference equal?
-                                              (profile-active-modules oldp)
-                                              (cdr value))
-                             oldp)
-             (vhash-delete hash profiles))))
+            ('negate (? (lambda (x) (match x
+                                      ((((? symbol?) . (? blobhash?))) #t)
+                                      (_ #f)))
+                        new) ...))
+     (update&save 'active-modules hash
+                  (compose (cut modify-actives <> new #t)
+                           profile-active-modules)))
     (('diff hash 'active-modules _)
      (error "store-profile -- invalid active-modules"))
-    (('diff hash 'hashmap value)
-     (let ((oldp (profile-from-hash hash profiles)))
-       (save hash
-             (update-profile 'scorecard (add-blobs (hashmap->blobs value)
-                                                   (profile-scorecard oldp))
-                             oldp)
-             (vhash-delete hash profiles))))
+    (('diff hash 'hashmap hashmaps)
+     (update&save 'scorecard hash
+                  (lambda (oldp)
+                    (add-blobs (fold append '() (map hashmap->blobs hashmaps))
+                               (profile-scorecard oldp)))))
     (_ (error "store-profile -- invalid field."))))
 
 (define (save hash profile profiles)
@@ -472,19 +465,36 @@ PROFILE."
 (define (modify-meta hash name password lounge lib oldhash profiles)
   "Return a new profiles vhash, based on PROFILES, augmented by the new
 profile resulting from processing the profile-hash HASH, NAME, PASSWORD,
-LOUNGE, LIBRARY and the profile's OLDHASH."
+LOUNGE, LIB and the profile's OLDHASH."
   (define (update&save what new hash)
     (save hash (update-profile what new (profile-from-hash hash profiles))
           (vhash-delete oldhash profiles)))
-  (cond ((and name password lounge library) ; Registration
-         (save hash (make-bare-profile name lounge library) profiles))
+  (cond ((and name password lounge lib) ; Registration
+         (save hash (make-bare-profile name lounge lib) profiles))
         ((and lounge oldhash) (update&save 'prof-server lounge hash))
         ((and lib oldhash)    (update&save 'mod-server lib hash))
         ((and name oldhash)   (update&save 'name name hash))
         ((and password oldhash)
          ;; Password is just stored as part of profile storage hash
-         (save hash oldprofile (vhash-delete oldhash profiles)))
+         (save hash (profile-from-hash oldhash profiles)
+               (vhash-delete oldhash profiles)))
         (else (error "modify-meta -- invalid values."))))
+
+;;; '(active ...) '(active ...) boolean? -> '(active ...)
+;;; where active := '(serialized-lexp . shallow-hash)
+(define* (modify-actives old-actives new-candidates #:optional impair?)
+  "Return a new alist based on OLD-ACTIVES augmented or impaired by
+NEW-CANDIDATES, depending on the optional argument AUGMENT?."
+  (fold (lambda (new actives)
+          (match new
+            ((lxp . shallow)
+             (if impair?
+                 (alist-delete lxp actives)
+                 (if (assoc lxp actives)
+                     actives
+                     (cons new actives))))))
+        old-actives
+        new-candidates))
 
 
 ;;;; Token Operations
@@ -637,7 +647,7 @@ success, the crownset's lexp, the discipline's dag-hash, as well as the
 rootset's shallow-hash and counter."
   (define (find-challenge hashes)
     (match (most-urgent hashes)
-      (($ <blob> shallow p children s counter p e base-lxp dag)
+      (($ <blob> shallow par children s counter p e base-lxp dag)
        (if (null? children)
            `(,base-lxp ,dag ,shallow ,counter)
            (find-challenge children)))))
@@ -698,12 +708,12 @@ key in profiles. Return #f otherwise."
   "Return a list of blobs, by converting each hashtree in HASHMAP to blobs."
   (match hashmap
     ((base-lxp dag-hash hashtree)
-     ;; Flatten blobs tree after making blobs.
-     (fold append '() (map (cute hashtree->blobs base-lxp dag-hash <>)
-                           hashtree)))))
+     ;; This algorithm is not great: we have massive data duplication. It's
+     ;; written in this form to remind me of this.
+     (hashtree->blobs base-lxp dag-hash hashtree))))
 
 (define* (hashtree->blobs base-lxp dag-hash hashtree #:optional (parents '()))
-  "Return a list of blobs by converting HASHTREE into blobs recursively."
+  "Return a list of blobs by converting HASHTREE into blobs recursively"
   ;; FIXME: this procedure is currently not tail-recursive. It is also an
   ;; expensive operation in general and would benefit from being
   ;; re-factored. A lot.

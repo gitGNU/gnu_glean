@@ -48,6 +48,7 @@
   #:use-module (glean common library-requests)
   #:use-module (glean common lounge-requests)
   #:use-module (glean common utils)
+  #:use-module (glean library lexp)
   #:use-module (glean library sets)
   #:use-module (glean library set-tools)
   #:use-module (glean library library-store)
@@ -126,54 +127,44 @@ COUNTER, or raise 'invalid-set."
                   ((null? os)       'open)
                   (else             'single)))))
 
-  (let ((bh (challq-hash rq))
-        (c (challq-counter rq)))
-    (cond ((not (hash? bh))
-           (raise 'invalid-blobhash))
-          ((not (number? c))
-           (raise 'invalid-counter))
-          (else (challs (new-challenge (fetch-problem bh c)))))))
+  (match rq
+    ;; XXX: PHANTOM is a non-existant field to make match work properly.
+    (($ <challq> phantom (? list? lxp) (? hash? dag) (? hash? shallow)
+        (? integer? counter))
+     (challs (new-challenge (fetch-problem lxp dag shallow counter))))
+    (_ (raise 'invalid-coordinates))))
 
-(define (fetch-problem blobhash counter)
-  (match (fetch-set blobhash (catalogue-hash %current-catalogue%))
-    ((('set . set) ('lexp . lxp))
-     (let ((problems (set-contents set)))
-       (list-ref problems (modulo counter (length problems)))))
-    (#f (raise 'unknown-set))))
-
+;;; <evalq> -> <evals boolean (list | text)> | (raise 'invalid-coordinates)
 (define (eval-provider rq)
+  "Return the <evals> belonging to the problem identified by the coordinates
+in RQ after evaluating it against the answer provided in RQ, or raise
+'invalid-coordinates."
   (define (eval-answer problem answer)
     "Return the evaluation result of ANSWER with respect to PROBLEM."
     ;; FIXME: quick hack to allow for multiple solutions, or none.
-    (let ((solution (problem-s problem)))
-      (cond ((not solution) #t)
-            ((list? solution)
-             (let ((sol (map s-text solution)))
-               (fold (lambda (solution answer result)
-                       (if result
-                           (equal? solution result)
-                           #f))
-                     #t sol answer)))
-            (else
-             (equal? (s-text solution) answer)))))
+    (match (fetch-solution problem)
+      ("irrelevant" #t)                 ; no solution -> always right.
+      ((? list? solutions)              ; multiple solutions.
+       ;; XXX: seems broken to me.
+       (fold (lambda (solution answer result)
+               (if result
+                   (equal? solution result)
+                   #f))
+             #t solutions answer))
+      (solution (equal? solution answer))))
   (define (fetch-solution problem)
-    (if (not (problem-s problem))
-        "irrelevant"
-        (s-text (problem-s problem))))
+    (match (problem-s problem)
+      ((? s? solution) (s-text solution))
+      (((? s? solutions) ...) (s-text solution))
+      (#f "irrelevant")))
 
-  (let ((bh (evalq-hash rq))
-        (c (evalq-counter rq))
-        (answer (evalq-answer rq)))
-    (cond ((not (hash? bh))
-           (raise 'invalid-blobhash))
-          ((not (number? c))
-           (raise 'invalid-counter))
-          ((not (or (string? answer) (list? answer)))
-           (raise 'invalid-answer))
-          (else
-           (let ((problem (fetch-problem bh c)))
-             (evals (eval-answer problem answer)
-                    (fetch-solution problem)))))))
+  (match rq
+    ;; XXX: PHANTOM is a non-existant field to make match work properly.
+    (($ <evalq> phantom (? list? lxp) (? hash? dag) (? hash? shallow)
+        (? integer? counter) (? string? answer))
+     (let ((problem (fetch-problem lxp dag shallow counter)))
+       (evals (eval-answer problem answer) (fetch-solution problem))))
+    (_ (raise 'invalid-coordinates))))
 
 (define (known-mods-provider rq)
   (define (valid-search? pair)
@@ -216,19 +207,19 @@ COUNTER, or raise 'invalid-set."
         (details (set-details hash (catalogue-hash %current-catalogue%)))
         (raise 'invalid-sethash))))
 
+;; <hashmapq '((serialized-lxp . shallow-hash) ...)> -> <hashmaps hashmaps>
+;; where hashmaps := '(hashmap ...)
 (define (hashmap-provider rq)
   (define (fetch-sets hashes)
     (filter-map (lambda (hash)
                   (match (fetch-set hash (catalogue-hash %current-catalogue%))
-                    ((('set . set) ('lexp . lxp))
-                     `(,set ,lxp))
-                    (_ #f)))
+                    ((('set . set) ('lexp . lxp)) set)
+                    (_                            #f)))
                 hashes))
   (match (hashmapq-hashpairs rq)
-    ;; car will be a serialized lexp, but for now for backward compatibility,
-    ;; a string.
-    ((((? string? lxps) . (? hash? shallow-hashes)) ...)
-     (match (map (cut apply make-hashmap <>) (fetch-sets shallow-hashes))
+    ((((? (lambda (slxp) (lexp? (lexp-make slxp))) lxps)
+       . (? hash? shallow-hashes)) ...)
+     (match (map (cut make-hashmap <>) (fetch-sets shallow-hashes))
        (() (raise 'unknown-set-ids))
        (hashmps (hashmaps hashmps))))
     (else (raise 'invalid-set-ids))))
@@ -240,5 +231,21 @@ COUNTER, or raise 'invalid-set."
         (sethashess (set-hashpairs fullhashes
                                    (catalogue-hash %current-catalogue%)))
         (raise 'invalid-fullhashes))))
+
+;;;; Procedures that feel like they should be in a different module
+
+;;; serialized-lexp hash hash integer -> <problem> | #f
+(define (fetch-problem lxp dag shallow counter)
+  "Return the problem associated with the coordinates LXP, DAG, SHALLOW and
+COUNTER, or raise 'unknown-set."
+  (match (fetch-set shallow (catalogue-hash %current-catalogue%))
+    ((('set . set) ('lexp . lxp))
+     (let ((problems (set-contents set)))
+       (list-ref problems (modulo counter (length problems)))))
+    (#f
+     ;; Here we should check using lxp & dag to establish need for upgrade or
+     ;; simply wrong.
+     ;; FIXME: part of the next patchset.
+     (raise 'unknown-set))))
 
 ;;; server.scm ends here

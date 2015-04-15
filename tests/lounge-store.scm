@@ -29,10 +29,12 @@
 ;;; Code:
 
 (define-module (tests lounge-store)
+  #:use-module (srfi srfi-26)
   #:use-module (srfi srfi-64)
   #:use-module (glean config)
   #:use-module (glean common utils)
   #:use-module (glean common monads)
+  #:use-module (glean library lexp)
   #:use-module (glean lounge scorecards)
   #:use-module (glean lounge lounge-store)
   #:use-module (quickcheck quickcheck)
@@ -52,6 +54,8 @@
   (@@ (glean lounge lounge-store) hashmap->blobs))
 
 (test-begin "lounge-store")
+
+;;;;; Tests for: lounge-monad-dict
 
 (let ((proc (@@ (glean lounge lounge-store) lounge-monad-dict)))
   ;; test basic monad-dict functionality:
@@ -91,18 +95,42 @@
         `(unknown "Nothing:" (,id . ,context))
         (proc (stateful `(,(nothing id context)) 'state) (log-level))))))
 
+;;;;; Tests for: hashtree->blobs
+
 (test-assert "hashtree->blobs"
   (quickcheck (lambda (_)
-                (match (hashtree->blobs _)
+                (match (hashtree->blobs (lexp-make 'test) "dag-hash" _)
                   (((? blob?) ...) #t)
                   (_ #f)))
               10 $mk-hashtree))
+
+;;;;; Tests for: hashmap->blobs
+
 (test-assert "hashmap->blobs"
   (quickcheck (lambda (_) 
                 (match (hashmap->blobs _)
                   (((? blob?) ...) #t)
                   (_ #f)))
-              10 ($short-list $mk-hashtree)))
+              10 (lambda () `((lxp) "dag-hash" ,(($short-list $mk-hashtree))))))
+
+;;;;; Tests for: modify-actives
+(let ((modify-actives (@@ (glean lounge lounge-store) modify-actives))
+      (new     (list (($pair (lambda () `(,($symbol))) $string))))
+      (actives (($short-assoc (lambda () `(,($symbol))) $string #t))))
+  (test-assert "modify-actives-add"
+    (and
+     ;; Prepend new active.
+     (equal? (modify-actives actives new) (cons (car new) actives))
+     ;; Ignore duplicate addition.
+     (equal? (modify-actives actives `(,(car actives))) actives)))
+
+  (test-assert "modify-actives-del"
+    (and
+     ;; delete an active
+     (equal? (modify-actives actives `(,(car actives)) #t)
+             (cdr actives))
+     ;; ignore an unknown active
+     (equal? (modify-actives actives new #t) actives))))
 
 (test-end "lounge-store")
 

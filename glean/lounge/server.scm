@@ -50,6 +50,7 @@
   #:use-module (glean lounge lounge-store)
   #:use-module (glean lounge profiles)
   #:use-module (glean lounge scorecards)
+  #:use-module (ice-9 match)
   #:use-module (ice-9 rdelim)
   #:use-module (rnrs exceptions)
   #:use-module (srfi srfi-26)
@@ -126,12 +127,12 @@ server, module server and the message contained in RQ."
            (raise '(process-authq invalid-password)))
           (else
            ((mlet* lounge-monad
-                   ((new-tk     (login (profile-hash name passwd)))
-                    (lng        (fetch-lounge))
-                    (profile -> (profile-from-token new-tk lng)))
-                   (auths new-tk
-                          (profile-prof-server profile)
-                          (profile-mod-server profile)))
+                ((new-tk     (login (profile-hash name passwd)))
+                 (lng        (fetch-lounge))
+                 (profile -> (profile-from-token new-tk lng)))
+              (auths new-tk
+                     (profile-prof-server profile)
+                     (profile-mod-server profile)))
             %lounge-dir%)))))
 
 ;;; <chauthq tk> -> <chauths tk lxp dag shallow counter> |
@@ -151,7 +152,7 @@ out of sync if they are."
            (challenge-details (scorecard-next new-tk lng)))
 
         (match challenge-details
-          ((lxp (? hash? dag) (? hash? shallow) (? number? counter))
+          ((lxp dag shallow counter)
            (chauths new-tk lxp dag shallow counter))
           (#f (set!s new-tk 'active-modules '()))
           (_ (set!s new-tk 'scorecard challenge-details))))
@@ -159,7 +160,10 @@ out of sync if they are."
 
     (_ (raise '(process-chauthq invalid-token)))))
 
+;;; <evauthq tk boolean> -> <auths tk lng lib>
 (define (process-evauthq rq)
+  "Return an auths, containing a new token and the lounge and library servers,
+after updating the states in the lounge store."
   (let ((token (evauthq-token rq))
         (result (evauthq-result rq)))
     (cond ((not (token? token))
@@ -168,14 +172,14 @@ out of sync if they are."
            (raise '(process-evauthq invalid-result)))
           (else
            ((mlet*
-             lounge-monad
-             ((new-tk     (authenticate token))
-              (lng        (fetch-lounge))
-              (diff       (scorecard-diff new-tk result lng))
-              (profile (update-lounge diff %lounge-persist%)))
-             (auths new-tk
-                    (profile-prof-server profile)
-                    (profile-mod-server  profile))) %lounge-dir%)))))
+                lounge-monad
+                ((new-tk     (authenticate token))
+                 (lng        (fetch-lounge))
+                 (diff       (scorecard-diff new-tk result lng))
+                 (profile (update-lounge diff %lounge-persist%)))
+              (auths new-tk
+                     (profile-prof-server profile)
+                     (profile-mod-server  profile))) %lounge-dir%)))))
 
 (define (process-regq rq)
   "Return a regq, containing a new token, the profile's profile
@@ -220,7 +224,8 @@ if RQ parses correctly. Otherwise raise a an error."
 ;;; 'mod-server, 'prof-server, 'name, 'password, 'scorecard, 'active-modules
 (define (process-set!q rq)
   (match rq
-    (($ <set!q> token field value)
+    ;; XXX: PHANTOM is a non-existant field to make match work properly.
+    (($ <set!q> phantom token field value)
      (cond ((not (symbol? field)) (raise '(process-set!q invalid-field)))
            ((not (token? token))  (raise '(process-set!q invalid-token)))
            ;; Validate value:
@@ -238,29 +243,23 @@ if RQ parses correctly. Otherwise raise a an error."
                    (('scorecard . (? (negate list?)))
                     (raise '(process-set!q invalid-hashmap)))
                    ;; Validate value: new active-modules.
-                   (('active-modules
-                     . (? (lambda (value)
-                            (and ((negate list?) value)
-                                 (if (eqv? (car value) 'negate)
-                                     (not (valid-active-modules?
-                                           (cdr value)))
-                                     (not (valid-active-modules?
-                                           value)))))))
+                   (('active-modules . (? (negate pair?)))
                     (raise '(process-set!q invalid-active-modules)))
                    ;; We should have a valid request
-                   (_ (mlet* lounge-monad
-                          ((tk         (authenticate token))
-                           (lng        (fetch-lounge))
-                           (diff       (modify-profile tk field value lng))
-                           (profile    (update-lounge diff %lounge-persist%))
-                           (sc-diff -> (missing-blobs profile))
-                           (ignore     (purge-profile tk))
-                           (new-tk     (login (cadr diff))))
-                        (if (null? sc-diff)
-                            (auths new-tk (profile-prof-server profile)
-                                   (profile-mod-server  profile))
-                            (set!s new-tk 'scorecard sc-diff)))
-                      %lounge-dir%)))))))
+                   (_
+                    ((mlet* lounge-monad
+                         ((tk         (authenticate token))
+                          (lng        (fetch-lounge))
+                          (diff       (modify-profile tk field value lng))
+                          (profile    (update-lounge diff %lounge-persist%))
+                          (sc-diff -> (missing-blobs profile))
+                          (ignore     (purge-profile tk))
+                          (new-tk     (login (cadr diff))))
+                       (if (null? sc-diff)
+                           (auths new-tk (profile-prof-server profile)
+                                  (profile-mod-server  profile))
+                           (set!s new-tk 'scorecard sc-diff)))
+                     %lounge-dir%))))))))
 
 (define (process-delpq rq)
   (let ((tk (delpq-token rq)))

@@ -373,8 +373,7 @@ it is known in LIBRARY-PAIR."
   (map (lambda (fullhash)
          (match (fetch-set fullhash library-pair)
            ((('set . set) ('lexp . lxp))
-            ;; For tmp backwards compatibility
-            (cons (object->string (lexp-serialize lxp)) fullhash))        ; found
+            (cons (lexp-serialize lxp) fullhash)) ; found
            (#f
             (cons #f fullhash))))       ; invalid fullhash
        fullhashes))
