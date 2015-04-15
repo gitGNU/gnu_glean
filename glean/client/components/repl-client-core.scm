@@ -31,6 +31,7 @@
 (define-module (glean client components repl-client-core)
   #:use-module (glean config)
   #:use-module (glean client monadic-min)
+  #:use-module (glean common base-requests)
   #:use-module (glean common components)
   #:use-module (glean common monads)
   #:use-module (glean common utils)
@@ -297,7 +298,7 @@ user.  Then provide suggested next steps."
         ((eqv? 'exchange-error (nothing-id rsp))
          (guide '("We got a negative response from the server.\n")
                 '("It is:\n"))
-         (rprinter (nothing-context rsp)))
+         (nothing-context rsp))
         (else (confess rsp))))
 
 (define (guide . output)
