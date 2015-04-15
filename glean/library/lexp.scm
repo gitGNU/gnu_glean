@@ -46,7 +46,8 @@
   #:use-module (srfi srfi-1)
   #:use-module (srfi srfi-9 gnu)
   #:use-module (srfi srfi-26)
-  #:export     (lexp
+  #:export     (<lexp>
+                lexp
                 lexp?
                 lexp-base
                 lexp-make

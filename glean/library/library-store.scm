@@ -66,6 +66,7 @@
             catalogue-hash
 
             fetch-set
+            fetch-set-from-lexp
             set-hashpairs
             crownsets
             known-crownsets
@@ -285,6 +286,14 @@ LIBRARY-PAIR."
      (cond ((eqv? full? 'sets) (cdar set-assoc))
            (full? `(,hash . ,set-assoc))
            (else set-assoc)))
+    (#f #f)))
+
+(define* (fetch-set-from-lexp lxp library-pair)
+  "Return the set identified by LXP from the library derived from
+LIBRARY-PAIR.  If we cannot find the set, return #f."
+  (match (lib-assoc lxp (lib-ref library-pair))
+    ((($ <lexp>) . set)
+     set)
     (#f #f)))
 
 (define (known-crownsets library-pair config-ignore-keywords)

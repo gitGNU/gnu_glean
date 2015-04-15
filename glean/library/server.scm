@@ -246,6 +246,14 @@ COUNTER, or raise 'unknown-set."
      ;; Here we should check using lxp & dag to establish need for upgrade or
      ;; simply wrong.
      ;; FIXME: part of the next patchset.
-     (raise 'unknown-set))))
+     (match (fetch-set-from-lexp (lexp-make lxp)
+                                 (catalogue-hash %current-catalogue%))
+       ((? set? set)
+        ;; Here we should then search the set's lineage for dag, and create an
+        ;; upgrade-map between dag and current, to return this in an
+        ;; upgrade-request.
+        ;; FIXME: part of the next patchset.
+        (raise 'upgrade-needed))
+       (#f  (raise 'unknown-set))))))
 
 ;;; server.scm ends here
