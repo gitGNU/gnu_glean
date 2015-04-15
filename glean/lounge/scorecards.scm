@@ -43,10 +43,12 @@
 
 (define-module (glean lounge scorecards)
   #:use-module (glean common utils)
-  #:use-module (rnrs records procedural)
+  #:use-module (ice-9 match)
   #:use-module (rnrs hashtables)
   #:use-module (srfi srfi-1)
+  #:use-module (srfi srfi-9)
   #:export (
+            <scorecard>
             make-scorecard
             scorecard?
             scorecard-data
@@ -81,39 +83,24 @@
 
 ;;;;; Record Type Definitions
 
-(define blob-rtd
-  (make-record-type-descriptor '<blob> #f #f #f #f
-                               '#((immutable hash)
-                                  (immutable parents)
-                                  (immutable children)
-                                  (immutable score)
-                                  (immutable counter)
-                                  (immutable properties)
-                                  (immutable effects)
-                                  (immutable base-lxp)
-                                  (immutable dag-hash))))
-(define blob-rcd
-  (make-record-constructor-descriptor blob-rtd #f #f))
-(define make-blob (record-constructor blob-rcd))
-(define blob? (record-predicate blob-rtd))
-(define blob-hash (record-accessor blob-rtd 0))
-(define blob-parents (record-accessor blob-rtd 1))
-(define blob-children (record-accessor blob-rtd 2))
-(define blob-score (record-accessor blob-rtd 3))
-(define blob-counter (record-accessor blob-rtd 4))
-(define blob-properties (record-accessor blob-rtd 5))
-(define blob-effects (record-accessor blob-rtd 6))
-(define blob-base-lexp (record-accessor blob-rtd 7))
-(define blob-dag-hash (record-accessor blob-rtd 8))
+(define-record-type <blob>
+  (make-blob hash parents children score counter properties effects base-lexp
+             dag-hash)
+  blob?
+  (hash blob-hash)
+  (parents blob-parents)
+  (children blob-children)
+  (score blob-score)
+  (counter blob-counter)
+  (properties blob-properties)
+  (effects blob-effects)
+  (base-lexp blob-base-lexp)
+  (dag-hash blob-dag-hash))
 
-(define scorecard-rtd
-  (make-record-type-descriptor 'score-card #f #f #f #f
-                               '#((immutable data))))
-(define scorecard-rcd
-  (make-record-constructor-descriptor scorecard-rtd #f #f))
-(define make-scorecard (record-constructor scorecard-rcd))
-(define scorecard? (record-predicate scorecard-rtd))
-(define scorecard-data (record-accessor scorecard-rtd 0))
+(define-record-type <scorecard>
+  (make-scorecard data)
+  scorecard?
+  (data scorecard-data))
 
 
 ;;;;; Scorecard Operations
@@ -195,11 +182,9 @@ effects updated if INITIAL-BLOB contains 'tutorial key.."
 
 (define (dummy-blob? score-blob)
   "Return #t if score-mod-blob is a dummy-blob, #f otherwise."
-  (if (and (eq? (blob-hash score-blob) 'no-tag)
-           (not (blob-score score-blob))
-           (zero? (blob-counter score-blob)))
-      #t
-      #f))
+  (match score-blob
+    (($ <blob> 'no-tag par c #f 0 p e b d) #t)
+    (_ #f)))
 
 (define (modify-score old-score assessment-result number-of-child-blobs)
   "Returns a score modified by an algorithm on the basis of
