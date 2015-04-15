@@ -101,14 +101,18 @@ handling to request handler."
 ;;;;; Server Response Creation
 ;;; Functions that provide request specific parsing and response skeletons.
 
+;;; <challq> -> <challs '((string. #f) (options) type)>
+;;;             | (raise 'invalid-coordinates)>
 (define (challenge-provider rq)
+  "Return the <challs> belonging to the problem identified by the coordinates
+in RQ, or raise 'invalid-coordinates."
   (define (new-challenge problem)
     "Return the challenge located in the set identified by BLOBHASH and
 COUNTER, or raise 'invalid-set."
     ;; FIXME: this procedure is logic, not parsing, so it should be in
     ;; library-store, not in module-server.
-    ;; FIXME: I've disabled passing back of media for now — they need to be
-    ;; reworked anyway.
+    ;; FIXME: I've disabled passing back of media for now as they complicate
+    ;; communication with clients - they need to be reworked anyway.
     (let ((s  (problem-s problem))
           (q  (problem-q problem))
           (os (problem-o problem)))
