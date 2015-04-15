@@ -76,7 +76,7 @@
                                               (set-name set)))) set))))))
 
 (test-assert "shallow-hash-not-equal"
-  (let ((set ($mk-set 2 2)))
+  (let ((set ($mk-set #:children 2 #:depth 2)))
     (and
      (hash&!=? (shallow-hash (set-lexp set) set) ; lexp diff
                (shallow-hash (lexp (set target)) set))
@@ -97,7 +97,7 @@
 
 ;;; Are we the same if we deep-hash the same disc twice?
 (test-assert "deep-hash-equal"
-  (let ((disc ($mk-discipline 2 2)))
+  (let ((disc ($mk-discipline #:children 2 #:depth 2)))
     (hash=? (deep-hash disc) (deep-hash disc))))
 
 (define (ltrans l) (cons '(test) l))
@@ -118,7 +118,7 @@
 
 ;;; Are we different if we change a field (at a time) in disc?
 (test-assert "deep-hash-not-equal"
-  (let ((disc ($mk-discipline 2 2)))
+  (let ((disc ($mk-discipline #:children 2 #:depth 2)))
     (fold (lambda (procs result)
             (if result
                 (match procs
@@ -131,7 +131,7 @@
 
 ;;; Are we different if we have the same disc, but change fields in the child?
 (test-assert "deep-hash-not-equal-child"
-  (let ((disc ($mk-discipline 2 2)))
+  (let ((disc ($mk-discipline #:children 2 #:depth 2)))
     (fold (lambda (procs result)
             (if result
                 (match procs
@@ -159,7 +159,7 @@
 
 ;;; Are we still the same if we change some fields?
 (test-assert "dag-hash-equal"
-  (let ((disc ($mk-discipline 2 2)))
+  (let ((disc ($mk-discipline #:children 2 #:depth 2)))
     (and (hash=? (dag-hash disc) (dag-hash disc))
          (hash=? (dag-hash disc)
                  (dag-hash
@@ -176,7 +176,7 @@
 
 ;;; Are we still the same if we change some fields in the child?
 (test-assert "dag-hash-equal-child"
-  (let* ((disc ($mk-discipline 2 2))
+  (let* ((disc ($mk-discipline #:children 2 #:depth 2))
          (chld (cadr (set-contents disc))))
     (and (hash=? (dag-hash disc) (dag-hash disc))
          (hash=?
@@ -204,7 +204,7 @@
 ;;; - we remove a set from a child
 ;;; - we exchange the 2 sets from the 2 children?
 (test-assert "dag-hash-not-equal"
-  (let* ((disc ($mk-discipline 2 2)))
+  (let* ((disc ($mk-discipline #:children 2 #:depth 2)))
     (match (set-contents disc)
       ((1st 2nd)
        (fold (lambda (new-disc result)
@@ -331,7 +331,7 @@
   ;; - The crownhash should have a new hash (because we have a new child).
   ;; - The first child of the discipline is new ("" . hash).
   ;; - All else should be unchanged (#f . hash).
-  (let* ((ancestor ($mk-discipline 2 2))
+  (let* ((ancestor ($mk-discipline #:children 2 #:depth 2))
          (discipline (set-set-contents ancestor
                                        (cons ($mk-rootset)
                                              (set-contents ancestor)))))
@@ -355,7 +355,7 @@
   ;;   has changed)
   ;; - All else should remain identical (#f . hash) no other structure has
   ;;   changed at all.
-  (let* ((ancestor ($mk-discipline 2 2))
+  (let* ((ancestor ($mk-discipline #:children 2 #:depth 2))
          (discipline (set-set-contents ancestor
                                        `(,(cadr (set-contents ancestor))
                                          ,(car (set-contents ancestor))))))
@@ -381,7 +381,7 @@
   ;; - The first child of the first child should have ("" . hash), because it
   ;;   is new.
   ;; - All others should be (#f . hash)
-  (let* ((ancestor ($mk-discipline 2 2))
+  (let* ((ancestor ($mk-discipline #:children 2 #:depth 2))
          (discipline (set-set-contents
                       ancestor
                       `(,(set-set-contents
@@ -410,7 +410,7 @@
   ;; - The crownhash should remain unchanged (#f . hash).
   ;; - The first child should have a new hash (because a child was removed).
   ;; - All others should be (#f . hash)
-  (let* ((ancestor ($mk-discipline 2 2))
+  (let* ((ancestor ($mk-discipline #:children 2 #:depth 2))
          (discipline (set-set-contents
                       ancestor
                       (cons (set-set-contents
@@ -451,7 +451,7 @@
   ;; - The second child should have a new hash (a child was added).
   ;; - The first child of the second child should have ("" . hash): it's new.
   ;; - All others should be (#f . hash)
-  (let* ((ancestor ($mk-discipline 2 2))
+  (let* ((ancestor ($mk-discipline #:children 2 #:depth 2))
          (discipline (set-set-contents
                       ancestor
                       `(,(set-set-contents
@@ -487,7 +487,7 @@
   ;; - The first child of the second child should have:
   ;;   `(,(shallow-hash (first-child-first-child)) . hash)
   ;; - All others should be (#f . hash)
-  (let* ((ancestor ($mk-discipline 2 2))
+  (let* ((ancestor ($mk-discipline #:children 2 #:depth 2))
          (lxp (lexp-make (list (set-id ancestor)
                                (set-id (car (set-contents ancestor)))
                                (set-id (car (set-contents
@@ -541,11 +541,11 @@
 ;;;;; Tests for: make-hashtree
 
 (test-assert "make-hashtree"
-  (let ((disc ($mk-rootset 10)))
+  (let ((disc ($mk-rootset #:problems 10)))
     (hashtree? (make-hashtree disc (lexp-make (set-id disc))))))
 
 (test-assert "make-deep-hashtree"
-  (let ((disc ($mk-discipline 3 3)))
+  (let ((disc ($mk-discipline #:children 3 #:depth 3)))
     (hashtree? (make-hashtree disc (lexp-make (set-id disc))))))
 
 ;;;;; Tests for: hashmap?
@@ -557,7 +557,7 @@
 ;;;;; Tests for: make-hashmap
 
 (test-assert "make-hashmap"
-  (hashmap? (make-hashmap ($mk-discipline 3 3))))
+  (hashmap? (make-hashmap ($mk-discipline #:children 3 #:depth 3))))
 
 (test-end "set-tools")
 

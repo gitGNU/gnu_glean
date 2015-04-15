@@ -87,11 +87,11 @@
             ))
 
 ;;;;; Set Generators
-(define* ($mk-rootset #:optional num_problems)
-  "Return a randomised set.  If NUM_PROBLEMS is a number, force $rootset to
+(define* ($mk-rootset #:key problems)
+  "Return a randomised set.  If PROBLEMS is a number, force $rootset to
 produce this number of problems."
   (make-set ($symbol)                          ; id
-            (($short-list $prob num_problems)) ; contents
+            (($short-list $prob problems))     ; contents
             ($string) ($string)                ; name / version
             ($string) ($string)                ; synopsis / description
             (($short-list $string))            ; keywords
@@ -100,18 +100,20 @@ produce this number of problems."
             (($short-list $medii))             ; resources
             ($string)                          ; logo
             (($short-assoc $symbol $string)))) ; properties
-(define* ($mk-set #:optional base_num (depth 1))
+
+(define* ($mk-set #:key children (depth 1))
   "Return a randomised set containing DEPTH levels of children.  The final
-level consists of rootsets.  If BASE_NUM is a number, force $mk-set to produce
-child-sets with each BASE_NUM of children."
+level consists of rootsets.  If CHILDREN is a number, force $mk-set to produce
+child-sets with each CHILDREN of children."
   (make-set ($symbol)                                ; id
             (if (= depth 1)
                 (($short-list (lambda ()
-                                ($mk-rootset base_num))
-                              base_num))
+                                ($mk-rootset #:problems children))
+                              children))
                 (($short-list (lambda ()
-                                ($mk-set base_num (1- depth)))
-                              base_num)))                 ; contents
+                                ($mk-set #:children children
+                                         #:depth (1- depth)))
+                              children)))                 ; contents
             ($string) ($string)                      ; name / version
             ($string) ($string)                      ; synopsis / description
             (($short-list $string))                  ; keywords
@@ -121,18 +123,19 @@ child-sets with each BASE_NUM of children."
             ($string)                                ; logo
             (($short-assoc $symbol $string))))       ; properties
 
-(define* ($mk-discipline #:optional base_num (depth 1))
+(define* ($mk-discipline #:key children (depth 1))
   "Return a randomised set containing DEPTH levels of children.  The final
-level consists of rootsets.  If BASE_NUM is a number, force $mk-set to produce
-child-sets with each BASE_NUM of children."
+level consists of rootsets.  If CHILDREN is a number, force $mk-set to produce
+child-sets with each CHILDREN of children."
   (make-set ($symbol)                                ; id
             (if (= depth 1)
                 (($short-list (lambda ()
-                                ($mk-rootset base_num))
-                              base_num))
+                                ($mk-rootset #:problems children))
+                              children))
                 (($short-list (lambda ()
-                                ($mk-set base_num (1- depth)))
-                              base_num)))                 ; contents
+                                ($mk-set #:children children
+                                         #:depth (1- depth)))
+                              children)))                 ; contents
             ($string) ($string)                      ; name / version
             ($string) ($string)                      ; synopsis / description
             (($short-list $string))                  ; keywords
@@ -193,26 +196,26 @@ $mk-rootset)."
 
 (define* ($mk-rootblob #:optional (parent '()))
   "Return a randomised blob with now children."
-  (make-blob ($symbol)                          ; id
+  (make-blob ($string)                          ; hash
              (if parent (list parent) '())      ; parent
              '()                                ; children
              ($small)                           ; score
              ($integer)                         ; counter
              (($short-assoc $symbol $string))   ; properties
              (($short-assoc $symbol $string))   ; effects
-             (($short-list $symbol))
-             (($string))))
+             (($short-list $symbol))            ; base-lexp
+             ($string)))                        ; dag-hash
 
 (define* ($mk-blob #:optional child_num (depth 1) (parent '()))
   "Return a randomised blob containing DEPTH levels of children.  The final
 level consists of rootblobs.  If CHILD_NUM is a number, force $mk-blob to produce
 child-blobs with each CHILD_NUM of children."
-  (let ((id ($symbol)))
-    (make-blob id                                 ; id
+  (let ((id ($string)))
+    (make-blob id                       ; id
                (if (and parent (not (null? parent)))
-                   (list parent) '())             ; parent
+                   (list parent) '())   ; parent
                (cond ((< depth 1)
-                      '())                    ; children
+                      '())              ; children
                      ((= depth 1)
                       (($short-list (lambda ()
                                       ($mk-rootblob id))
@@ -221,12 +224,12 @@ child-blobs with each CHILD_NUM of children."
                       (($short-list (lambda ()
                                       ($mk-blob child_num (1- depth) id))
                                     child_num))))
-               ($small)                           ; score
-               ($integer)                         ; counter
-               (($short-assoc $symbol $string))   ; properties
-               (($short-assoc $symbol $string))   ; effects
-               (($short-list $symbol))
-               (($string)))))
+               ($small)                         ; score
+               ($integer)                       ; counter
+               (($short-assoc $symbol $string)) ; properties
+               (($short-assoc $symbol $string)) ; effects
+               (($short-list $symbol))          ; base-lexp
+               ($string))))                     ; dag-hash
 
 
 ;;;;; Request Generators

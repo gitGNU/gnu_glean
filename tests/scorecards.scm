@@ -62,11 +62,11 @@
 
 (test-assert "basic blob creation"
   (quickcheck (lambda (_) (blob? _))
-              $mk-rootblob))
+              10 $mk-rootblob))
 
 (test-assert "basic scorecard creation"
   (quickcheck (lambda (_) (scorecard? _))
-              50 $scorecard))
+              10 $scorecard))
 
 (define (number-of-child-tester input)
   "Return the result of number-of-child-tester for dynamically generated
@@ -85,13 +85,13 @@ INPUT."
   (quickcheck (lambda (_)
                 (= (number-of-child-tester _ )
                    (exp-growth 1 0)))
-              (lambda () (lambda () ($mk-rootset 7)))))
+              (lambda () ($mk-rootset #:problems 7))))
 
 (test-assert "blob number of child blobs"
   (quickcheck (lambda (_)
                 (= (number-of-child-tester _)
                    (exp-growth 2 2)))
-              50 (lambda () (lambda () ($mk-set 2 2)))))
+              10 (lambda () (lambda () ($mk-set #:children 2 #:depth 2)))))
 
 (define modify-score
   (@@ (glean lounge scorecards) modify-score))
@@ -124,12 +124,16 @@ GENERATOR derived dynamic input and the boolean ASSESS."
                                                scard)))))))
 
 (test-assert "update scorecard rootblob"
-  (quickcheck mod-score-tester
-              50 (lambda () (lambda () ($mk-rootset 7))) $boolean))
+  (quickcheck mod-score-tester 10
+              (lambda ()
+                (lambda ()
+                  ($mk-rootset #:problems 7))) $boolean))
 
 (test-assert "update scorecard blobs"
-  (quickcheck mod-score-tester
-              50 (lambda () (lambda () ($mk-set 3 2))) $boolean))
+  (quickcheck mod-score-tester 10
+              (lambda ()
+                (lambda ()
+                  ($mk-set #:children 3 #:depth 2))) $boolean))
 
 (test-end "scorecards")
 
