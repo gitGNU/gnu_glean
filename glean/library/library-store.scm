@@ -77,19 +77,19 @@
 ;;;;; The Library
 ;;;
 ;;; A library is a database of two tables:
-;;; 1) All known modules are indexed by their fullhashes (=> shallow-hash)
+;;; 1) All known modules are indexed by their fullhashes (=> shallowhash)
 ;;; 2) A secondary reference from minhash to fullhash.  The latter can contain
 ;;;    one to many mappings and can be used to ensure continuity even after
 ;;;    module upgrades.
 ;;; 2) Revised: A secondary reference of discipline-lexp -> dag-hash.  This
-;;;    can be used, in conjunction with the three fields provided in a request
-;;;    (shallow-hash, dag-hash & base-lexp), to generate an upgrade map on the
-;;;    basis of a shallow-hash that has been superseded.
+;;;    can be used, in conjunction with the four fields provided in a request
+;;;    (counter, shallowhash, dag-hash & base-lexp), to generate an upgrade
+;;;    map on the basis of a shallowhash that has been superseded.
 ;;;
-;;; A shallow-hash is the hash of a set's lexp, version and the lexp's of its
+;;; A shallowhash is the hash of a set's lexp, version and the lexps of its
 ;;; direct descendants, concatenated.
 ;;;
-;;; A dag hash is a hash capituring the full dag of a single discipline.
+;;; A daghash is a hash capituring the full dag of a single discipline.
 ;;;
 ;;; For more details on hashes see (glean libarry set-tools).
 

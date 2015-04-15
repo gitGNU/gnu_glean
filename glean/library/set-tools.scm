@@ -110,7 +110,8 @@ The use of this hash is as follows:
   dag-hashes and as values ancestry-trees.
 - the first entry in the lineage field is
   ((dag-hash current-version) . (ancestry-tree current previous))
-- every challenge request will contain three values:
+- every challenge request will contain four values:
+  + a counter for selecting a problem within a rootset,
   + the shallow-hash of the challenge requested,
   + the base-lexp of the discipline containing the challenge,
   + the dag-hash of the revision of the discipline containing the challenge.
@@ -120,7 +121,7 @@ When the library receives such a request, it will:
 - OR match the base-lexp against its currently registered base-lexps:
   + if not found: return not found error to lounge
   + if found:
-    * revisit the disciplines lineage field,
+    * revisit the discipline's lineage field,
     * match the entry with the request's dag-hash,
     * construct an upgrade path from that entry to the latest version,
     * return this upgrade path to the lounge,
