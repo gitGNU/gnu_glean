@@ -109,25 +109,30 @@
        (vlist-null? (library-cat obj))
        (vlist-null? (library-ref obj))))
 
-(define (pretty-print-library lib)
-  "Print the library LIB to stdout."
-  (define (comp-string vlist . set?)
-    (vlist-map (lambda (cat-entry)
-                 (if (null? set?)
-                     (string-format "~a: ~a"
-                                    (car cat-entry)
-                                    (cdr cat-entry))
-                     (string-format "~a: ~a (~a)"
-                                    (car cat-entry)
-                                    (cdr cat-entry)
-                                    (set-id (cdr cat-entry)))))
-               vlist))
-  (format #t "~a\n*Catalogue*:\n~a\n*Catalogue End*
-*Reference*:\n~a\n*Reference End*\n"
+(define* (pretty-print-library lib #:key (port #t))
+  "Print the library LIB to PORT, defaulting to current-output-port."
+  (define (lexp->string lxp)
+    (string-join (map symbol->string (lexp-serialize lxp)) "::"))
+  ;; library-cat: '($shallowhash . ((set . $set) (lexp . $lexp)))
+  (define (cat-string entry)
+    (match entry
+      ((hash . (('set . set) ('lexp . lxp)))
+       (string-append "  Set name: " (set-name set)
+                      "\n  Lexp: " (lexp->string lxp)
+                      "\n  Hash: " hash
+                      "\n  ---"))))
+  ;; library-ref: '($lexp . $set)
+  (define (ref-string entry)
+    (match entry
+      ((lxp . set)
+       (string-append "  Set name: " (set-name set)
+                      "\n  Lexp: " (lexp->string lxp)
+                      "\n  ---"))))
+  (format port "~a~%Catalogue:~%~a~%Reference:~%~a~%"
           lib
-          (string-join (vlist->list (comp-string (library-cat lib) #t))
+          (string-join (vlist->list (vlist-map cat-string (library-cat lib)))
                        "\n")
-          (string-join (vlist->list (comp-string (library-ref lib)))
+          (string-join (vlist->list (vlist-map ref-string (library-ref lib)))
                        "\n")))
 
 
