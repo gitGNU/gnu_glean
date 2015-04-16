@@ -192,12 +192,9 @@ re-compute."
         ((catalogue-dir . catalogue-hash)
          (define (compile)
            "Return the library vhash from the sets in LIBRARY-MODULES."
-           (fold (lambda (module library)
-                   (fold library-cons
-                         library                     ; library thus far
-                         (sets-from-module module))) ; these sets
-                 (empty-library)                     ; new library
-                 (library-modules catalogue-dir)))
+           (fold library-add-disciplines
+                 (empty-library)
+                 (discipline-modules catalogue-dir)))
 
          ;; If CATALOGUE-HASH has not changed, return cached library.
          (if (bytevector=? catalogue-hash cached-hash)
@@ -211,6 +208,9 @@ re-compute."
 
 
 ;;;;; Library Convenience
+
+(define (library-add-disciplines discipline-module library)
+  (fold library-cons library (sets-from-module discipline-module)))
 
 (define (library-cons discipline current-library)
   "Return a new library consisting of CURRENT-LIBRARY augmented by DISCIPLINE.
@@ -405,33 +405,33 @@ it is known in LIBRARY-PAIR."
 bindings which are not sets.
 
 Should module not export any bindings, raise an error."
+  (define (verbose-discipline-filter maybe-discipline)
+    (match maybe-discipline
+      ((? plain-module? discipline) discipline)
+      (UFO (caution "~a: not a discipline, eliminating.~%"
+                    (cond ((set? UFO) (set-name UFO))
+                          ((nothing? UFO) 'nothing)
+                          (else UFO)))
+           #f)))
+  (define (verbose-set-resolver name variable)
+    (inform "Loading ~a..." name)
+    (match (resolve-set (variable-ref variable))
+      ((? set? set)
+       (inform "[success]~%") set)
+      (UFO (caution "[failure]~%")
+           set)))
+
   (or (and=> (module-public-interface module)
-             (lambda (mod-interface)
-               (filter (lambda (set)
-                         (if (plain-module? set)
-                             set
-                             (begin
-                               (caution "~a: not a module, eliminating.~%"
-                                        (cond ((set? set) (set-name set))
-                                              ((nothing? set) 'nothing)
-                                              (else set)))
-                               #f)))
-                       (module-map
-                        (lambda (name value)
-                          (inform "Loading ~a..." name)
-                          (let ((maybe (resolve-set (variable-ref value))))
-                            (if (set? maybe)
-                                (inform "[success]~%")
-                                (caution "[failure]~%"))
-                            maybe))
-                        mod-interface))))
+             (lambda (public-interface)
+               (filter verbose-discipline-filter
+                       (module-map verbose-set-resolver public-interface))))
       (error "SETS-FROM-MODULE -- module did not resolve:" module)))
 
-(define (library-modules catalogue-dir)
+(define (discipline-modules catalogue-dir)
   "Return the list of Guile modules, derived from the files in CATALOGUE-DIR,
 that provide content for the library. These modules are then parsed using
 `sets-from-module' to retrieve the Glean modules contained therein."
-  (define* (data-files)
+  (define* (discipline-files)
     "Return the list of files that implement glean modules."
     (define prefix-len (string-length catalogue-dir))
     (file-system-fold (const #t)                 ; enter?
@@ -451,16 +451,21 @@ that provide content for the library. These modules are then parsed using
                       '()
                       catalogue-dir
                       stat))
-  (define (data-files->modules path)
+  (define (discipline-files->modules path)
     (define not-slash (char-set-complement (char-set #\/)))
     (let ((name (map string->symbol
                      (string-tokenize (string-drop-right path 4)
                                       not-slash))))
-      (false-if-exception (resolve-module name))))
+      ;; We want to make sure that a module is reloaded from the library if it
+      ;; has been loaded before, as it may have changed.
+      (match (resolve-module name #:ensure #f)          ; loaded before?
+        (#f (false-if-exception (resolve-module name))) ; no  -> load
+        ((? module? module)                            ; yes -> reload
+         (false-if-exception (reload-module module))))))
 
   (when (not (member catalogue-dir %load-path))
     (add-to-load-path catalogue-dir))
-  (filter-map data-files->modules (data-files)))
+  (filter-map discipline-files->modules (discipline-files)))
 
 
 (define* (index-set set #:optional (lxp (set-lexp set)))
