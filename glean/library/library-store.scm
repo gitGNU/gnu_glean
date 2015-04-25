@@ -183,7 +183,7 @@
 (define compile-library
   (let ((cached-hash    (make-bytevector 0))
         (cached-library (empty-library)))
-    (lambda (catalogue-hash-pair)
+    (lambda* (catalogue-hash-pair #:key crass?)
       "Return library (a vhash) corresponding to the file-system state
 represented by CATALOGUE-HASH-PAIR.  If the hash in CATALOGUE-HASH-PAIR was
 passed to us before, return the previously computed library.  Else,
@@ -194,15 +194,15 @@ re-compute."
            "Return the library vhash from the sets in LIBRARY-MODULES."
            (fold library-add-disciplines
                  (empty-library)
-                 (discipline-modules catalogue-dir)))
+                 (discipline-modules catalogue-dir #:crass? crass?)))
 
          ;; If CATALOGUE-HASH has not changed, return cached library.
          (if (bytevector=? catalogue-hash cached-hash)
              cached-library
              (begin
-               (set! cached-hash    catalogue-hash)
                (set! cached-library (empty-library))
                (set! cached-library (compile))
+               (set! cached-hash    catalogue-hash)
                cached-library)))
         (#f cached-library)))))
 
@@ -248,10 +248,10 @@ In practice this means that we:
   "Return the catalogue of sets derived from LIBRARY-PAIR."
   (library-cat (compile-library library-pair)))
 
-(define (lib-ref library-pair)
+(define* (lib-ref library-pair #:key crass?)
   "Return the min-hash->full-hash catalogue derived from
 LIBRARY-PAIR."
-  (library-ref (compile-library library-pair)))
+  (library-ref (compile-library library-pair #:crass? crass?)))
 
 (define (lib-cons hash value component)
   "Return a new library component based on COMPONENT where KEY is ASSOCIATED
@@ -288,10 +288,10 @@ LIBRARY-PAIR."
            (else set-assoc)))
     (#f #f)))
 
-(define* (fetch-set-from-lexp lxp library-pair)
+(define* (fetch-set-from-lexp lxp library-pair #:key crass?)
   "Return the set identified by LXP from the library derived from
 LIBRARY-PAIR.  If we cannot find the set, return #f."
-  (match (lib-assoc lxp (lib-ref library-pair))
+  (match (lib-assoc lxp (lib-ref library-pair #:crass? crass?))
     ((($ <lexp>) . set)
      set)
     (#f #f)))
@@ -427,7 +427,7 @@ Should module not export any bindings, raise an error."
                        (module-map verbose-set-resolver public-interface))))
       (error "SETS-FROM-MODULE -- module did not resolve:" module)))
 
-(define (discipline-modules catalogue-dir)
+(define* (discipline-modules catalogue-dir #:key crass?)
   "Return the list of Guile modules, derived from the files in CATALOGUE-DIR,
 that provide content for the library. These modules are then parsed using
 `sets-from-module' to retrieve the Glean modules contained therein."
@@ -459,13 +459,23 @@ that provide content for the library. These modules are then parsed using
       ;; We want to make sure that a module is reloaded from the library if it
       ;; has been loaded before, as it may have changed.
       (match (resolve-module name #:ensure #f)          ; loaded before?
-        (#f (false-if-exception (resolve-module name))) ; no  -> load
+        (#f (resolve-module name)) ; no  -> load
         ((? module? module)                            ; yes -> reload
-         (false-if-exception (reload-module module))))))
-
-  (when (not (member catalogue-dir %load-path))
-    (add-to-load-path catalogue-dir))
-  (filter-map discipline-files->modules (discipline-files)))
+         (inform "We have previously loaded '~a'.~%" name)
+         (inform "Module-filename: '~a'.~%" (module-filename module))
+         (when crass?
+           ;; We are really messing with the dark arts here: we're trying to
+           ;; force Guile to load a new discipline that is identical to an
+           ;; existing discipline, but which needs to be loaded from a
+           ;; different place.  This is probably done in the context of
+           ;; (glean maker engrave).
+           (inform "Crass is enabled, setting filename to ~a~%" (string-append catalogue-dir path))
+           (set-module-filename! module (string-append catalogue-dir path)))
+         (reload-module module)))))
+  (begin (add-to-load-path catalogue-dir)
+         (let ((rslt (filter-map discipline-files->modules (discipline-files))))
+           (set! %load-path (cdr %load-path))
+           rslt)))
 
 
 (define* (index-set set #:optional (lxp (set-lexp set)))
