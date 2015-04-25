@@ -66,7 +66,8 @@
                 catalogue-list
                 catalogue-remove
                 catalogue-show
-                catalogue-install))
+                catalogue-install
+                mdiscipline-loader))
 
 
 ;;;; Catalogue Record Type Definition
@@ -227,12 +228,25 @@ discipline id to the discipline in the store."
 ;;; This procedure will allow us to resolve lexps against actual content in
 ;;; the library for instance.
 
-(define (store-name tmp-lib id)
+(define (store-name discipline)
   "A monadic procedure in the catalogue-monad.
 
 Return the 'store-name', a string of the format \"$hash-$id-$version\", for
-the discipline identified by set-id ID as found in the library built out of
-the store pointed towards by tmp-lib, a library-hash-pair.
+DISCIPLINE.
+
+DISCIPLINE:      a discipline to create a store-name for.
+"
+  (lambda (catalogue-directory)
+    (string-join `(,(deep-hash      discipline)
+                   ,(symbol->string (set-id discipline))
+                   ,(set-version    discipline))
+                 "-")))
+
+(define (transient-discipline tmp-lib id)
+  "A monadic procedure in the catalogue-monad.
+
+Return the discipline identified by set-id ID as found in the library built
+out of the store pointed towards by tmp-lib, a library-hash-pair.
 
 See (glean library library-store) for more details on the latter
 data-structure.
@@ -248,11 +262,8 @@ ID:      a symbol naming a discipline through its #:id.
                             #f
                             (crownsets tmp-lib))))
       (if discipline
-          (string-join `(,(deep-hash discipline)
-                         ,(symbol->string id)
-                         ,(set-version discipline))
-                       "-")
-          (nothing 'store-name `(missing-discipline ,id))))))
+          discipline
+          (nothing 'transient-discipline `(missing-discipline ,id))))))
 
 
 ;;;; Atomic Catalogue Operations
@@ -897,7 +908,7 @@ SOURCE-DIR:    string pointing to the directory containing a discipline to be
 
 (define (manalyzer catalogue-dir curr-cat-link source-dir)
   "Mechanism by which we can install the presumed discipline located at
-SOURCE-DIR in a temporary story, from which we can attempt to generate a
+SOURCE-DIR in a temporary store, from which we can attempt to generate a
 library.  If all works well, we return the name under which the now verified
 discipline at SOURCE-DIR will be installed in the actual store.
 
@@ -919,10 +930,31 @@ SOURCE-DIR:    string pointing to the directory containing a discipline to be
         (tmp-lib   ->  (catalogue-hash (relative-filename
                                         (get-catalogue-dir cat)
                                         (get-catalogue-id  cat))))
-        (target        (store-name tmp-lib (string->symbol
-                                            (basename source-dir))))
+        (discipline    (transient-discipline tmp-lib (string->symbol
+                                                      (basename source-dir))))
+        (target        (store-name discipline))
         (clean         (tmp-cleaner tmp-store-dir tmp-cat-dir)))
      (return target))
+   catalogue-dir))
+
+(define (mdiscipline-loader catalogue-dir curr-cat-link source-dir)
+  ((mlet* catalogue-monad
+       ((name      ->  (basename source-dir))
+        (tmp-store-dir (tmp-dir-fetcher))
+        (store-path    (discipline-installer tmp-store-dir source-dir name))
+        (cat-name      (current-catalogue-namer curr-cat-link))
+        (curr-cat      (catalogue-detailer cat-name))
+        (tmp-cat-dir   (tmp-dir-fetcher))
+        (new-cat   ->  (augment-catalogue curr-cat 0 name store-path
+                                          tmp-cat-dir))
+        (cat       ->  ((catalogue-installer new-cat) tmp-cat-dir))
+        (tmp-lib   ->  (catalogue-hash (relative-filename
+                                        (get-catalogue-dir cat)
+                                        (get-catalogue-id  cat))))
+        (discipline    (transient-discipline tmp-lib (string->symbol
+                                                      (basename source-dir))))
+        (clean         (tmp-cleaner tmp-store-dir tmp-cat-dir)))
+     (return discipline))
    catalogue-dir))
 
 (define (mcatalogue-remove catalogue-dir curr-cat-link disc-id)
