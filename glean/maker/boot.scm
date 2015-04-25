@@ -60,20 +60,31 @@ Maker is used primarily by content authors and maintainers.
 
 (define *option-grammar*
   '((help       (single-char #\h) (value #f))
-    (force      (single-char #\f) (value #f))
     (usage      (single-char #\u) (value #f))
     (version    (single-char #\v) (value #f))
+    (log        (single-char #\l) (value optional))
+    (log-level  (single-char #\L) (value #t)
+                (predicate ,(lambda (value)
+                              (or (boolean? value)
+                                  (memv (string->symbol value)
+                                        (log-levels))))))
+    (verbose    (single-char #\V) (value #f))
     (cast       (single-char #\c) (value #f))
+    (force      (single-char #\f) (value #f))
     (engrave    (single-char #\e) (value optional))
     (source     (single-char #\s) (value #t))))
 
 (define *messages*
   `("Show this help message and exit."
-    "Perform operations non-cautiously."
     "Show this help message and exit."
     ,(string-append "Show the version of " %glean-package-name%
                     " you are using and exit.")
+    "Set log file to VALUE or default and enable logging."
+    ,(string-append "Set log-level to VALUE (choose from:"
+                    (string-join (map symbol->string (log-levels)) ", ") ").")
+    "Enable logging to stdout."
     "Prepare a package of the discipline defined in the current directory."
+    "Perform operations non-cautiously."
     "Compose the ancestry file the current directory's discipline."
     "Prepare a skeleton discipline in the current directory, named VALUE."))
 
@@ -94,18 +105,22 @@ Maker is used primarily by content authors and maintainers.
 (define (maker-boot args)
   "Parse command line options and execute the maker procedure."
   (let ((opts (getopt-long args *option-grammar*)))
-    (cond ((option-ref opts 'version #f)      ; --version
-           (emit-version %glean-package-name%
-                         %glean-version%))
-          ((or (option-ref opts 'usage #f) ; --help or --usage
-               (option-ref opts 'help #f))
-           (help))
+    (define (get-opt what) (option-ref opts what #f))
+    (cond ((get-opt 'version) (emit-version %glean-package-name%
+                                            %glean-version%))
+          ((or (get-opt 'usage) (get-opt 'help)) (help))
           (else                               ; launch maker
-           (cond ((option-ref opts 'source #f)
-                  (source (option-ref opts 'source #f)
-                          (option-ref opts 'force #f)))
-                 ((option-ref opts 'engrave #f)
-                  (engrave (option-ref opts 'engrave #f)))
-                 (else (help)))))))
+           (parameterize ((log-level (if (string? (get-opt 'log-level))
+                                         (string->symbol (get-opt 'log-level))
+                                         %log-level%))
+                          (logger    (make-logger (get-opt 'verbose)
+                                                  (get-opt 'log)
+                                                  %log-file%)))
+             (cond ((get-opt 'source)
+                    (source (get-opt 'source) (get-opt 'force)))
+                   ((get-opt 'engrave)
+                    (engrave (get-opt 'engrave) %current-catalogue%
+                             %catalogue-dir%))
+                   (else (help))))))))
 
 ;;; boot.scm ends here

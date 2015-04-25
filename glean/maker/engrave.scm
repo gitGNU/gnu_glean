@@ -42,8 +42,12 @@
 
 (define-module (glean maker engrave)
   #:use-module (glean common utils)
+  #:use-module (glean librarian catalogues)
   #:use-module (glean library core-templates)
+  #:use-module (glean library lexp)
+  #:use-module (glean library library-store)
   #:use-module (glean library sets)
+  #:use-module (glean library set-tools)
   #:use-module (ice-9 match)
   #:use-module (srfi srfi-2)
   #:export     (engrave))
@@ -53,49 +57,47 @@
 
 (define %mkr-discipline% "discipline.scm")
 
-(define (engrave target)
+(define (engrave target current-catalogue catalogue-dir)
   (and-let* ((discipline-filename (parse-input target))
-             (discipline-dirname (dirname discipline-filename))
-             ((add-to-load-path discipline-dirname)))
-            (parse-discipline
-             (module-public-interface (begin (primitive-load discipline-filename)
-                                             (current-module)))))
-  (exit 0))
-
-(define (parse-discipline discipline-interface)
-  (module-map (lambda (name value)
-                (advice (_ "Analysing ~a.~%") name)
-                (match (resolve-set (variable-ref value))
-                  ((? set? set) (format #t "Yay: ~a.~%" (set-id set)))
-                  (otherwise (format #t "Nay: ~a.~%" otherwise))))
-              discipline-interface))
+             (new-set (mdiscipline-loader catalogue-dir current-catalogue
+                                          discipline-filename)))
+    (match (fetch-set-from-lexp (lexp-make (set-id new-set))
+                                (catalogue-hash current-catalogue)
+                                ;; Say a prayer and hold your breath!
+                                #:crass? #t)
+      ((? set? old-set)
+       (let ((tree (discipline-ancestry-tree new-set old-set)))
+         (advice (_ "Behold, The Ancestry Tree:~%~a~%") tree)
+         tree))
+      (otherwise (report-error (_ "Engraving bombed! ~a.~%") otherwise)))))
 
 (define (parse-input input)
   (match input
     ((? string? input)
      (or (and-let* (((and (file-exists? input) (file-is-directory? input)))
-                    (total (string-append
-                            (if (absolute-file-name? input)
-                                input
-                                (string-append (getcwd)
-                                               file-name-separator-string
-                                               input))
-                            file-name-separator-string
-                            %mkr-discipline%))
+                    (abs-input (if (absolute-file-name? input)
+                                   input
+                                   (string-append (getcwd)
+                                                  file-name-separator-string
+                                                  input)))
+                    (total (string-append abs-input
+                                          file-name-separator-string
+                                          %mkr-discipline%))
                     ((file-exists? total)))
-                   (advice (_ "Engraving '~a' (~a).~%") input total)
-                   total)
+           (advice (_ "Engraving '~a'.~%") abs-input)
+           abs-input)
          (report-error (_ "~a is not a directory, does not exist or does not
 contain a file named '~a'.~%") input %mkr-discipline%)))
     (#t
-      (or (and-let* ((total (string-append (getcwd)
-                                           file-name-separator-string
-                                           %mkr-discipline%))
-                     ((file-exists? total)))
-                    (advice (_ "Engraving '~a' in the current directory (~a).~%")
-                            %mkr-discipline% total)
-                    total)
-          (report-error (_ "The current directory does not contain a file
+     (or (and-let* ((abs-input (getcwd))
+                    (total (string-append (getcwd)
+                                          file-name-separator-string
+                                          %mkr-discipline%))
+                    ((file-exists? total)))
+           (advice (_ "Engraving '~a'.~%")
+                   abs-input)
+           abs-input)
+         (report-error (_ "The current directory does not contain a file
 named '~a'.~%") %mkr-discipline%)))
     (_ (error "ENGRAVE -- Unexpected INPUT" input))))
 
