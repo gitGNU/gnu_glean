@@ -91,6 +91,7 @@
             set-properties
             set-logo
             set-lineage
+            set-ancestry
             set-set-id
             set-set-contents
             set-set-name
@@ -104,6 +105,7 @@
             set-set-logo
             set-set-properties
             set-set-lineage
+            set-set-ancestry
             
             problem
             make-problem
@@ -241,7 +243,8 @@ definition."
 ;;;;; Sets
 (define-immutable-record-type <set>
   (mecha-make-set id contents name version synopsis description keywords
-                  creator attribution resources logo properties lineage)
+                  creator attribution resources logo properties lineage
+                  ancestry)
   set?
   (id           set-id          set-set-id)
   (contents     set-contents    set-set-contents)
@@ -255,14 +258,16 @@ definition."
   (resources    set-resources   set-set-resources)
   (logo         set-logo        set-set-logo)
   (properties   set-properties  set-set-properties)
-  (lineage      set-lineage     set-set-lineage))
+  (lineage      set-lineage     set-set-lineage)
+  (ancestry     set-ancestry    set-set-ancestry))
 
 (define* (make-set id #:optional (contents '()) (name "") (version "")
                    (synopsis "") (description "") (keywords '()) (creator "")
                    (attribution '()) (resources '()) (logo "")
-                   (properties '()) (lineage #f))
+                   (properties '()) (lineage #f) (ancestry #f))
   (mecha-make-set id contents name version synopsis description keywords
-                  creator attribution resources logo properties lineage))
+                  creator attribution resources logo properties lineage
+                  ancestry))
 
 (define (rootset? set)
   "Return #t if set-contents contains problems (which means it's a

@@ -1,24 +1,28 @@
-;; discipline.scm --- an introduction to glean    -*- coding: utf-8 -*-
+;; discipline.scm --- the glean discipline -*- coding: utf-8 -*-
+;;
+;; This file is part of Glean.
 ;;
 ;; Copyright (C) 2014 Alex Sassmannshausen <alex.sassmannshausen@gmail.com>
 ;;
 ;; Author: Alex Sassmannshausen <alex.sassmannshausen@gmail.com>
 ;; Created: 20 October 2014
 ;;
-;; This file is part of Glean.
+;; Glean is free software; you can redistribute it and/or modify it under the
+;; terms of the GNU General Public License as published by the Free Software
+;; Foundation; either version 3 of the License, or (at your option) any later
+;; version.
 ;;
-;; This program is free software: you can redistribute it and/or modify it
-;; under the terms of the GNU Affero General Public License as published by
-;; the Free Software Foundation, either version 3 of the License, or (at your
-;; option) any later version.
+;; Glean is distributed in the hope that it will be useful, but WITHOUT ANY
+;; WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+;; FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more
+;; details.
 ;;
-;; This program is distributed in the hope that it will be useful, but WITHOUT
-;; ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
-;; FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Affero General Public
-;; License for more details.
+;; You should have received a copy of the GNU General Public License along
+;; with glean; if not, contact:
 ;;
-;; You should have received a copy of the GNU Affero General Public License
-;; along with this program.  If not, see <http://www.gnu.org/licenses/>.
+;; Free Software Foundation           Voice:  +1-617-542-5942
+;; 59 Temple Place - Suite 330        Fax:    +1-617-542-2652
+;; Boston, MA  02111-1307,  USA       gnu@gnu.org
 
 ;;; Commentary:
 ;;
@@ -26,9 +30,14 @@
 ;;
 ;;; Code:
 
-(define-module (glean disciplines glean discipline)
-  #:use-module (glean library core-templates)
-  #:export (glean-discipline))
+(define-module
+  (glean disciplines glean discipline)
+  #:use-module
+  (glean disciplines glean ancestry)
+  #:use-module
+  (glean library core-templates)
+  #:export
+  (glean))
 
 
 ;;;; Tutorial
@@ -123,17 +132,18 @@ the library and the lounge.")
 ;;; We have defined the exercises above, so we now we can simply define the
 ;;; discipline's meta data
 
-(define glean-discipline
+(define glean
   (module
-    'glean
-    #:name "An introduction to Glean"
-    #:version "0.1"
-    #:keywords '("education" "code" "glean")
-    #:synopsis "Learn how Glean fits together."
-    #:description "The aim of this discipline is to introduce you to the
+      'glean
+      #:ancestry (ancestry-trees)
+      #:name "An introduction to Glean"
+      #:version "0.1"
+      #:keywords '("education" "code" "glean")
+      #:synopsis "Learn how Glean fits together."
+      #:description "The aim of this discipline is to introduce you to the
 different moving parts and concepts in Glean, to make it easier to contribute,
 hack, or use it."
-    #:creator "Alex Sassmannshausen"
-    #:contents `(,tutorial-part ,library-part ,lounge-part ,client-part)))
+      #:creator "Alex Sassmannshausen"
+      #:contents `(,tutorial-part ,library-part ,lounge-part ,client-part)))
 
-;;; glean.scm ends here
+;;; discipline.scm ends here

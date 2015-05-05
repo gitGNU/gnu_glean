@@ -106,9 +106,9 @@ Conversely, one can use a dag-hash to pinpoint the exact \"structural\"
 revision of a discipline.
 
 The use of this hash is as follows:
-- a discipline's lineage field is populated by a dictionary, with as keys
-  dag-hashes and as values ancestry-trees.
-- the first entry in the lineage field is
+- a discipline's ancestry field is populated by a link to a file containing an
+  ancestry dictionary, with as keys dag-hashes and as values ancestry-trees.
+- the first entry in this ancestry field is
   ((dag-hash current-version) . (ancestry-tree current previous))
 - every challenge request will contain four values:
   + a counter for selecting a problem within a rootset,
@@ -121,7 +121,7 @@ When the library receives such a request, it will:
 - OR match the base-lexp against its currently registered base-lexps:
   + if not found: return not found error to lounge
   + if found:
-    * revisit the discipline's lineage field,
+    * revisit the discipline's ancestry field,
     * match the entry with the request's dag-hash,
     * construct an upgrade path from that entry to the latest version,
     * return this upgrade path to the lounge,
@@ -142,11 +142,7 @@ Ancestry trees always operate on serialized trees, as their primary function
 relates to their being read/written to/from files and passed to the lounge.
 
 Finally, the hashes we use here are shallow hashes: they capture changes to
-the structure of the discipline and version changes.  The hashing procedure
-that will be used is set-shallow-hash (a hash of the set's lexp, each direct
-child lexp, and its version).  For now we use set-fullhash (in the long term
-this is undesirable as it will force lounge updates on a far to frequent
-basis).
+the structure of the discipline and version changes.
 
 The format is as follows:
  ((ancestor-hash . disc-hash) . ((ancestor-hash . disc-hash) ...))

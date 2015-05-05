@@ -1,24 +1,28 @@
-;; discipline.scm --- grokking ornithology    -*- coding: utf-8 -*-
+;; discipline.scm --- the birds discipline -*- coding: utf-8 -*-
+;;
+;; This file is part of Glean.
 ;;
 ;; Copyright (C) 2014 Alex Sassmannshausen <alex.sassmannshausen@gmail.com>
 ;;
 ;; Author: Alex Sassmannshausen <alex.sassmannshausen@gmail.com>
 ;; Created: 06 June 2014
 ;;
-;; This file is part of Glean.
+;; Glean is free software; you can redistribute it and/or modify it under the
+;; terms of the GNU General Public License as published by the Free Software
+;; Foundation; either version 3 of the License, or (at your option) any later
+;; version.
 ;;
-;; This program is free software: you can redistribute it and/or modify it
-;; under the terms of the GNU Affero General Public License as published by
-;; the Free Software Foundation, either version 3 of the License, or (at your
-;; option) any later version.
+;; Glean is distributed in the hope that it will be useful, but WITHOUT ANY
+;; WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+;; FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more
+;; details.
 ;;
-;; This program is distributed in the hope that it will be useful, but WITHOUT
-;; ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
-;; FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Affero General Public
-;; License for more details.
+;; You should have received a copy of the GNU General Public License along
+;; with glean; if not, contact:
 ;;
-;; You should have received a copy of the GNU Affero General Public License
-;; along with this program.  If not, see <http://www.gnu.org/licenses/>.
+;; Free Software Foundation           Voice:  +1-617-542-5942
+;; 59 Temple Place - Suite 330        Fax:    +1-617-542-2652
+;; Boston, MA  02111-1307,  USA       gnu@gnu.org
 
 ;;; Commentary:
 ;;
@@ -30,9 +34,14 @@
 ;;
 ;;; Code:
 
-(define-module (glean disciplines birds discipline)
-  #:use-module (glean library core-templates)
-  #:export (birds-module))
+(define-module
+  (glean disciplines birds discipline)
+  #:use-module
+  (glean disciplines birds ancestry)
+  #:use-module
+  (glean library core-templates)
+  #:export
+  (birds))
 
 (define swans
   (set 'swans
@@ -82,7 +91,7 @@
         (problem (q "Using the image below, what type of bird is this?"
                     (media #:images `("//upload.wikimedia.org/wikipedia/commons/thumb/7/70/Red-breasted_goose_arp.jpg/224px-Red-breasted_goose_arp.jpg")))
                  (s "goose"))
-(problem (q "Using the image below, what type of bird is this?"
+        (problem (q "Using the image below, what type of bird is this?"
                     (media #:images `("//upload.wikimedia.org/wikipedia/commons/thumb/6/6a/Alopochen-aegyptiacus.jpg/194px-Alopochen-aegyptiacus.jpg")))
                  (s "goose")))))
 
@@ -163,17 +172,18 @@
                     (media #:images `("//upload.wikimedia.org/wikipedia/commons/thumb/1/12/Veilchenente_Aythya_affinis_0505282.jpg/213px-Veilchenente_Aythya_affinis_0505282.jpg")))
                  (s "duck")))))
 
-(define birds-module
+(define birds
   (module
-    'birds
-    #:name "Bird Recognition"
-    #:version "0.1"
-    #:keywords '("ornithology" "ecology" "environment" "biology")
-    #:synopsis "Learn about the tell-tale signs of different bird species."
-    #:description ""
-    #:creator "Alex Sassmannshausen"
-    #:attribution (list (media #:urls '("http://www.wikipedia.org")))
-    #:contents `(,ducks ,geese ,swans)
-    #:resources (list (media #:urls '("http://www.wikipedia.org")))))
+      'birds
+      #:ancestry (ancestry-trees)
+      #:name "Bird Recognition"
+      #:version "0.1"
+      #:keywords '("ornithology" "ecology" "environment" "biology")
+      #:synopsis "Learn about the tell-tale signs of different bird species."
+      #:description ""
+      #:creator "Alex Sassmannshausen"
+      #:attribution (list (media #:urls '("http://www.wikipedia.org")))
+      #:contents `(,ducks ,geese ,swans)
+      #:resources (list (media #:urls '("http://www.wikipedia.org")))))
 
-;;; discipline ends here
+;;; discipline.scm ends here

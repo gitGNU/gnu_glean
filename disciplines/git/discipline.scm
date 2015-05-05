@@ -1,24 +1,28 @@
-;; discipline.scm --- the git discipline    -*- coding: utf-8 -*-
+;; discipline.scm --- the git discipline -*- coding: utf-8 -*-
+;;
+;; This file is part of Glean.
 ;;
 ;; Copyright (C) 2014 Alex Sassmannshausen <alex.sassmannshausen@gmail.com>
 ;;
 ;; Author: Alex Sassmannshausen <alex.sassmannshausen@gmail.com>
 ;; Created: 01 January 2014
 ;;
-;; This file is part of Glean.
+;; Glean is free software; you can redistribute it and/or modify it under the
+;; terms of the GNU General Public License as published by the Free Software
+;; Foundation; either version 3 of the License, or (at your option) any later
+;; version.
 ;;
-;; This program is free software: you can redistribute it and/or modify it
-;; under the terms of the GNU Affero General Public License as published by
-;; the Free Software Foundation, either version 3 of the License, or (at your
-;; option) any later version.
+;; Glean is distributed in the hope that it will be useful, but WITHOUT ANY
+;; WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+;; FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more
+;; details.
 ;;
-;; This program is distributed in the hope that it will be useful, but WITHOUT
-;; ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
-;; FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Affero General Public
-;; License for more details.
+;; You should have received a copy of the GNU General Public License along
+;; with glean; if not, contact:
 ;;
-;; You should have received a copy of the GNU Affero General Public License
-;; along with this program.  If not, see <http://www.gnu.org/licenses/>.
+;; Free Software Foundation           Voice:  +1-617-542-5942
+;; 59 Temple Place - Suite 330        Fax:    +1-617-542-2652
+;; Boston, MA  02111-1307,  USA       gnu@gnu.org
 
 ;;; Commentary:
 ;;
@@ -26,9 +30,14 @@
 ;;
 ;;; Code:
 
-(define-module (glean disciplines git discipline)
-  #:use-module (glean library core-templates)
-  #:export (git-module))
+(define-module
+  (glean disciplines git discipline)
+  #:use-module
+  (glean disciplines git ancestry)
+  #:use-module
+  (glean library core-templates)
+  #:export
+  (git))
 
 
 ;;;; Exercises
@@ -36,22 +45,8 @@
 ;;; For clarity we define the exercises at the top level.  As a result we
 ;;; define the discipline itself at the very bottom of the file.
 
-;;; It is unclear why, bit in this discipline, tutorial causes failure.  In
-;;; other disciplines this exact invocation works...
-;; (define tutorial
-;;   (tutorial 'tutorial
-;;             #:name "Git Tutorial"
-;;             #:synopsis "A short introduction to Git."
-;;             #:chapters
-;;             `()
-;;             #:completion
-;;             (chapter "A short introduction to Git."
-;;                      '("This discipline will allow you to practise the basic
-;; usage of some common Git commands: ‘git init’, ’git status’, ‘git add’, ’git
-;; commit‘, ‘git diff‘, ‘git log‘, ’git branch’ and ‘git checkout‘."))))
-
-(define git-init
-  (set 'git-init
+(define init
+  (set 'init
        #:contents
        (list
         (problem (q "What Git command would you use to initiate a new project
@@ -71,31 +66,31 @@ start using Git for a project?")
                  (o "Check the status of the current git project.")
                  (o "Show an overview of recent actions.")))))
 
-(define git-status
-  (set 'git-status
-        #:contents
-        (list
-         (problem (q "In Git, how would you get an overview of the current
+(define status
+  (set 'status
+       #:contents
+       (list
+        (problem (q "In Git, how would you get an overview of the current
 branch of the project in your working directory?")
-                  (s "git status"))
-         (problem (q "To get a quick overview of the Git project in your
+                 (s "git status"))
+        (problem (q "To get a quick overview of the Git project in your
 current directory, you would type ‘git …‘")
-                  (s "status")
-                  (o "init")
-                  (o "status")
-                  (o "log"))
-         (problem (q "What command will list files that have been changed
+                 (s "status")
+                 (o "init")
+                 (o "status")
+                 (o "log"))
+        (problem (q "What command will list files that have been changed
 since your last commit?")
-                  (s "git status"))
-         (problem (q "’git status’ will show you:")
-                  (s "an overview of your current git branch.")
-                  (o "an overview of your current git branch.")
-                  (o "information about your latest commit.")
-                  (o "a detailed set of change logs since for the files you
+                 (s "git status"))
+        (problem (q "’git status’ will show you:")
+                 (s "an overview of your current git branch.")
+                 (o "an overview of your current git branch.")
+                 (o "information about your latest commit.")
+                 (o "a detailed set of change logs since for the files you
 have changed since your last commit..")))))
 
-(define git-add
-  (set 'git-add
+(define add
+  (set 'add
         #:contents
         (list
          (problem (q "How would you add ’foo’ to the index of your project in
@@ -117,8 +112,8 @@ the current directory?")
                   (o "git init")
                   (o "git track")))))
 
-(define git-commit
-  (set 'git-commit
+(define commit
+  (set 'commit
        #:contents
        (list
         (problem (q "‘true’ or ’false’: you can commit the changes you have
@@ -141,8 +136,8 @@ repository is done by using…")
                  (o "git add")
                  (o "git log")))))
 
-(define git-diff
-  (set 'git-diff
+(define diff
+  (set 'diff
        #:contents
        (list
         (problem (q "Which of the following commands would you use to obtain
@@ -158,8 +153,8 @@ last commit?")
 on the files tracked in your project?")
                  (s "git diff")))))
 
-(define git-log
-  (set 'git-log
+(define log
+  (set 'log
        #:contents
        (list
         (problem (q "‘true‘ or ‘false‘: ‘git log’ allows you to see a snapshot of
@@ -175,8 +170,8 @@ the current status of your project")
                  (o "write a commit message.")
                  (o "view your last commit.")))))
 
-(define git-branch
-  (set 'git-branch
+(define branch
+  (set 'branch
        #:contents
        (list
         (problem (q "To list the currently existing branches in your project,
@@ -197,8 +192,8 @@ part of the same project?")
                  (o "git branch feature")
                  (o "git checkout feature")))))
 
-(define git-checkout
-  (set 'git-checkout
+(define checkout
+  (set 'checkout
        #:contents
        (list
         (problem (q "Switching to the ‘feature’ branch is done by typing…")
@@ -215,27 +210,29 @@ uncommited, but tracked, files in your repository?")
                  (o "yes")
                  (o "no")))))
 
+
 ;;;; Discipline
 ;;;
 ;;; We have defined the exercises above, so we now we can simply define the
 ;;; discipline's meta data
 
-(define git-module
+(define git
   (module
-    'git
-    #:name "Git: fast version control"
-    #:version "0.1"
-    #:keywords '("programming" "version-control" "project-management"
-                 "source-code")
-    #:synopsis "Learn to use git to manage your projects."
-    #:description "Git is a free and open source distributed version control
+      'git
+      #:name "Git: fast version control"
+      #:version "0.1"
+      #:keywords '("programming" "version-control" "project-management"
+                   "source-code")
+      #:synopsis "Learn to use git to manage your projects."
+      #:description "Git is a free and open source distributed version control
 system designed to handle everything from small to very large projects with
 speed and efficiency."
-    #:creator "Alex Sassmannshausen"
-    #:attribution (list (media #:text "Git man pages & website"))
-    #:contents `(,git-init ,git-status ,git-add ,git-commit ,git-diff ,git-log
-                           ,git-branch ,git-checkout)
-    #:logo "http://www.git-scm.com/images/logo@2x.png"
-    #:resources (list (media #:urls '("http://www.git-scm.com")))))
+      #:creator "Alex Sassmannshausen"
+      #:ancestry (ancestry-trees)
+      #:attribution (list (media #:text "Git man pages & website"))
+      #:contents `(,init ,status ,add ,commit ,diff ,log ,branch
+                         ,checkout)
+      #:logo "http://www.git-scm.com/images/logo@2x.png"
+      #:resources (list (media #:urls '("http://www.git-scm.com")))))
 
-;;; git.scm ends here
+;;; discipline.scm ends here

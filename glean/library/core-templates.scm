@@ -140,9 +140,9 @@ with those provided as arguments if they are present."
 \"dance\"'s primary role is to re-arrange arguments in such a way as to pass
 contents as the second arg to make-set."
     (match (list meta prop cont)
-      (((id name vers syno desc keyw crea attr reso logo lnage) prop cont)
+      (((id name vers syno desc keyw crea attr reso logo lnage anc) prop cont)
        (make-set id cont name vers syno desc keyw crea attr reso logo prop
-                 lnage))
+                 lnage anc))
       (_ (error "DANCE -- unexpected combination of meta, prop, cont!"
                 meta prop cont))))
   (lambda ()
@@ -180,7 +180,7 @@ for this 'tutorial chapter'."
        ((name (monadic-check-name title))
         (cpar (monadic-check-parts parts))
         (meta (monadic-check-meta (string->symbol name) title "" synopsis ""
-                                  '() "" '() '() "" '(inherit . #f)))
+                                  '() "" '() '() "" #f #f))
         (prop (monadic-check-properties '() 'tutorial))
         (cont (monadic-check-contents (parts->problems cpar)))
         (set  (transient-set meta prop cont)))
@@ -189,7 +189,7 @@ for this 'tutorial chapter'."
 (define* (tutorial id #:key (name "nm") (version "vrs") (synopsis "syn")
                    (description "desc") (keywords '()) (creator "cr")
                    (attribution '()) (resources '()) (logo "log")
-                   (properties '()) (lineage '(inherit . #f))
+                   (properties '()) (lineage #f)
                    (chapters '())       ; list of (chapters)
                    (completion          ; optional tutorial completion chapter
                     (chapter "Completion"
@@ -202,7 +202,7 @@ is not provided a generic completion message will be provided."
   ((mlet* set-monad
        ((meta       (monadic-check-meta id name version synopsis description
                                         keywords creator attribution resources
-                                        logo lineage))
+                                        logo lineage #f))
         (properties (monadic-check-properties properties 'tutorial))
         (contents   (monadic-check-contents (append chapters (list completion))))
         (set        (transient-set meta properties contents)))
@@ -211,13 +211,13 @@ is not provided a generic completion message will be provided."
 (define* (set id #:key (name "") (version "") (synopsis "") (description "")
               (keywords '()) (creator "") (attribution '()) (resources '())
               (logo "") (properties '()) (contents '())
-              (lineage '(inherit . #f)))
+              (lineage #f))
   "Return a simple set capable of inheriting values that are not provided,
 according to rules, from parent sets."
   ((mlet* set-monad
        ((meta       (monadic-check-meta id name version synopsis description
                                         keywords creator attribution resources
-                                        logo lineage))
+                                        logo lineage #f))
         (properties (monadic-check-properties properties))
         (contents   (monadic-check-contents contents))
         (set        (transient-set meta properties contents)))
@@ -226,7 +226,7 @@ according to rules, from parent sets."
 (define* (module id #:key (name "") (version "") (synopsis "")
                  (description "") (keywords '()) (creator "")
                  (attribution '()) (resources '()) (logo "") (properties '())
-                 (contents '()) (lineage '(inherit . #f)))
+                 (contents '()) (lineage #f) (ancestry #f))
   "Return a set tagged as a module, constructed out of the supplied
 arguments.  As modules normally form the top level of a discipline, as much
 information should be placed in the respective fields as possible. This
@@ -234,7 +234,7 @@ information can then be inherited by child sets and modules."
   ((mlet* set-monad
        ((meta       (monadic-check-meta id name version synopsis description
                                         keywords creator attribution resources
-                                        logo lineage))
+                                        logo lineage ancestry))
         (properties (monadic-check-properties properties 'module))
         (contents   (monadic-check-contents contents))
         (set        (transient-set meta properties contents)))
@@ -284,7 +284,7 @@ nothing if ARGS did not pass validation."
                             validate-synopsis validate-description
                             validate-keywords validate-creator
                             validate-attribution validate-resources
-                            validate-logo validate-lineage)))
+                            validate-logo validate-lineage validate-ancestry)))
       (if (= (length validators) (length args))
           (let ((result (map (lambda (validator value)
                                (validator value))
@@ -349,7 +349,8 @@ parent of the set containing NAIVE-META."
   (let ((resolvers (list resolve-id resolve-name resolve-version
                          resolve-synopsis resolve-description resolve-keywords
                          resolve-creator resolve-attributions
-                         resolve-resources resolve-logo resolve-lineage)))
+                         resolve-resources resolve-logo resolve-lineage
+                         resolve-ancestry)))
     (if (apply = (map length (list resolvers naive-meta base-meta)))
         (map (lambda (resolver base-value naive-value)
                (resolver base-value naive-value))
@@ -446,6 +447,13 @@ should inherit from base."
 Lineage is mandatory, and specific to each set.  As a result we should always
 simply return NAIVE-LINEAGE."
   naive-lineage)
+
+(define (resolve-ancestry base-ancestry naive-ancestry)
+  "Return an ancestry field.
+
+Ancestry will default to #f on creation.  We can simply return
+NAIVE-ANCESTRY."
+  naive-ancestry)
 
 (define (resolve-properties base-properties naive-properties)
   "Return a merged properties field.
@@ -581,13 +589,19 @@ This currently is not capable of testing the pair for type."
 
 (define (validate-lineage obj)
   "Return OBJ if it is a valid set-lineage, a 'type nothing otherwise."
-  (match ((pair-validator 'lineage) obj)
-    (('inherit . #f)          obj)
-    (('replace . (? string?)) obj)
-    (('split   . (? string?)) obj)
-    (('merge   . (? list?))   obj)
-    ((_ . _) (type-nothing 'lineage obj))
-    ((? nothing? nothing) nothing)))
+  (match obj
+    (#f obj)
+    ((? lexp?) obj)
+    ((? nothing? nothing) nothing)
+    (otherwise (type-nothing 'lineage obj))))
+
+(define (validate-ancestry obj)
+  "Return OBJ if it is a valid set-ancestry, a 'type nothing otherwise."
+  (match obj
+    (#f obj)
+    ((? list?) obj)
+    ((? nothing? nothing) nothing)
+    (otherwise (type-nothing 'ancestry obj))))
 
 (define (validate-properties obj)
   "Return OBJ if it is a valid set-properties, a 'type nothing otherwise."
