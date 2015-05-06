@@ -72,6 +72,7 @@ Maker is used primarily by content authors and maintainers.
     (cast       (single-char #\c) (value #f))
     (force      (single-char #\f) (value #f))
     (engrave    (single-char #\e) (value optional))
+    (print      (single-char #\p) (value #f))
     (source     (single-char #\s) (value #t))))
 
 (define *messages*
@@ -86,6 +87,7 @@ Maker is used primarily by content authors and maintainers.
     "Prepare a package of the discipline defined in the current directory."
     "Perform operations non-cautiously."
     "Compose the ancestry file the current directory's discipline."
+    "Instead of writing output to files, print output to stdout."
     "Prepare a skeleton discipline in the current directory, named VALUE."))
 
 (define (help)
@@ -117,10 +119,11 @@ Maker is used primarily by content authors and maintainers.
                                                   (get-opt 'log)
                                                   %log-file%)))
              (cond ((get-opt 'source)
-                    (source (get-opt 'source) (get-opt 'force)))
+                    (source (get-opt 'source) (get-opt 'force)
+                            #:print (get-opt 'print)))
                    ((get-opt 'engrave)
                     (engrave (get-opt 'engrave) %current-catalogue%
-                             %catalogue-dir%))
+                             %catalogue-dir% #:print (get-opt 'print)))
                    (else (help))))))))
 
 ;;; boot.scm ends here

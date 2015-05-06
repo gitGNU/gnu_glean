@@ -47,16 +47,17 @@
   #:use-module (ice-9 match)
   #:use-module (ice-9 pretty-print)
   #:use-module (srfi srfi-26)
-  #:export     (source))
+  #:export     (source
+                ancestry-template))
 
 
 ;;;; Porcelain
 
-(define* (source name force?)
+(define* (source name force? #:key print)
   "Search the library for a discipline named NAME.  If it is found, export it
 to the current working directory.  If it is not found, create a skeleton
 discipline named NAME."
-  (match (msource name force?)
+  (match (msource name force? print)
     ((? nothing? nothing)
      (emit-error (nothing-id nothing) (nothing-context nothing)))
     (otherwise #t)))
@@ -76,13 +77,20 @@ Use `--force' if you want to overwrite it.\n") context))))
         (nothing 'file-exists name)
         #t)))
 
-(define (source-maker name)
+(define (source-maker name print?)
+  (define (out-maker target template)
+    (if print?
+        (with-output-to-port (current-output-port)
+          (lambda () template))
+        (with-output-to-file target
+          (lambda () template))))
   (lambda ()
-    (mkdir-p (string-append name "/aux"))
-    (with-output-to-file (string-append name "/discipline.scm")
-      (lambda () (discipline-template name)))
-    (with-output-to-file (string-append name "/ancestry.scm")
-      (lambda () (ancestry-template name)))))
+    (if (not print?)
+        (mkdir-p (string-append name "/aux")))
+    (map out-maker
+         `(,(string-append name "/discipline.scm")
+           ,(string-append name "/ancestry.scm"))
+         `(,(discipline-template name) ,(ancestry-template name)))))
 
 (define (ancestry-module name)
   (glean-module name 'ancestry))
@@ -116,10 +124,10 @@ Use `--force' if you want to overwrite it.\n") context))))
 
 ;;;; Composite procedures
 
-(define (msource name force?)
+(define (msource name force? print?)
   ((mlet* maker-monad
        ((safe (source-checker name force?))
-        (make (source-maker name)))
+        (make (source-maker name print?)))
      (return #t))))
 
 ;;;; Templates
@@ -142,7 +150,9 @@ Use `--force' if you want to overwrite it.\n") context))))
    `((define-module ,(ancestry-module name)
        #:export (ancestry-trees))
 
-     (define ancestry-trees (const ,trees)))))
+     (define ancestry-trees (const ,(if trees
+                                        `(quote ,trees)
+                                        trees))))))
 
 (define (discipline-template name)
   (template

@@ -48,6 +48,7 @@
   #:use-module (glean library library-store)
   #:use-module (glean library sets)
   #:use-module (glean library set-tools)
+  #:use-module (glean maker source)
   #:use-module (ice-9 match)
   #:use-module (srfi srfi-2)
   #:export     (engrave))
@@ -56,19 +57,29 @@
 ;;;; Porcelain
 
 (define %mkr-discipline% "discipline.scm")
+(define %mkr-ancestry% "ancestry.scm")
 
-(define (engrave target current-catalogue catalogue-dir)
-  (and-let* ((discipline-filename (parse-input target))
-             (new-set (mdiscipline-loader catalogue-dir current-catalogue
-                                          discipline-filename)))
-    (match (fetch-set-from-lexp (lexp-make (set-id new-set))
+(define* (engrave target current-catalogue catalogue-dir #:key print)
+  (define (ancestry new old)
+    (lambda ()
+      (ancestry-template (symbol->string (set-id new))
+                         #:trees (cons (cons (dag-hash old)
+                                             (discipline-ancestry-tree new old))
+                                       (match (set-ancestry old)
+                                         ((? list? lst) lst)
+                                         (#f '()))))))
+
+  (and-let* ((filenames (parse-input target))
+             (new (mdiscipline-loader catalogue-dir current-catalogue
+                                      (car filenames))))
+    (match (fetch-set-from-lexp (lexp-make (set-id new))
                                 (catalogue-hash current-catalogue)
                                 ;; Say a prayer and hold your breath!
                                 #:crass? #t)
-      ((? set? old-set)
-       (let ((tree (discipline-ancestry-tree new-set old-set)))
-         (advice (_ "Behold, The Ancestry Tree:~%~a~%") tree)
-         tree))
+      ((? set? old)
+       (if print
+           (with-output-to-port (current-output-port) (ancestry new old))
+           (with-output-to-file (cdr filenames) (ancestry new old))))
       (otherwise (report-error (_ "Engraving bombed! ~a.~%") otherwise)))))
 
 (define (parse-input input)
@@ -85,7 +96,9 @@
                                           %mkr-discipline%))
                     ((file-exists? total)))
            (advice (_ "Engraving '~a'.~%") abs-input)
-           abs-input)
+           (cons abs-input
+                 (string-append abs-input file-name-separator-string
+                                %mkr-ancestry%)))
          (report-error (_ "~a is not a directory, does not exist or does not
 contain a file named '~a'.~%") input %mkr-discipline%)))
     (#t
@@ -96,7 +109,9 @@ contain a file named '~a'.~%") input %mkr-discipline%)))
                     ((file-exists? total)))
            (advice (_ "Engraving '~a'.~%")
                    abs-input)
-           abs-input)
+           (cons abs-input
+                 (string-append abs-input file-name-separator-string
+                                %mkr-ancestry%)))
          (report-error (_ "The current directory does not contain a file
 named '~a'.~%") %mkr-discipline%)))
     (_ (error "ENGRAVE -- Unexpected INPUT" input))))
