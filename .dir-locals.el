@@ -14,6 +14,7 @@
    (eval . (put 'call-with-input-string 'scheme-indent-function 1))
    (eval . (put 'guard 'scheme-indent-function 1))
    (eval . (put 'lambda* 'scheme-indent-function 1))
+   (eval . (put 'set-record-type-printer! 'scheme-indent-function 1))
    (eval . (put 'substitute* 'scheme-indent-function 1))
    (eval . (put 'with-directory-excursion 'scheme-indent-function 1))
    (eval . (put 'package 'scheme-indent-function 0))
