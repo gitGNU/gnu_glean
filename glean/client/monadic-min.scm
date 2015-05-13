@@ -280,13 +280,24 @@ next-challenge for the player associated with token."
   ((mlet* client-monad
        ((test              (test-servers))
         ;; Get next challenge blobhash/counter
-        (challenge-details (fetch-challenge-id)))
-     ;; check we have active modules
-     (if (eqv? (car challenge-details) 'active-modules)
-         ;; no, pass on message
-         (return '(no-active-modules))
-         ;; yes, get next problem
-         (apply fetch-challenge challenge-details))) state))
+        (challenge-details (fetch-challenge-id))
+        (challenge         (match challenge-details
+                             (('active-modules . _)
+                              (return '(no-active-modules)))
+                             (otherwise
+                              (apply fetch-challenge otherwise))))
+        (upgrade           (match challenge
+                             ((('upgrade-map . _))
+                              (push-upgrade (car challenge)))
+                             (otherwise (return otherwise))))
+        ;; Try again after upgrade
+        (challenge-details (fetch-challenge-id))
+        (challenge         (match challenge-details
+                             (('active-modules . _)
+                              (return '(no-active-modules)))
+                             (otherwise
+                              (apply fetch-challenge otherwise)))))
+     (return challenge)) state))
 
 (define (submit-answer answer state)
   "Given the usual STATE of token, lounge and library, submit the
@@ -414,52 +425,56 @@ viewq request."
 (define (fetch-challenge-id)
   "Return chauths or ERROR."
   (lambda (state)
-    (let ((rs (call/exchange
-               (state-lng state)        ; lounge connection
-               (lambda (rs)
-                 (or (chauths? rs)
-                     (set!s? rs)))      ; predicate
-               chauthq                  ; constructor
-               (state-tk state))))      ; input
-      (cond ((nothing? rs)
-             rs)
-            ((set!s? rs)
-             (stateful `(,(set!s-field rs) ,(set!s-value rs))
-                       (mk-state (set!s-token   rs)
-                                 (state-lng     state)
-                                 (state-lib     state))))
-            (else
-             (stateful `(,(chauths-lexp rs) ,(chauths-dag-hash rs)
-                         ,(chauths-shallow-hash rs) ,(chauths-counter rs))
-                       (mk-state (chauths-token rs)
-                                 (state-lng     state)
-                                 (state-lib     state))))))))
+    (match (call/exchange (state-lng state) ; lounge connection
+                          (lambda (rs)      ; predicate
+                            (or (chauths? rs)
+                                (set!s? rs)))
+                          chauthq           ; constructor
+                          (state-tk state))
+      ((? nothing? rs) rs)
+      ((? set!s? rs)
+       (stateful `(,(set!s-field rs) ,(set!s-value rs))
+                 (mk-state (set!s-token   rs)
+                           (state-lng     state)
+                           (state-lib     state))))
+      ((? chauths? rs)
+       (stateful `(,(chauths-lexp rs) ,(chauths-dag-hash rs)
+                   ,(chauths-shallow-hash rs) ,(chauths-counter rs))
+                 (mk-state (chauths-token rs)
+                           (state-lng     state)
+                           (state-lib     state)))))))
 
 (define (fetch-challenge lexp dag shallow counter)
   "Return challs or ERROR."
   (lambda (state)
-    (let ((rs (call/exchange
-               (state-lib state)           ; library connection
-               challs? challq              ; predicate, constructor
-               lexp dag shallow counter))) ; inputs
-      (if (nothing? rs)
-          rs
-          (stateful `(,(challs-challenge rs))
-                    state)))))
+    (match (call/exchange (state-lib state) ; library connection
+                          (lambda (rs)      ; predicate
+                            (or (challs? rs)
+                                (upgs? rs)))
+                          challq            ; constructor
+                          lexp dag shallow counter)
+      ((? nothing? rs) rs)
+      ;; XXX: PHANTOM is a non-existant field to make match work properly.
+      (($ <upgs> phantom content)
+       (stateful `(,content) state))
+      ((? challs?  rs) (stateful `(,(challs-challenge rs)) state)))))
 
 (define (fetch-evaluation answer lexp dag shallow counter)
   "Return evals or ERROR."
   (lambda (state)
-    (let ((rs (call/exchange
-               (state-lib state)        ; library connection
-               evals? evalq             ; predicate, constructor
-               lexp dag shallow counter
-               answer)))                ; inputs
-      (if (nothing? rs)
-          rs
-          (stateful `(,(evals-result   rs)
-                      ,(evals-solution rs))
-                    state)))))
+    (match (call/exchange (state-lib state) ; library connection
+                          (lambda (rs)      ; predicate
+                            (or (evals? rs)
+                                (upgs? rs)))
+                          evalq             ; constructor
+                          lexp dag shallow counter answer)
+      ((? nothing? rs) rs)
+      ;; XXX: PHANTOM is a non-existant field to make match work properly.
+      (($ <upgs> phantom content)
+       (stateful `(,content) state))
+      ((? evals?  rs) (stateful `(,(evals-result   rs)
+                                  ,(evals-solution rs))
+                                state)))))
 
 (define (push-evaluation evaluation)
   "Return evals or ERROR."
@@ -557,6 +572,18 @@ success or a nothing value."
                        (mk-state (auths-token       rs)
                                  (auths-prof-server rs)
                                  (auths-mod-server  rs))))))))
+
+(define (push-upgrade map)
+  (lambda (state)
+    (match (apply push-data 'upgrade map (state-lesser state))
+      ((? nothing? rs) rs)
+      ((? auths?   rs) (stateful 'unimportant
+                                 (mk-state (auths-token       rs)
+                                           (auths-prof-server rs)
+                                           (auths-mod-server  rs))))
+      (otherwise (throw 'glean-logic-error
+                        "PUSH-UPGRADE: unexpected response:" otherwise)))))
+
 
 ;;;;; Helper Procedures
 (define (push-data type data token profile-server)

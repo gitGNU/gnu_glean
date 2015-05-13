@@ -107,6 +107,7 @@
     (details    . ,details)
     (hashmapq   . ,hashmapq)
     (hashmaps   . ,hashmaps)
+    (<upgs>     . ,upgs)
     (sethashesq . ,sethashesq)
     (sethashess . ,sethashess)))
 
