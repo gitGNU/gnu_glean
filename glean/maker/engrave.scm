@@ -99,7 +99,7 @@
            (cons abs-input
                  (string-append abs-input file-name-separator-string
                                 %mkr-ancestry%)))
-         (report-error (_ "~a is not a directory, does not exist or does not
+         (leave (_ "~a is not a directory, does not exist or does not
 contain a file named '~a'.~%") input %mkr-discipline%)))
     (#t
      (or (and-let* ((abs-input (getcwd))
