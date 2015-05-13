@@ -49,9 +49,10 @@
   #:use-module (glean common lounge-requests)
   #:use-module (glean common utils)
   #:use-module (glean library lexp)
-  #:use-module (glean library sets)
-  #:use-module (glean library set-tools)
   #:use-module (glean library library-store)
+  #:use-module (glean library sets)
+  #:use-module (glean library set-operations)
+  #:use-module (glean library set-tools)
   #:use-module (ice-9 match)
   #:use-module (ice-9 rdelim)
   #:use-module (srfi srfi-1)
@@ -131,7 +132,9 @@ COUNTER, or raise 'invalid-set."
     ;; XXX: PHANTOM is a non-existant field to make match work properly.
     (($ <challq> phantom (? list? lxp) (? hash? dag) (? hash? shallow)
         (? integer? counter))
-     (challs (new-challenge (fetch-problem lxp dag shallow counter))))
+     (match (fetch-problem lxp dag shallow counter)
+       ((? upgrade-map? map) (upgs (serialize-upgrade-map map)))
+       ((? problem? prob)    (challs (new-challenge prob)))))
     (_ (raise 'invalid-coordinates))))
 
 ;;; <evalq> -> <evals boolean (list | text)> | (raise 'invalid-coordinates)
@@ -162,8 +165,12 @@ in RQ after evaluating it against the answer provided in RQ, or raise
     ;; XXX: PHANTOM is a non-existant field to make match work properly.
     (($ <evalq> phantom (? list? lxp) (? hash? dag) (? hash? shallow)
         (? integer? counter) (? string? answer))
-     (let ((problem (fetch-problem lxp dag shallow counter)))
-       (evals (eval-answer problem answer) (fetch-solution problem))))
+     (match (fetch-problem lxp dag shallow counter)
+       ;; We need an upgrade
+       ((? upgrade-map? map) (upgs (serialize-upgrade-map map)))
+       ;; We can evaluate the answer
+       ((? problem? problem) (evals (eval-answer problem answer)
+                                    (solution problem)))))
     (_ (raise 'invalid-coordinates))))
 
 (define (known-mods-provider rq)
@@ -234,26 +241,25 @@ in RQ after evaluating it against the answer provided in RQ, or raise
 
 ;;;; Procedures that feel like they should be in a different module
 
-;;; serialized-lexp hash hash integer -> <problem> | #f
+;;; serialized-lexp hash hash integer -> <problem> | <upgrade-map> | #f
 (define (fetch-problem lxp dag shallow counter)
   "Return the problem associated with the coordinates LXP, DAG, SHALLOW and
 COUNTER, or raise 'unknown-set."
-  (match (fetch-set shallow (catalogue-hash %current-catalogue%))
-    ((('set . set) ('lexp . lxp))
-     (let ((problems (set-contents set)))
-       (list-ref problems (modulo counter (length problems)))))
-    (#f
-     ;; Here we should check using lxp & dag to establish need for upgrade or
-     ;; simply wrong.
-     ;; FIXME: part of the next patchset.
-     (match (fetch-set-from-lexp (lexp-make lxp)
-                                 (catalogue-hash %current-catalogue%))
-       ((? set? set)
-        ;; Here we should then search the set's lineage for dag, and create an
-        ;; upgrade-map between dag and current, to return this in an
-        ;; upgrade-request.
-        ;; FIXME: part of the next patchset.
-        (raise 'upgrade-needed))
-       (#f  (raise 'unknown-set))))))
+  (match (fetch-set-from-lexp (lexp-make lxp)
+                              (catalogue-hash %current-catalogue%))
+    ((? plain-module? discipline)
+     (if (string=? (dag-hash discipline) dag)
+         ;; Should be good to go
+         (match (fetch-set shallow (catalogue-hash %current-catalogue%))
+           ((('set . set) ('lexp . lxp))
+            (let ((problems (set-contents set)))
+              (list-ref problems (modulo counter (length problems)))))
+           (#f (throw 'glean-logic-error
+                      "FETCH-PROBLEM: unexpected result.")))
+         ;; Do we need an upgrade perhaps?
+         (derive-upgrade-map discipline dag)))
+    ;; DAG is invalid.
+    (#f (throw 'glean-logic-error
+               "FETCH-PROBLEM: unknown set."))))
 
 ;;; server.scm ends here

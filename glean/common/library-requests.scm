@@ -96,6 +96,11 @@
             hashmaps-token
             hashmaps-content
 
+            upgs
+            <upgs>
+            upgs?
+            upgs-content
+
             sethashesq
             sethashesq?
             sethashesq-token
@@ -228,6 +233,18 @@
 (define hashmaps (record-constructor hashmaps-rcd))
 (define hashmaps? (record-predicate hashmaps-rtd))
 (define hashmaps-content (record-accessor hashmaps-rtd 0))
+
+;;;; Provide Upgrade Map
+;; Provide an upgrade map for upgrading a lounge's abstract representation of
+;; a discipline.
+(define <upgs>
+  (make-record-type-descriptor '<upgs> #f #f #f #f
+                               '#((immutable content))))
+(define upgs-rcd
+  (make-record-constructor-descriptor <upgs> #f #f))
+(define upgs (record-constructor upgs-rcd))
+(define upgs? (record-predicate <upgs>))
+(define upgs-content (record-accessor <upgs> 0))
 
 ;;;; Ruequest Sethashes
 ;; Request the minhashes that go with the full sethashes provided.
