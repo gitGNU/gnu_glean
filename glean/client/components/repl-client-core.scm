@@ -218,8 +218,11 @@ suggested next steps."
                     ((eqv? type 'multi)
                      (for-each (lambda (option counter)
                                  (guide `("~a: ~a\n" ,counter ,(car option))))
-                               options (seq 1 (length options)))))))
-           (suggest help-solve help-available))
+                               options (seq 1 (length options)))))
+              (suggest help-solve help-available))
+             ('no-active-modules
+              (guide `("We have no activated modules as of yet."))
+              (suggest help-available help-activate))))
           (else (nothing-handler rsp)))))
 
 (define* (solve #:optional (answer ""))
