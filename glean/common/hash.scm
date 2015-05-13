@@ -49,8 +49,6 @@
             hash?
             hash&!=?
             hash=?
-            false.hash?
-            new.hash?
             ))
 
 
@@ -197,6 +195,7 @@ character."
 
 
 ;;;; Hash predicates
+;;;
 ;;; These predicates are specifically about string hash comparisons.
 
 (define (hash? obj)
@@ -214,17 +213,6 @@ character."
                    (and (string? a) (string? b)
                         (not (string-null? a)) (not (string-null? b))
                         (not (string=? a b)))))
-   pair-or-a b))
-
-(define* (false.hash? pair-or-a #:optional b)
-  ((hash-compare (lambda (a b)
-                   (and (not a) (string? b) (not (string-null? b)))))
-   pair-or-a b))
-
-(define* (new.hash? pair-or-a #:optional b)
-  ((hash-compare (lambda (a b)
-                   (and (string? a) (string? b)
-                        (string-null? a) (not (string-null? b)))))
    pair-or-a b))
 
 (define (hash-compare predicate)

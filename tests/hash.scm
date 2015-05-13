@@ -145,21 +145,6 @@ In Guile <= 2.0.9, CBIPs were always fully buffered, so the
        (not (hash&!=? "test" "test"))
        (not (hash&!=? #f "test"))))
 
-(test-assert "false.hash?"
-  (and (false.hash? #f "test")
-       (not (false.hash? "test" "test"))
-       (not (false.hash? "test" #f))
-       (not (false.hash? "test" "blah"))
-       (not (false.hash? "" "test"))))
-
-(test-assert "new.hash?"
-  (and (new.hash? "" "blah")
-       (not (new.hash? "test" "blah"))
-       (not (new.hash? "test" "test"))
-       (not (new.hash? #f "blah"))
-       (not (new.hash? "test" ""))
-       (not (new.hash? "test" #f))))
-
 (test-end)
 
 

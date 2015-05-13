@@ -36,7 +36,10 @@
   #:use-module (ice-9 match)
   #:use-module (srfi srfi-1)
   #:use-module (srfi srfi-26)
-  #:export     (dag-hash
+  #:export     (ancestry-retain?
+                ancestry-insert?
+                ancestry-update?
+                dag-hash
                 deep-hash
                 discipline-ancestry-tree
                 hashmap?
@@ -166,14 +169,33 @@ DISCIPLINE did not resolve to sets in ANCESTOR-DISCIPLINE."
 
               (else (match (resolve-ancestor lxp)
                       (($ <nothing> 'lexp-unknown) ; new subset
-                       `("" . ,hash))
+                       `(insert . ,hash))
                       ((? (compose (cut hash=? <> hash)
                                    (cut hasher <>))) ; no change
-                       `(#f . ,hash))
+                       `(retain . ,hash))
                       (ancestor ; subset, or its children, changed
-                       `(,(hasher ancestor) . ,hash)))))))
+                       `(update . ,(cons (hasher ancestor) hash))))))))
 
     (discipline-tree-base discipline node-id)))
+
+;;;;; Discipline-Ancestry-Tree Predicates
+;;;
+;;; Predicates to test the individual nodes of an ancestry tree.
+
+(define (ancestry-retain? entry)
+  (match entry
+    (('retain . (? hash?)) #t)
+    (_                     #f)))
+
+(define (ancestry-insert? entry)
+  (match entry
+    (('insert . (? hash?)) #t)
+    (_                     #f)))
+
+(define (ancestry-update? entry)
+  (match entry
+    (('update . ((? hash? a) . (? hash? b))) (hash&!=? a b))
+    (_                                       #f)))
 
 
 ;;;; Hashtrees and Hashmaps: abstract representations for the lounge.

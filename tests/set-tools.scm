@@ -229,6 +229,26 @@
                                           ,(set-set-contents
                                             2nd (cons 1st-1st
                                                       rest-2nd))))))))))))
+
+;;;;; Tests for: ancestry-retain?
+
+(test-assert "ancestry-retain?"
+  (and (ancestry-retain? '(retain . "hash"))
+       (not (ancestry-retain? '(test . "hash")))))
+
+;;;;; Tests for: ancestry-insert?
+
+(test-assert "ancestry-insert?"
+  (and (ancestry-insert? '(insert . "hash"))
+       (not (ancestry-insert? '(test . "hash")))))
+
+;;;;; Tests for: ancestry-update?
+
+(test-assert "ancestry-update?"
+  (and (ancestry-update? '(update . ("hash" . "different-hash")))
+       (not (ancestry-update? '(update . ("hash" . "hash"))))
+       (not (ancestry-update? '(test . ("hash" . "hash"))))))
+
 ;;;;; Tests for: discipline-ancestry-tree
 
 (define test-ancestor
@@ -268,18 +288,18 @@
                                       ,(set 'seven-two))))))
 (define test-module-false
   (module 'root
-    #:contents `(,(set 'four
-                       ;; This should trigger lexp resolution problems.
-                       #:lineage (lexp (root unknown))
-                       #:contents `(,(set 'one-four)))
-                 ,(set 'two
-                       #:contents `(,(problem (q "test")
-                                              (s "test"))))
-                 ,(set 'seven
-                       ;; This too.
-                       #:lineage (lexp (root blah))
-                       #:contents `(,(tutorial 'seven-one)
-                                    ,(set 'seven-two))))))
+      #:contents `(,(set 'four
+                         ;; This should trigger lexp resolution problems.
+                         #:lineage (lexp (root unknown))
+                         #:contents `(,(set 'one-four)))
+                   ,(set 'two
+                         #:contents `(,(problem (q "test")
+                                                (s "test"))))
+                   ,(set 'seven
+                         ;; This too.
+                         #:lineage (lexp (root blah))
+                         #:contents `(,(tutorial 'seven-one)
+                                      ,(set 'seven-two))))))
 
 ;;; This is the usual scenario: some subsets of a DISCIPLINE contain lexps
 ;;; that resolve to their direct relations in ANCESTOR.  This being the case,
@@ -291,17 +311,21 @@
 (test-assert "discipline-ancestry-tree"
   (match (discipline-ancestry-tree test-module test-ancestor)
     (
-     (("gdigdhz4r6n4fih6rsgcjorqqhahvxv4i57ondemq4wsz7jenduq"
-       . "hfg7shivdryi7zvcm73gq3dwnnvjw2mbfeg7dqrce66rvlqx4yoa")
-      (("6356y5sz5njak5d2sg5tz3ydx2gto23ensuroivjqdxdskq4ydua"
-        . "kum54szklilnuouk2ptpfwlu6q7lz4djjuczh6jbsfigbz6cfqfa")
-       (("wjq3zaldphyakhomojrtoq3pi3ongwypn4vu3bca2qfdmgq2tvlq"
-         . "4gttoxgr354ty2e5fjezmguuor32xr76jezki34ijj7f7psienpq")))
-      ((#f . "nxr2ofrijjleetfnplyqjpols5y63viafulrpel2x23xjtfvomnq"))
-      (("vd5t3awvrjulipmsndlmqfihwi3anquok6xbbyo6wytxohcu7m3a"
-        . "bjxqhdjzd6uhezz6fvowu7qlitlt7oaukv22tjgff6hcywgxduna")
-       (("" . "i3g7uge6ebyjmbt7px2moiezatyrujii3jgmg5yczpf5c7agdntq"))
-       (("" . "5wsdwho6enzlc4fgc4knxcjxddmffpvl5rjfah4p6wz2lbpya75a"))))
+     ((update
+       . ("gdigdhz4r6n4fih6rsgcjorqqhahvxv4i57ondemq4wsz7jenduq"
+          . "hfg7shivdryi7zvcm73gq3dwnnvjw2mbfeg7dqrce66rvlqx4yoa"))
+      ((update
+        . ("6356y5sz5njak5d2sg5tz3ydx2gto23ensuroivjqdxdskq4ydua"
+           . "kum54szklilnuouk2ptpfwlu6q7lz4djjuczh6jbsfigbz6cfqfa"))
+       ((update
+         . ("wjq3zaldphyakhomojrtoq3pi3ongwypn4vu3bca2qfdmgq2tvlq"
+            . "4gttoxgr354ty2e5fjezmguuor32xr76jezki34ijj7f7psienpq"))))
+      ((retain . "nxr2ofrijjleetfnplyqjpols5y63viafulrpel2x23xjtfvomnq"))
+      ((update
+        . ("vd5t3awvrjulipmsndlmqfihwi3anquok6xbbyo6wytxohcu7m3a"
+           . "bjxqhdjzd6uhezz6fvowu7qlitlt7oaukv22tjgff6hcywgxduna"))
+       ((insert . "i3g7uge6ebyjmbt7px2moiezatyrujii3jgmg5yczpf5c7agdntq"))
+       ((insert . "5wsdwho6enzlc4fgc4knxcjxddmffpvl5rjfah4p6wz2lbpya75a"))))
      #t)
     (otherwise otherwise)))
 
@@ -310,16 +334,17 @@
 (test-assert "discipline-ancestry-tree-unresolvable"
   (match (discipline-ancestry-tree test-module-false test-ancestor)
     (
-     (("gdigdhz4r6n4fih6rsgcjorqqhahvxv4i57ondemq4wsz7jenduq"
-       . "hfg7shivdryi7zvcm73gq3dwnnvjw2mbfeg7dqrce66rvlqx4yoa")
+     ((update
+       . ("gdigdhz4r6n4fih6rsgcjorqqhahvxv4i57ondemq4wsz7jenduq"
+          . "hfg7shivdryi7zvcm73gq3dwnnvjw2mbfeg7dqrce66rvlqx4yoa"))
       ((($ <nothing> 'problematic-set-lineage)
         . "kum54szklilnuouk2ptpfwlu6q7lz4djjuczh6jbsfigbz6cfqfa")
-       ((#f . "4gttoxgr354ty2e5fjezmguuor32xr76jezki34ijj7f7psienpq")))
-      ((#f . "nxr2ofrijjleetfnplyqjpols5y63viafulrpel2x23xjtfvomnq"))
+       ((retain . "4gttoxgr354ty2e5fjezmguuor32xr76jezki34ijj7f7psienpq")))
+      ((retain . "nxr2ofrijjleetfnplyqjpols5y63viafulrpel2x23xjtfvomnq"))
       ((($ <nothing> 'problematic-set-lineage)
         . "bjxqhdjzd6uhezz6fvowu7qlitlt7oaukv22tjgff6hcywgxduna")
-       ((#f . "i3g7uge6ebyjmbt7px2moiezatyrujii3jgmg5yczpf5c7agdntq"))
-       ((#f . "5wsdwho6enzlc4fgc4knxcjxddmffpvl5rjfah4p6wz2lbpya75a"))))
+       ((retain . "i3g7uge6ebyjmbt7px2moiezatyrujii3jgmg5yczpf5c7agdntq"))
+       ((retain . "5wsdwho6enzlc4fgc4knxcjxddmffpvl5rjfah4p6wz2lbpya75a"))))
      #t)
     (otherwise otherwise)))
 
@@ -337,14 +362,14 @@
                                              (set-contents ancestor)))))
     (match (discipline-ancestry-tree discipline ancestor)
       (
-       ((? hash&!=?)
-        ((? new.hash?))
-        ((? false.hash?)
-         ((? false.hash?))
-         ((? false.hash?)))
-        ((? false.hash?)
-         ((? false.hash?))
-         ((? false.hash?))))
+       ((? ancestry-update?)
+        ((? ancestry-insert?))
+        ((? ancestry-retain?)
+         ((? ancestry-retain?))
+         ((? ancestry-retain?)))
+        ((? ancestry-retain?)
+         ((? ancestry-retain?))
+         ((? ancestry-retain?))))
        #t)
       (otherwise otherwise))))
 
@@ -362,13 +387,13 @@
 
     (match (discipline-ancestry-tree discipline ancestor)
       (
-       ((? hash&!=?)
-        ((? false.hash?)
-         ((? false.hash?))
-         ((? false.hash?)))
-        ((? false.hash?)
-         ((? false.hash?))
-         ((? false.hash?))))
+       ((? ancestry-update?)
+        ((? ancestry-retain?)
+         ((? ancestry-retain?))
+         ((? ancestry-retain?)))
+        ((? ancestry-retain?)
+         ((? ancestry-retain?))
+         ((? ancestry-retain?))))
        #t)
       (otherwise #f))))
 
@@ -393,14 +418,14 @@
 
     (match (discipline-ancestry-tree discipline ancestor)
       (
-       ((? hash&!=?)
-        ((? hash&!=?)
-         ((? new.hash?))
-         ((? false.hash?))
-         ((? false.hash?)))
-        ((? false.hash?)
-         ((? false.hash?))
-         ((? false.hash?))))
+       ((? ancestry-update?)
+        ((? ancestry-update?)
+         ((? ancestry-insert?))
+         ((? ancestry-retain?))
+         ((? ancestry-retain?)))
+        ((? ancestry-retain?)
+         ((? ancestry-retain?))
+         ((? ancestry-retain?))))
        #t)
       (otherwise #f))))
 
@@ -421,12 +446,12 @@
 
     (match (discipline-ancestry-tree discipline ancestor)
       (
-       ((? false.hash?)
-        ((? hash&!=?)
-         ((? false.hash?)))
-        ((? false.hash?)
-         ((? false.hash?))
-         ((? false.hash?))))
+       ((? ancestry-retain?)
+        ((? ancestry-update?)
+         ((? ancestry-retain?)))
+        ((? ancestry-retain?)
+         ((? ancestry-retain?))
+         ((? ancestry-retain?))))
        #t)
       (otherwise #f))))
 
@@ -467,13 +492,13 @@
 
     (match (discipline-ancestry-tree discipline ancestor)
       (
-       ((? false.hash?)
-        ((? hash&!=?)
-         ((? false.hash?)))
-        ((? hash&!=?)
-         ((? new.hash?))
-         ((? false.hash?))
-         ((? false.hash?))))
+       ((? ancestry-retain?)
+        ((? ancestry-update?)
+         ((? ancestry-retain?)))
+        ((? ancestry-update?)
+         ((? ancestry-insert?))
+         ((? ancestry-retain?))
+         ((? ancestry-retain?))))
        #t)
       (otherwise #f))))
 
@@ -510,10 +535,10 @@
 
     (match (discipline-ancestry-tree discipline ancestor)
       (
-       ((? false.hash?)
-        ((? hash&!=?)
-         ((? false.hash?)))
-        ((? hash&!=?)
+       ((? ancestry-retain?)
+        ((? ancestry-update?)
+         ((? ancestry-retain?)))
+        ((? ancestry-update?)
          ((? (lambda (pair)
                (match pair
                  ((a . b)
@@ -522,8 +547,8 @@
                                              (lexp-set-resolve ancestor lxp)))
                        (string? b)))
                  (_ #f)))))
-         ((? false.hash?))
-         ((? false.hash?))))
+         ((? ancestry-retain?))
+         ((? ancestry-retain?))))
        #t)
       (otherwise #f))))
 
