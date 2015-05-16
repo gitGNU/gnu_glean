@@ -36,7 +36,8 @@
   #:use-module (ice-9 match)
   #:use-module (srfi srfi-1)
   #:use-module (srfi srfi-26)
-  #:export     (ancestry-retain?
+  #:export     (ancestry-change?
+                ancestry-retain?
                 ancestry-insert?
                 ancestry-update?
                 dag-hash
@@ -163,18 +164,18 @@ DISCIPLINE did not resolve to sets in ANCESTOR-DISCIPLINE."
         (cond ((set-lineage set)     ; ... set has set-lineage
                (match (resolve-ancestor (set-lineage set))
                  ((? set? ancestor)
-                  `(,(shallow-hash (set-lineage set) ancestor) . ,hash))
+                  `(change ,(shallow-hash (set-lineage set) ancestor) ,hash))
                  (($ <nothing> 'lexp-unknown context)
-                  `(,(nothing 'problematic-set-lineage context) . ,hash))))
+                  `(,(nothing 'problematic-set-lineage context) ,hash))))
 
               (else (match (resolve-ancestor lxp)
                       (($ <nothing> 'lexp-unknown) ; new subset
-                       `(insert . ,hash))
+                       `(insert ,hash))
                       ((? (compose (cut hash=? <> hash)
                                    (cut hasher <>))) ; no change
-                       `(retain . ,hash))
+                       `(retain ,hash))
                       (ancestor ; subset, or its children, changed
-                       `(update . ,(cons (hasher ancestor) hash))))))))
+                       `(update ,(hasher ancestor) ,hash)))))))
 
     (discipline-tree-base discipline node-id)))
 
@@ -182,20 +183,25 @@ DISCIPLINE did not resolve to sets in ANCESTOR-DISCIPLINE."
 ;;;
 ;;; Predicates to test the individual nodes of an ancestry tree.
 
+(define (ancestry-change? entry)
+  (match entry
+    (('change (? hash? a) (? hash? b)) (hash&!=? a b))
+    (_                                 #f)))
+
 (define (ancestry-retain? entry)
   (match entry
-    (('retain . (? hash?)) #t)
-    (_                     #f)))
+    (('retain (? hash?)) #t)
+    (_                   #f)))
 
 (define (ancestry-insert? entry)
   (match entry
-    (('insert . (? hash?)) #t)
-    (_                     #f)))
+    (('insert (? hash?)) #t)
+    (_                   #f)))
 
 (define (ancestry-update? entry)
   (match entry
-    (('update . ((? hash? a) . (? hash? b))) (hash&!=? a b))
-    (_                                       #f)))
+    (('update (? hash? a) (? hash? b)) (hash&!=? a b))
+    (_                                 #f)))
 
 
 ;;;; Hashtrees and Hashmaps: abstract representations for the lounge.
@@ -210,16 +216,25 @@ car, and either '() or a list containing hashtrees as its cdr."
     ((((? hash?) . (? list?))) #t)
     (_ #f)))
 
-(define (make-hashtree set lxp)
+(define* (make-hashtree set lxp #:key labels?)
   "return a hashtree, starting with set, and accumulated lexp lxp."
-  (define (hashtree set)
-    (make-hashtree set (lexp-append lxp (set-id set))))
-  (cond ((rootset? set)
-         (list (cons (shallow-hash lxp set)
-                     (set-properties set))))
-        (else (list (cons (shallow-hash lxp set)
-                          (set-properties set))
-                    (map hashtree (set-contents set))))))
+  (define* (hashtree set #:key labels?)
+    (make-hashtree set (lexp-append lxp (set-id set)) #:labels? labels?))
+  (if labels?
+      (cond ((rootset? set)
+             `((shallow-hash ,(shallow-hash lxp set))
+               (properties   ,(set-properties set))))
+            (else
+             `((shallow-hash    ,(shallow-hash lxp set))
+               (properties      ,(set-properties set))
+               (child-hashtrees ,(map (cut hashtree <> #:labels? #t)
+                                      (set-contents set))))))
+      (cond ((rootset? set)
+             (list (cons (shallow-hash lxp set)
+                         (set-properties set))))
+            (else (list (cons (shallow-hash lxp set)
+                              (set-properties set))
+                        (map hashtree (set-contents set)))))))
 
 (define (hashmap? obj)
   "return #t if obj is a hashmap, #f otherwise.
@@ -230,10 +245,14 @@ base-lexp, and its dag-hash."
     (((base-id) (? hash?) (? hashtree?)) #t)
     (_ #f)))
 
-(define (make-hashmap discipline)
+(define* (make-hashmap discipline #:key labels?)
   "return a hashmap of discipline."
   (let ((lxp (lexp-make (set-id discipline))))
-    (list (lexp-serialize lxp) (dag-hash discipline)
-          (make-hashtree discipline lxp))))
+    (if labels?
+        `((lexp     ,(lexp-serialize lxp))
+          (dag-hash ,(dag-hash discipline))
+          (hashtree ,(make-hashtree discipline lxp #:labels? #t)))
+        (list (lexp-serialize lxp) (dag-hash discipline)
+              (make-hashtree discipline lxp)))))
 
 ;;; set-tools ends here

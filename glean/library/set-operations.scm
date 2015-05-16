@@ -32,6 +32,8 @@
   #:use-module (glean library sets)
   #:use-module (glean library set-tools)
   #:use-module (ice-9 match)
+  #:use-module (ice-9 pretty-print)
+  #:use-module (ice-9 vlist)
   #:use-module (srfi srfi-1)
   #:use-module (srfi srfi-9)
   #:use-module (srfi srfi-9 gnu)
@@ -68,14 +70,17 @@
         "<upgrade-map current-set: '~a'> [introspection: inspect-upgrade-map]"
         (set-id current-set))))))
 
-(define* (inspect-upgrade-map upgrade-map #:key (port #t))
+(define* (inspect-upgrade-map upgrade-map #:key (port #t) (serialized? #t))
   "A detailed printer for upgrade-maps."
-  (match upgrade-map
-    (($ <upgrade-map> current-set old-dag generations map)
-     (format port "Upgrade Map For '~a'~%Upgrading from '~a' over ~a generations.~%"
-             (set-name current-set) old-dag generations)
-     ;; Should recursively pretty print the map
-     (format port "  ~a~%" map))))
+  (if serialized?
+      (pretty-print (serialize-upgrade-map upgrade-map))
+      (match upgrade-map
+        (($ <upgrade-map> current-set (('old old) ('new new)) generations map)
+         (format port "Upgrade Map For '~a'~%\
+Upgrading from '~a' to '~a' over ~a generations.~%"
+                 (set-name current-set) old new generations)
+         ;; Should recursively pretty print the map
+         (format port "~a~%" (pretty-print map ))))))
 
 ;;;;; For sheer testing
 (define tset
@@ -98,30 +103,36 @@
 data for a lounge to upgrade using MAP."
   ;; This format below is compatible with sxml.  HASHMAPS and UPGRADE-MAPS
   ;; are not yet.
-  `(upgrade-map (dag-hash    ,(upgrade-map-dag map))
+  `(upgrade-map (dag-hash    ,@(upgrade-map-dag map))
                 (generations ,(upgrade-map-generations map))
-                (map         ,(upgrade-map-map map))
-                (set         ,(make-hashmap (upgrade-map-set map)))))
+                (map         ,(upgrade-map-map map))))
 
 ;;; <set> dag-hash -> <upgrade-map> | error
 (define (derive-upgrade-map set dag)
   "Return the upgrade-map leading from the previous version of SET to SET
 identified by DAG."
-  (match (select-ancestry-tree (set-ancestry set) dag)
-    ;; Simple case: the first ancestry tree is the one we want.
-    ;; As DAG was matched after crossing 0 generations, the first entry will
-    ;; carry information how to upgrade from DAG to current version.
-    ((0 . tree)
-     (inform (_ "We have a simple upgrade scenario.~%"))
-     (make-upgrade-map set dag 0 tree))
-    ;; Complicated: we have to cross several generations, and must build a
-    ;; composite upgrade tree.
-    ((generations . tree)
-     (insist (_ "We have not implemented multi-generation upgrades yet.~%"))
-     (make-upgrade-map set dag generations tree))
-    (otherwise
-     (throw 'glean-logic-error
-            "DERIVE-UPGRADE-MAP: unexpected format:" otherwise))))
+  (match (make-hashmap set #:labels? #t)
+    ((('lexp lxp) ('dag-hash new-dag) ('hashtree htree))
+     (match (select-ancestry-tree (set-ancestry set) dag)
+       ;; Simple case: the first ancestry tree is the one we want.
+       ;; As DAG was matched after crossing 0 generations, the first entry will
+       ;; carry information how to upgrade from DAG to current version.
+       ((0 . utree)
+        (inform (_ "We have a simple upgrade scenario.~%"))
+        (make-upgrade-map set `((old ,dag) (new ,new-dag)) 0
+                          (expand-ancestry-tree utree htree)))
+       ;; Complicated: we have to cross several generations, and must build a
+       ;; composite upgrade tree.
+       ((generations . utree)
+        (insist (_ "We have not implemented multi-generation upgrades yet.~%"))
+        (make-upgrade-map set dag generations utree))
+       ((? number? generations)
+        (throw 'glean-library-error
+               "DERIVE-UPGRADE-MAP: DAG unknown in set's ancestry tree."
+               dag (set-name set)))
+       (otherwise
+        (throw 'glean-logic-error
+               "DERIVE-UPGRADE-MAP: unexpected format:" otherwise))))))
 
 ;;; ((dag . tree) ...) <string dag-hash> -> (<int generations> . tree)
 (define (select-ancestry-tree trees dag)
@@ -136,6 +147,34 @@ interest."
                (((? (cute string=? <> dag)) . tree) (cons generations tree))
                (otherwise                           (1+ generations))))))
         0 trees))
+
+;; (ancestry tree) (hashtree #:labels? #t) -> (expanded ancestry tree)
+(define (expand-ancestry-tree ancestrytree hashtree)
+  "Return a new tree, the result of expanding ANCESTRYTREE with the nodes &
+leaves of HASHMAP."
+  (define index (index-hashtree hashtree vlist-null))
+  (define (index-hashtree hashtree vhash)
+    "Return vhash augmented by the nodes and leaves in hashtree.  Their
+shallow-hashes will be used as the keys for vhash."
+    (match hashtree
+      ((('shallow-hash hash) ('properties props))
+       (vhash-cons hash `((shallow-hash ,hash) (properties ,props)) vhash))
+      ((('shallow-hash hash) ('properties props) ('child-hashtrees children))
+       (fold index-hashtree
+             (vhash-cons hash `((shallow-hash ,hash) (properties ,props)) vhash)
+             children))))
+  (define (expand ancestrytree)
+    "Return a new ancestry tree, built from ANCESTRYTREE, with each node or
+leaf their new shallow-hash replaced with the expanded entry from index."
+    (match ancestrytree
+      ((('update oldh newh) . children)
+       `((update (original ,oldh) ,@(cdr (vhash-assoc newh index)))
+         . ,(map expand children)))
+      (((keyword hash) . children)
+       `((,keyword ,@(cdr (vhash-assoc hash index)))
+         . ,(map expand children)))))
+
+  (expand ancestrytree))
 
 ;;; set-operations ends here
 

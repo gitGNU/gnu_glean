@@ -230,24 +230,31 @@
                                             2nd (cons 1st-1st
                                                       rest-2nd))))))))))))
 
+;;;;; Tests for: ancestry-change?
+
+(test-assert "ancestry-change?"
+  (and (ancestry-change? '(change "hash" "different hash"))
+       (not (ancestry-retain? '(change "hash" "hash")))
+       (not (ancestry-retain? '(test "hash" "different-hash")))))
+
 ;;;;; Tests for: ancestry-retain?
 
 (test-assert "ancestry-retain?"
-  (and (ancestry-retain? '(retain . "hash"))
-       (not (ancestry-retain? '(test . "hash")))))
+  (and (ancestry-retain? '(retain "hash"))
+       (not (ancestry-retain? '(test "hash")))))
 
 ;;;;; Tests for: ancestry-insert?
 
 (test-assert "ancestry-insert?"
-  (and (ancestry-insert? '(insert . "hash"))
-       (not (ancestry-insert? '(test . "hash")))))
+  (and (ancestry-insert? '(insert "hash"))
+       (not (ancestry-insert? '(test "hash")))))
 
 ;;;;; Tests for: ancestry-update?
 
 (test-assert "ancestry-update?"
-  (and (ancestry-update? '(update . ("hash" . "different-hash")))
-       (not (ancestry-update? '(update . ("hash" . "hash"))))
-       (not (ancestry-update? '(test . ("hash" . "hash"))))))
+  (and (ancestry-update? '(update "hash" "different-hash"))
+       (not (ancestry-update? '(update "hash" "hash")))
+       (not (ancestry-update? '(test "hash" "hash")))))
 
 ;;;;; Tests for: discipline-ancestry-tree
 
@@ -539,18 +546,11 @@
         ((? ancestry-update?)
          ((? ancestry-retain?)))
         ((? ancestry-update?)
-         ((? (lambda (pair)
-               (match pair
-                 ((a . b)
-                  (and (hash=? a
-                               (shallow-hash lxp
-                                             (lexp-set-resolve ancestor lxp)))
-                       (string? b)))
-                 (_ #f)))))
+         ((? ancestry-change?))
          ((? ancestry-retain?))
          ((? ancestry-retain?))))
        #t)
-      (otherwise #f))))
+      (otherwise otherwise))))
 
 ;;;;; Tests for: hashtree?
 
