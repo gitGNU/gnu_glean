@@ -44,6 +44,7 @@
   #:use-module (glean library sets)
   #:use-module (ice-9 match)
   #:use-module (srfi srfi-1)
+  #:use-module (srfi srfi-9)
   #:use-module (srfi srfi-9 gnu)
   #:use-module (srfi srfi-26)
   #:export     (<lexp>
@@ -58,6 +59,13 @@
                 lexp-set-member
                 set-lexp
                 set-child-lexps
+                <node>
+                make-node
+                node?
+                node-children
+                node-id
+                leaf?
+                serialize-node
                 discipline-tree
                 discipline-tree-base
                 discipline-tree->serialized
@@ -178,31 +186,54 @@ the basis for generating the lexp list."
 
 ;;;;; Discipline lexp operations
 
-(define (discipline-tree-base discipline node-id)
+;;;; Discipline Trees
+
+(define-record-type <node>
+  (make-node id children)
+  node?
+  (id       node-id)
+  (children node-children))
+
+(define (leaf? obj)
+  (match obj
+    (($ <node> id '()) #t)
+    (_ #f)))
+
+(define (serialize-node node)
+  (match node
+    (($ <node> id children)
+     `(node (id ,id) (children ,@(map serialize-node children))))))
+
+(define* (discipline-tree-base discipline node-id #:key modern?)
   "A higher-order function which, when provided with a DISCIPLINE and a
 procedure identifying how to generate node-id's called NODE-ID, returns the
 appropriate tree representation of discipline."
-  (define (make-leaf id foundation set)
-    (cons (node-id id foundation set) '()))
+  (define (leaf id foundation set)
+    (if modern?
+        (make-node (node-id id foundation set) '())
+        (cons (node-id id foundation set) '())))
 
-  (define (make-node id foundation children set)
-    (cons (node-id id foundation set)
-          (map (recurse-maker (cons id foundation)) children)))
+  (define (node id foundation children set)
+    (if modern?
+        (make-node (node-id id foundation set)
+                   (map (recurse-maker (cons id foundation)) children))
+        (cons (node-id id foundation set)
+              (map (recurse-maker (cons id foundation)) children))))
 
   (define (recurse-maker lxp-foundation)
     (lambda (set)
       (cond ((rootset? set)
-             (make-leaf (set-id set) lxp-foundation set))
+             (leaf (set-id set) lxp-foundation set))
             (else
-             (make-node (set-id set) lxp-foundation
-                        (set-contents set) set)))))
+             (node (set-id set) lxp-foundation
+                   (set-contents set) set)))))
 
   (if (plain-module? discipline)
       ((recurse-maker '()) discipline)
       (error "DISCIPLINE-TREE: DISCIPLINE is not a discipline:"
              discipline)))
 
-(define (discipline-serialized-tree discipline)
+(define* (discipline-serialized-tree discipline #:key modern?)
   "Return a tree representation of DISCIPLINE, where each component set is
 replaced by a write friendly representation of the lexp identifying it.
 
@@ -213,7 +244,8 @@ Output should hence be:
             ((root two) . ((root two-one . '())))))"
   (discipline-tree-base discipline
                         (lambda (id foundation set)
-                          (reverse (cons id foundation)))))
+                          (reverse (cons id foundation)))
+                        #:modern? modern?))
 
 (define (discipline-tree->serialized lexp-tree)
   "Return a \"serialized\" version of LEXP-TREE, i.e. a version that can be
@@ -233,7 +265,7 @@ SERIALIZED-TREE.  This procedure is the counterpart to
      (cons (lexp-make full-lexp)
            (map discipline-serialized->tree rest)))))
 
-(define (discipline-tree discipline)
+(define* (discipline-tree discipline #:key modern?)
   "Return a tree representation of DISCIPLINE, where each component set is
 replaced by the lexp identifying it.
 
@@ -244,6 +276,7 @@ Output should hence be:
           (lexp . ((lexp . '())))))"
   (discipline-tree-base discipline
                         (lambda (id foundation set)
-                          (lexp-make (reverse (cons id foundation))))))
+                          (lexp-make (reverse (cons id foundation))))
+                        #:modern? modern?))
 
 ;;; lexp ends here

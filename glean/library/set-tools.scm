@@ -138,7 +138,7 @@ unambiguous addressing between the lounge and the library."
 
 ;;;; Hash using procedures
 
-(define (discipline-ancestry-tree discipline ancestor-discipline)
+(define* (discipline-ancestry-tree discipline ancestor-discipline #:key modern?)
   "Return a tree providing a schema by which an ancestor lexp-tree could be
 modified to the equivalent tree for discipline.
 
@@ -177,7 +177,7 @@ DISCIPLINE did not resolve to sets in ANCESTOR-DISCIPLINE."
                       (ancestor ; subset, or its children, changed
                        `(update ,(hasher ancestor) ,hash)))))))
 
-    (discipline-tree-base discipline node-id)))
+    (discipline-tree-base discipline node-id #:modern? modern?)))
 
 ;;;;; Discipline-Ancestry-Tree Predicates
 ;;;
