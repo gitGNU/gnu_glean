@@ -29,6 +29,7 @@
 
 (define-module (glean library set-operations)
   #:use-module (glean common utils)
+  #:use-module (glean library lexp)
   #:use-module (glean library sets)
   #:use-module (glean library set-tools)
   #:use-module (ice-9 match)
@@ -98,7 +99,9 @@ Upgrading from '~a' to '~a' over ~a generations.~%"
 data for a lounge to upgrade using MAP."
   ;; This format below is compatible with sxml.  HASHMAPS and UPGRADE-MAPS
   ;; are not yet.
-  `(upgrade-map (dag-hash    ,@(upgrade-map-dag map))
+  `(upgrade-map (lexp        ,(lexp-serialize
+                               (lexp-make (set-id (upgrade-map-set map)))))
+                (dag-hash    ,@(upgrade-map-dag map))
                 (generations ,(upgrade-map-generations map))
                 (map         ,(upgrade-map-map map))))
 
