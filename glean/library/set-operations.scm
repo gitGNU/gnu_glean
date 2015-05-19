@@ -43,9 +43,12 @@
 
                 <upgrade-map>
                 make-upgrade-map
+                inspect-upgrade-map
                 upgrade-map?
                 upgrade-map-dag
+                upgrade-map-generations
                 upgrade-map-map
+                upgrade-map-set
                 ))
 
 
@@ -82,14 +85,6 @@ Upgrading from '~a' to '~a' over ~a generations.~%"
          ;; Should recursively pretty print the map
          (format port "~a~%" (pretty-print map ))))))
 
-;;;;; For sheer testing
-(define tset
-  ;; extract git from store
-  ((@ (glean library library-store) fetch-set-from-lexp)
-   ((@ (glean library lexp) lexp) git)
-   ((@ (glean library library-store) catalogue-hash)
-    (@ (glean config) %current-catalogue%))))
-
 
 ;;;; Porcelain Procedures
 ;;;
@@ -114,6 +109,10 @@ identified by DAG."
   (match (make-hashmap set #:labels? #t)
     ((('lexp lxp) ('dag-hash new-dag) ('hashtree htree))
      (match (select-ancestry-tree (set-ancestry set) dag)
+       ((generations . #f)
+        (throw 'glean-library-error
+               "DERIVE-UPGRADE-MAP: DAG unknown in set's ancestry tree."
+               dag (set-name set)))
        ;; Simple case: the first ancestry tree is the one we want.
        ;; As DAG was matched after crossing 0 generations, the first entry will
        ;; carry information how to upgrade from DAG to current version.
@@ -126,10 +125,6 @@ identified by DAG."
        ((generations . utree)
         (insist (_ "We have not implemented multi-generation upgrades yet.~%"))
         (make-upgrade-map set dag generations utree))
-       ((? number? generations)
-        (throw 'glean-library-error
-               "DERIVE-UPGRADE-MAP: DAG unknown in set's ancestry tree."
-               dag (set-name set)))
        (otherwise
         (throw 'glean-logic-error
                "DERIVE-UPGRADE-MAP: unexpected format:" otherwise))))))
@@ -141,12 +136,12 @@ that we want to upgrade from, selected from TREES, using DAG as the tree of
 interest."
   (fold (lambda (ancestry-tree previous)
           (match previous
-            ((generations . tree) previous)
-            (generations
+            ((generations . #f)
              (match ancestry-tree
                (((? (cute string=? <> dag)) . tree) (cons generations tree))
-               (otherwise                           (1+ generations))))))
-        0 trees))
+               (otherwise `(,(1+ generations) . #f))))
+            (otherwise previous)))
+        `(0 . #f) trees))
 
 ;; (ancestry tree) (hashtree #:labels? #t) -> (expanded ancestry tree)
 (define (expand-ancestry-tree ancestrytree hashtree)
