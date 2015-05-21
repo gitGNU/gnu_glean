@@ -170,7 +170,7 @@ in RQ after evaluating it against the answer provided in RQ, or raise
        ((? upgrade-map? map) (upgs (serialize-upgrade-map map)))
        ;; We can evaluate the answer
        ((? problem? problem) (evals (eval-answer problem answer)
-                                    (solution problem)))))
+                                    (fetch-solution problem)))))
     (_ (raise 'invalid-coordinates))))
 
 (define (known-mods-provider rq)
