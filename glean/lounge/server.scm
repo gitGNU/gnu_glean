@@ -184,26 +184,25 @@ after updating the states in the lounge store."
 (define (process-regq rq)
   "Return a regq, containing a new token, the profile's profile
 server, module server, a nothing value, or raise an error."
-  (let ((name    (regq-name        rq))
-        (passwd  (regq-password    rq))
-        (lounge  (regq-prof-server rq))
-        (library (regq-mod-server  rq)))
-    (cond ((not (string? name))
-           (raise '(process-regq invalid-username)))
-          ((not (string? passwd))
-           (raise '(process-regq invalid-passwd)))
-          ((not (string? lounge))
-           (raise '(process-regq invalid-mod-server)))
-          ((not (string? library))
-           (raise '(process-regq invalid-prof-server)))
-          (else
-           ((mlet* lounge-monad
-                   ((lng       (fetch-lounge))
-                    (diff      (register-profile name passwd
-                                                 lounge library lng))
-                    (ignore    (update-lounge diff %lounge-persist%))
-                    (new-token (login (profile-hash name passwd))))
-                   (auths new-token lounge library)) %lounge-dir%)))))
+  (match rq
+    ;; XXX: PHANTOM is a non-existant field to make match work properly.
+    (($ <regq> phantom name passwd lounge library)
+     (cond ((not (string? name))
+            (raise '(process-regq invalid-username)))
+           ((not (string? passwd))
+            (raise '(process-regq invalid-passwd)))
+           ((not (string? lounge))
+            (raise '(process-regq invalid-mod-server)))
+           ((not (string? library))
+            (raise '(process-regq invalid-prof-server)))
+           (else
+            ((mlet* lounge-monad
+                 ((lng       (fetch-lounge))
+                  (diff      (register-profile name passwd
+                                               lounge library lng))
+                  (ignore    (update-lounge diff %lounge-persist%))
+                  (new-token (login (profile-hash name passwd))))
+               (auths new-token lounge library)) %lounge-dir%))))))
 
 (define (process-viewq rq)
   "Return a views, a lounge response containing a new token, and the
@@ -262,15 +261,16 @@ if RQ parses correctly. Otherwise raise a an error."
                      %lounge-dir%))))))))
 
 (define (process-delpq rq)
-  (let ((tk (delpq-token rq)))
-    (if (token? (delpq-token rq))
-        ((mlet* lounge-monad
-                ((new-tk  (authenticate tk))
-                 (lng     (fetch-lounge))
-                 (diff    (delete-profile new-tk lng))
-                 (ignore  (update-lounge diff %lounge-persist%))
-                 (ignore2 (purge-profile tk)))
-                (acks rq)) %lounge-dir%)
-        (raise '(process-delpq invalid-token)))))
+  (match rq
+    ;; XXX: PHANTOM is a non-existant field to make match work properly.
+    (($ <delpq> phantom (? token? tk))
+     ((mlet* lounge-monad
+          ((new-tk  (authenticate tk))
+           (lng     (fetch-lounge))
+           (diff    (delete-profile new-tk lng))
+           (ignore  (update-lounge diff %lounge-persist%))
+           (ignore2 (purge-profile tk)))
+        (acks rq)) %lounge-dir%))
+    (_ (raise '(process-delpq invalid-token)))))
 
 ;;; server.scm ends here

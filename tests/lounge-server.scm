@@ -24,6 +24,8 @@
 ;;
 ;; Lounge-server unit tests.
 ;;
+;; Source-file: glean/lounge/server.scm
+;;
 ;;; Code:
 
 (define-module (tests lounge-server)

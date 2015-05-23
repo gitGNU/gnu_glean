@@ -60,6 +60,7 @@
             echos-message
 
             regq
+            <regq>
             regq?
             regq-name
             regq-password
@@ -88,6 +89,7 @@
             set!s-value
 
             delpq
+            <delpq>
             delpq?
             delpq-token
 
@@ -157,20 +159,20 @@
 ;; Reg requests provide a profile name and a module server (no
 ;; password for now) and are responded to with an auths if all went well, or
 ;; negs otherwise.
-(define regq-rtd
-  (make-record-type-descriptor 'regq #f #f #f #f
+(define <regq>
+  (make-record-type-descriptor '<regq> #f #f #f #f
                                '#((immutable name)
                                   (immutable password)
                                   (immutable prof-server)
                                   (immutable mod-server))))
 (define regq-rcd
-  (make-record-constructor-descriptor regq-rtd #f #f))
+  (make-record-constructor-descriptor <regq> #f #f))
 (define regq (record-constructor regq-rcd))
-(define regq? (record-predicate regq-rtd))
-(define regq-name (record-accessor regq-rtd 0))
-(define regq-password (record-accessor regq-rtd 1))
-(define regq-prof-server (record-accessor regq-rtd 2))
-(define regq-mod-server (record-accessor regq-rtd 3))
+(define regq? (record-predicate <regq>))
+(define regq-name (record-accessor <regq> 0))
+(define regq-password (record-accessor <regq> 1))
+(define regq-prof-server (record-accessor <regq> 2))
+(define regq-mod-server (record-accessor <regq> 3))
 
 ;;;; Request View
 ;; View requests provide a means to retriew profile details from the
@@ -317,13 +319,11 @@
 ;;;; Request Profile Deletion
 ;; Delp Requests provide a token to identify the player profile to be deleted.
 ;; Returns an acks on success, a negs otherwise.
-(define delpq-rtd
-  (make-record-type-descriptor 'delpq #f #f #f #f
-                               '#((immutable token))))
-(define delpq-rcd
-  (make-record-constructor-descriptor delpq-rtd #f #f))
+(define <delpq> (make-record-type-descriptor '<delpq> #f #f #f #f
+                                             '#((immutable token))))
+(define delpq-rcd (make-record-constructor-descriptor <delpq> #f #f))
 (define delpq (record-constructor delpq-rcd))
-(define delpq? (record-predicate delpq-rtd))
-(define delpq-token (record-accessor delpq-rtd 0))
+(define delpq? (record-predicate <delpq>))
+(define delpq-token (record-accessor <delpq> 0))
 
 ;;; lounge-requests.scm ends here

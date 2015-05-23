@@ -569,10 +569,8 @@ or all expired tokens (on the basis of TIME) removed."
 (define (make-token hash time)
   "Return a transactional token generated from HASH and TIME. This procedure
 is not referentially transparent."
-(random (* 2 time)
-        (seed->random-state
-         (string-append hash
-                        (number->string time)))))
+  (random (* 2 time)
+          (seed->random-state (string-append hash (number->string time)))))
 
 
 ;;;;; Profile Management
@@ -587,10 +585,8 @@ hashmap."
       (if (scorecard-data 'get (cdr active-module))
           results (cons active-module results))))
 
-  (fold (check-blob-maker (scorecard-data
-                           (profile-scorecard profile)))
-             '()
-             (profile-active-modules profile)))
+  (fold (check-blob-maker (scorecard-data (profile-scorecard profile)))
+        '() (profile-active-modules profile)))
 
 (define (fetch-next-hash-counter-pair profile)
   "Return the next highest priority blobhash and the blob's counter
@@ -710,6 +706,8 @@ key in profiles. Return #f otherwise."
     ((base-lxp dag-hash hashtree)
      ;; This algorithm is not great: we have massive data duplication. It's
      ;; written in this form to remind me of this.
+     ;; The main issue is that we duplicate the blob relationships (parents,
+     ;; children, etc.) for each scorecard, i.e. at least once per profile.
      (hashtree->blobs base-lxp dag-hash hashtree))))
 
 (define* (hashtree->blobs base-lxp dag-hash hashtree #:optional (parents '()))

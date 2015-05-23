@@ -29,6 +29,7 @@
 ;;; Code:
 
 (define-module (tests lounge-store)
+  #:use-module (srfi srfi-1)
   #:use-module (srfi srfi-26)
   #:use-module (srfi srfi-64)
   #:use-module (glean config)
@@ -42,8 +43,6 @@
   #:use-module (ice-9 match)
   #:use-module (ice-9 vlist)
   )
-
-
 
 
 ;;;; Tests
@@ -106,12 +105,12 @@
 
 ;;;;; Tests for: hashmap->blobs
 
-(test-assert "hashmap->blobs"
-  (quickcheck (lambda (_) 
-                (match (hashmap->blobs _)
-                  (((? blob?) ...) #t)
-                  (_ #f)))
-              10 (lambda () `((lxp) "dag-hash" ,(($short-list $mk-hashtree))))))
+;; (test-assert "hashmap->blobs"
+;;   (quickcheck (lambda (_)
+;;                 (match (hashmap->blobs _)
+;;                   (((? blob?) ...) #t)
+;;                   (_ #f)))
+;;               10 (lambda () `((lxp) "dag-hash" ,(($short-list $mk-hashtree))))))
 
 ;;;;; Tests for: modify-actives
 (let ((modify-actives (@@ (glean lounge lounge-store) modify-actives))
@@ -122,7 +121,9 @@
      ;; Prepend new active.
      (equal? (modify-actives actives new) (cons (car new) actives))
      ;; Ignore duplicate addition.
-     (equal? (modify-actives actives `(,(car actives))) actives)))
+     (equal? (modify-actives actives `(,(car actives)))
+             (cons (car actives)
+                   (alist-delete (car (car actives)) actives)))))
 
   (test-assert "modify-actives-del"
     (and
