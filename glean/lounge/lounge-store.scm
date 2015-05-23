@@ -326,6 +326,7 @@ VALUE."
                                'meta
                                `(#f #t #f #f ,hash))
                     lng-dir))
+        ('upgrade (statef (make-diff hash 'upgrade value)))
         (_ (statef (nothing 'unknown-field `(,field))))))))
 
 (define (delete-profile token lounge)
@@ -450,12 +451,42 @@ has side-effects and is not referentially transparent."
                            profile-active-modules)))
     (('diff hash 'active-modules _)
      (error "store-profile -- invalid active-modules"))
+    (('diff hash 'upgrade upgrade-map)
+     (save hash (upgrade-action upgrade-map (profile-from-hash hash profiles))
+           (vhash-delete hash profiles)))
     (('diff hash 'hashmap hashmaps)
      (update&save 'scorecard hash
                   (lambda (oldp)
                     (add-blobs (fold append '() (map hashmap->blobs hashmaps))
                                (profile-scorecard oldp)))))
     (_ (error "store-profile -- invalid field."))))
+
+(define (upgrade-action upgrade-map profile)
+  (define (modify-actives-wrapper)
+    "This wrapper is necessary to extract the shallow-hash of the crownset in
+particular: currently, the lounge indexes active modules on lexp ->
+shallow-hash.  The benefit is that we only have to store shallow-hash -> blob
+in the scorecard.  Changing the actives to lexp->dag-hash may make more
+sense."
+    (match upgrade-map
+      (('upgrade-map
+        ('lexp lxp) dag-hash generations
+        ('map (('update original ('shallow-hash nshash) props) . _)))
+       (modify-actives (profile-active-modules profile)
+                       `((,lxp . ,nshash))))))
+  (make-profile
+   (profile-name profile)
+   (profile-prof-server profile)
+   (profile-mod-server profile)
+   (modify-actives-wrapper)                       ; Update active-modules
+   (let ((scorecard (profile-scorecard profile))) ; Update scorecard
+     ;; FIXME: We're currently leaving old blobs in the scorecard.
+     ;; They should not be a problem (though garbage…) because
+     ;; active modules no longer refers to their crown.
+     ;; BUT: for retain, we will overwrite old blobs, so we should perhaps
+     ;; delete each blob before storing it — as an invariant.
+     (add-blobs (upgrademap->blobs upgrade-map scorecard)
+                scorecard))))
 
 (define (save hash profile profiles)
   "Return a new profiles vhash based on PROFILES, augmented by HASH and
@@ -484,17 +515,14 @@ LOUNGE, LIB and the profile's OLDHASH."
 ;;; where active := '(serialized-lexp . shallow-hash)
 (define* (modify-actives old-actives new-candidates #:optional impair?)
   "Return a new alist based on OLD-ACTIVES augmented or impaired by
-NEW-CANDIDATES, depending on the optional argument AUGMENT?."
-  (fold (lambda (new actives)
-          (match new
+NEW-CANDIDATES, depending on the optional argument IMPAIR?."
+  (fold (lambda (candidate actives)
+          (match candidate
             ((lxp . shallow)
              (if impair?
                  (alist-delete lxp actives)
-                 (if (assoc lxp actives)
-                     actives
-                     (cons new actives))))))
-        old-actives
-        new-candidates))
+                 (cons candidate (alist-delete lxp actives))))))
+        old-actives new-candidates))
 
 
 ;;;; Token Operations
@@ -739,5 +767,62 @@ HASHTREE."
     (((hash . properties))
      (leaf-proc hash properties))
     (_ (error-proc))))
+
+(define (upgrademap->blobs upgrade-map old-scorecard)
+  "Return a list of blobs by upgrading the blobs in OLD-SCORECRD to those
+specified by UPGRADE-MAP as required."
+  ;; In the case that old-scorecard is empty, we will simply create our blobs
+  ;; using score/counter 0; i.e. the effect is the same as using
+  ;; hashmap->blobs.
+  (define* (upgradetree->blobs base-lxp dag-hash upgradetree)
+    ;; format of utree is ((verb fields . (children)))
+    ;; This ends up looking like ((verb fields children))
+    (define* (part->blobs upgradetree #:optional (parents '()))
+      (define (children subtrees)
+        (map (lambda (child)
+               (match child
+                 ((('update original ('shallow-hash hash) properties
+                            . children))
+                  hash)
+                 ((('change original ('shallow-hash hash) properties
+                            . children))
+                  hash)
+                 (((verb ('shallow-hash hash) properties . children))
+                  hash)))
+             subtrees))
+      (define (make&recurse newhash properties subtrees oldhash)
+        (define (qblob name children properties ohash)
+          (let ((old-blob (find-blob ohash old-scorecard)))
+            (make-blob name parents children
+                       (if old-blob (blob-score old-blob) 0)
+                       (if old-blob (blob-counter old-blob) 0)
+                       properties '() base-lxp dag-hash)))
+        (if (null? subtrees)
+            `(,(qblob newhash '() properties oldhash))
+            `(,(qblob newhash (children subtrees) properties oldhash) .
+              ,(flatten (map (cute part->blobs <> (list newhash))
+                             subtrees)))))
+
+      (match upgradetree
+        ;; Update and change action are identical here.
+        ((('update ('original ohash) ('shallow-hash nhash)
+                   ('properties props)) . subtrees)
+         (make&recurse nhash props subtrees ohash))
+        ((('change ('original ohash) ('shallow-hash nhash)
+                   ('properties props)) . subtrees)
+         (make&recurse nhash props subtrees ohash))
+        ;; XXX: this should work: we use hashtable-set! at the moment.
+        ((('retain ('shallow-hash nhash) ('properties props)) . subtrees)
+         (make&recurse nhash props subtrees nhash))
+        ;; Simplest case: create a fresh blob and recurse.
+        ((('insert ('shallow-hash nhash) ('properties props)) . subtrees)
+         (make&recurse nhash props subtrees nhash))))
+
+    (part->blobs upgradetree))
+
+  (match upgrade-map
+    (('upgrade-map ('lexp lxp) ('dag-hash ('old oldhash) ('new ndhash))
+                   ('generations gens) ('map utree))
+     (upgradetree->blobs lxp ndhash utree))))
 
 ;;; lounge-store.scm ends here

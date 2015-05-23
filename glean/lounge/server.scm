@@ -241,6 +241,8 @@ if RQ parses correctly. Otherwise raise a an error."
                    ;; FIXME: needs to be more rigorous
                    (('scorecard . (? (negate list?)))
                     (raise '(process-set!q invalid-hashmap)))
+                   (('upgrade . (? (negate list?)))
+                    (raise '(process-set!q invalid-upgrade-map)))
                    ;; Validate value: new active-modules.
                    (('active-modules . (? (negate pair?)))
                     (raise '(process-set!q invalid-active-modules)))
