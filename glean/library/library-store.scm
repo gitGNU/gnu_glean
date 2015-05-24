@@ -439,43 +439,73 @@ that provide content for the library. These modules are then parsed using
                         (if (string=? (basename path) "discipline.scm")
                             (cons (substring path prefix-len) result)
                             result))
-                      (lambda (path stat result) ; down
-                        result)
-                      (lambda (path stat result) ; up
-                        result)
-                      (const #f)        ; skip
-                      (lambda (path stat errno result)
+                      (lambda (path stat result) result) ; down
+                      (lambda (path stat result) result) ; up
+                      (const #f)                         ; skip
+                      (lambda (path stat errno result)   ; error
                         (error (_ "cannot access `~a': ~a~%")
                                path (strerror errno))
                         result)
-                      '()
-                      catalogue-dir
-                      stat))
-  (define (discipline-files->modules path)
-    (define not-slash (char-set-complement (char-set #\/)))
-    (let ((name (map string->symbol
-                     (string-tokenize (string-drop-right path 4)
-                                      not-slash))))
-      ;; We want to make sure that a module is reloaded from the library if it
-      ;; has been loaded before, as it may have changed.
-      (match (resolve-module name #:ensure #f)          ; loaded before?
-        (#f (resolve-module name)) ; no  -> load
-        ((? module? module)                            ; yes -> reload
-         (inform "We have previously loaded '~a'.~%" name)
-         (inform "Module-filename: '~a'.~%" (module-filename module))
-         (when crass?
-           ;; We are really messing with the dark arts here: we're trying to
-           ;; force Guile to load a new discipline that is identical to an
-           ;; existing discipline, but which needs to be loaded from a
-           ;; different place.  This is probably done in the context of
-           ;; (glean maker engrave).
-           (inform "Crass is enabled, setting filename to ~a~%" (string-append catalogue-dir path))
-           (set-module-filename! module (string-append catalogue-dir path)))
-         (reload-module module)))))
-  (begin (add-to-load-path catalogue-dir)
-         (let ((rslt (filter-map discipline-files->modules (discipline-files))))
-           (set! %load-path (cdr %load-path))
-           rslt)))
+                      '() catalogue-dir stat))
+
+  (add-to-load-path catalogue-dir)
+  (let ((rslt (filter-map
+               (cute discipline-file->module <> catalogue-dir crass?)
+               (discipline-files))))
+    (set! %load-path (cdr %load-path))
+    rslt))
+
+(define* (discipline-file->module path catalogue-dir crass?)
+  "Load the Glean discipline loaded at PATH, within CATALOGUE-DIR.  If CRASS?
+is enabled we perform some black magic to force Guile to reload a module that
+was loaded before, at a different place in the filesystem."
+  (define* (our-resolve-module name)
+    "Wrap `resolve-module', in order to force a full reload if the discipline
+has been loaded before."
+    ;; We want to make sure that a module is reloaded from the library if it
+    ;; has been loaded before, as it may have changed.
+    (match (resolve-module name #:ensure #f)          ; loaded before?
+      (#f (resolve-module name))           ; no  -> load
+      ((? module? module)                  ; yes -> reload
+       (inform "We have previously loaded '~a'.~%" name)
+       (inform "Module-filename: '~a'.~%" (module-filename module))
+       (our-reload-module module))))
+  (define* (our-reload-module module)
+    "Wrap `reload-module' to force MODULE as well as its children to be
+reloaded, instead of just MODULE.  This procedure will also perform the black
+magic mentioned above.
+
+This procedure potentially reloads modules several times if multiple modules
+in a discipline name space depend on the same module: the latter module will
+be re-loaded for each dependency.  This could be prevented by keeping track of
+which modules have already been reloaded (e.g. in a vhash)."
+    (define (reload-children module)
+      ;; BASE is the discipline prefix.  E.g. '(glean disciplines git)
+      ;; All modules that have this prefix are discipline dependencies, and
+      ;; hence need to be reloaded when we're reloading the discipline.
+      (define base (drop-right (module-name module) 1))
+      (define (child? name)
+        (and (>= (length name) (length base))
+             (equal? (take name (length base)) base)))
+      (for-each our-resolve-module
+                (filter child? (map module-name (module-uses module)))))
+    (when crass?
+      ;; We are really messing with the dark arts here: we're trying to
+      ;; force Guile to load a new discipline that is identical to an
+      ;; existing discipline, but which needs to be loaded from a
+      ;; different place.  This is probably done in the context of
+      ;; (glean maker engrave).
+      (inform "Crass is enabled, setting filename to ~a~%"
+              (string-append catalogue-dir path))
+      (set-module-filename! module (string-append catalogue-dir path)))
+    (reload-children module)
+    (reload-module module))
+  (define not-slash (char-set-complement (char-set #\/)))
+
+  ;; Generate Guile module name from path, then pass to our resolve.
+  (our-resolve-module (map string->symbol
+                           (string-tokenize (string-drop-right path 4)
+                                            not-slash))))
 
 
 (define* (index-set set #:optional (lxp (set-lexp set)))
