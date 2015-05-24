@@ -137,20 +137,23 @@ identified by DAG."
   "Return a pair consisting of a 0 indexed generation counter and the tree
 that we want to upgrade from, selected from TREES, using DAG as the tree of
 interest."
-  (fold (lambda (ancestry-tree previous)
-          (match previous
-            ((generations . #f)
-             (match ancestry-tree
-               (((? (cute string=? <> dag)) . tree) (cons generations tree))
-               (otherwise `(,(1+ generations) . #f))))
-            (otherwise previous)))
-        `(0 . #f) trees))
+  (if trees
+      (fold (lambda (ancestry-tree previous)
+              (match previous
+                ((generations . #f)
+                 (match ancestry-tree
+                   (((? (cute string=? <> dag)) . tree)
+                    (cons generations tree))
+                   (otherwise `(,(1+ generations) . #f))))
+                (otherwise previous)))
+            `(0 . #f) trees)
+      (throw 'glean-type-error
+             "SELECT-ANCESTRY-TREE: We have no acnestry tree.")))
 
 ;; (ancestry tree) (hashtree #:labels? #t) -> (expanded ancestry tree)
 (define (expand-ancestry-tree ancestrytree hashtree)
   "Return a new tree, the result of expanding ANCESTRYTREE with the nodes &
 leaves of HASHMAP."
-  (define index (index-hashtree hashtree vlist-null))
   (define (index-hashtree hashtree vhash)
     "Return vhash augmented by the nodes and leaves in hashtree.  Their
 shallow-hashes will be used as the keys for vhash."
@@ -171,6 +174,7 @@ leaf their new shallow-hash replaced with the expanded entry from index."
       (((keyword hash) . children)
        `((,keyword ,@(cdr (vhash-assoc hash index)))
          . ,(map expand children)))))
+  (define index (index-hashtree hashtree vlist-null))
 
   (expand ancestrytree))
 
