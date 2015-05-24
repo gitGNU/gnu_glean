@@ -127,7 +127,7 @@ identified by DAG."
        ;; composite upgrade tree.
        ((generations . utree)
         (insist (_ "We have not implemented multi-generation upgrades yet.~%"))
-        (make-upgrade-map set dag generations utree))
+        (throw 'glean-fixme-error "DERIVE-UPGRADE-MAP: not supported."))
        (otherwise
         (throw 'glean-logic-error
                "DERIVE-UPGRADE-MAP: unexpected format:" otherwise))))))
