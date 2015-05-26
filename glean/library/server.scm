@@ -176,21 +176,11 @@ in RQ after evaluating it against the answer provided in RQ, or raise
 (define (known-mods-provider rq)
   (define (valid-search? pair)
     "Return #t if pair is a pair and contains a valid search pattern."
-    (and (pair? pair)
-         (cond ((eqv? (car pair) 'hash) ; hash
-                (and (list? (cdr pair))
-                     (null? (filter (negate symbol?)
-                                    (cdr pair)))))
-               ((eqv? (car pair) 'keywords) ; keywords
-                (and (list? (cdr pair))
-                     (null? (filter (negate string?)
-                                    (cdr pair)))))
-               ((eqv? (car pair) 'name) ; name
-                (and (list? (cdr pair))
-                     (null? (filter (negate string?)
-                                    (cdr pair)))))
-               (else                    ; fail
-                #f))))
+    (match pair
+      (('hash . ((? string?) ...))     #t)
+      (('keywords . ((? string?) ...)) #t)
+      (('name . ((? string?) ...))     #t)
+      (_                               #f)))
   (let ((operator (knownq-operator rq))
         (search   (knownq-search   rq)))
     (cond ((and (not operator)

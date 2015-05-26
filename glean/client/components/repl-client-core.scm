@@ -102,9 +102,9 @@ provided).  Then provide suggested next steps."
   "Delete the currently logged in user from lounge.  Then provide suggested
 next steps."
   (let ((rsp (delete-player id)))
-    (cond ((stateful? rsp)
+    (cond ((and (stateful? rsp) (result rsp))
            (set! id (state rsp))
-           (set! data (car (result rsp)))
+           (set! data (result rsp))
            (guide `("Your profile has now been deleted.\n"))
            (suggest help-login help-register))
           (else (nothing-handler rsp)))))

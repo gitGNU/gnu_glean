@@ -319,7 +319,7 @@ the criteria specified by OPERATOR and SEARCH in LIBRARY-PAIR."
 hashes in HASHES."
     (map (lambda (entry)
            (match entry
-             ((hash . '(('set . set) ('lexp . lxp)))
+             ((hash . (('set . set) ('lexp . lxp)))
               (set-summary set hash))))
          (filter-map (cut fetch-set <> library-pair #t)
                      hashes)))

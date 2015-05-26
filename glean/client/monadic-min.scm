@@ -27,6 +27,12 @@
 ;; abstract from lounge context (tokens, lounge-connection and
 ;; library-connection).
 ;;
+;; FIXME: Currently, the only way to test this is to have a lounge and library
+;; running.  This isn't great.  One way around this would be to have:
+;; a) comtools (specifically `exchange') work with generic ports.
+;; b) have well-defined exchange language (sxml), to generate messages for
+;;    mock objects.
+;;
 ;;; Code:
 
 (define-module (glean client monadic-min)
@@ -68,8 +74,8 @@
                 (request (echoq (car state) message))
                 (cadr state)))))
       (stateful (echos-message rs) (list (echos-token   rs)
-                                           (echos-lounge  rs)
-                                           (echos-library rs))))))
+                                         (echos-lounge  rs)
+                                         (echos-library rs))))))
 (define (mechor message base)
   (lambda (state)
     (let ((rs (rs-content
@@ -144,7 +150,7 @@ interpretation by mlogger, to emit meaningful lounge-monad message."
                                   ,(if long?
                                        (list name lng lib actives)
                                        name)))
-         ((#t)                            ; push-deletion
+         (#t                              ; push-deletion
           `(push-deletion "Result:" #t))
          ((? string? challenge)           ; fetch-challenge
           `(fetch-challenge "Challenge:" ,challenge))
@@ -233,7 +239,7 @@ profile identified by the token in STATE."
   ((mlet* client-monad
        ((test         (test-servers))
         (details      (fetch-profile))
-        (full-details (details->full-details (car details))))
+        (full-details (details->full-details details)))
      (return full-details)) state))
 
 (define (fallback-view-player state)
@@ -262,17 +268,17 @@ transactions to activate these modules for the player."
         (hashpairs  (fetch-hashpairs fullhashes))
         ;; Update profile active modules, retrieve newly required hashmaps.
         (req-maps   (push-active-modules (if negate?
-                                             (cons 'negate
-                                                   (car hashpairs))
-                                             (car hashpairs))))
+                                             (cons 'negate hashpairs)
+                                             hashpairs)))
         ;; Get hashmaps if necessary.
         (hashmap    (if (eqv? req-maps 'unimportant)
                         (return req-maps)
-                        (fetch-hashmap (car req-maps)))))
+                        (fetch-hashmap req-maps))))
      ;; Update profile scorecards with hashmaps.
      (if (eqv? hashmap 'unimportant)
          (return hashmap)
-         (push-scorecard (car hashmap)))) state))
+         ;; Missing `return' in front of (push-scorecard)?
+         (push-scorecard hashmap))) state))
 
 (define (next-challenge state)
   "Given the usual STATE of token, lounge and library, return the
@@ -284,8 +290,8 @@ next-challenge for the player associated with token."
         (challenge         (match challenge-details
                              (('active-modules . _)
                               (return '(no-active-modules)))
-                             (otherwise
-                              (apply fetch-challenge otherwise))))
+                             ((lxp dhash shash counter)
+                              (fetch-challenge lxp dhash shash counter))))
         (upgrade           (match challenge
                              ((('upgrade-map . _))
                               (push-upgrade (car challenge)))
@@ -295,8 +301,8 @@ next-challenge for the player associated with token."
         (challenge         (match challenge-details
                              (('active-modules . _)
                               (return '(no-active-modules)))
-                             (otherwise
-                              (apply fetch-challenge otherwise)))))
+                             ((lxp dhash shash counter)
+                              (fetch-challenge lxp dhash shash counter)))))
      (return challenge)) state))
 
 (define (submit-answer answer state)
@@ -319,6 +325,7 @@ player's profile."
 delete the player identified by token."
   ((mlet* client-monad
        ((test (test-servers)))
+     ;; Missing `return' in front of (push-deletion)?
      (push-deletion)) state))
 
 (define (known-modules state)
@@ -326,10 +333,97 @@ delete the player identified by token."
 provides us with details of available modules."
   ((mlet* client-monad
        ((test (test-servers 'library)))
+     ;; Missing `return' in front of (fetch-known-modules)?
      (fetch-known-modules)) state))
 
 
-;;;;; Atomic Transactions / Monadic Transactions
+;;;;; Helper Procedures
+;;;
+;;; We should integrate below in our new macros
+
+(define (call/exchange target predicate rq . args)
+  "Return the expected request of performing an RQ with ARGS on TARGET
+as validated by PREDICATE. Raise an error if the response is not
+expected."
+  (let ((rq (apply rq args)))
+    (match (exchange (request rq) target)
+      ((? response? rs)
+       (match (rs-content rs)
+         ((? predicate result) result)
+         (otherwise            (nothing 'exchange-error otherwise))))
+      (otherwise        (nothing 'exchange-error
+                                 (negs rq '(exchange servers-down)))))))
+
+(define* (exchange-do #:key (predicate (const #f)) (constructor (const #f))
+                      (value-extractors '()) (ins '()) lounge?
+                      state-extractor)
+  "Helper procedure, avoiding complex repetition in xchange macro."
+  (define (augment-ins st8) (if lounge? (cons (state-tk st8) ins) ins))
+  (define (proc-map obj procs) (map (lambda (proc) (proc obj)) procs))
+  (define targetter (if lounge? state-lng state-lib))
+
+  (lambda (st8)
+    (match (apply call/exchange (targetter st8) predicate constructor
+                  (augment-ins st8))
+      ((? nothing? nothing) nothing)
+      (rs (stateful (match value-extractors
+                      (()          #t)
+                      ((extractor) (extractor rs))
+                      (extractors  (proc-map rs extractors)))
+                    ;; If this is a lounge operation then we expect a means to
+                    ;; extract a new state from the response and state.
+                    (if state-extractor (state-extractor rs st8) st8))))))
+
+;;;;; Helper Macros
+
+(define-syntax xchange
+  ;; Wrapper providing lounge/library communication convenience.
+  (syntax-rules (input: apply: library: lounge: token)
+    ((_ (library: predicate constructor)
+        (input: ins ...)
+        (apply: extractor* ...))
+     (exchange-do #:predicate        predicate
+                  #:constructor      constructor
+                  #:value-extractors `(,extractor* ...)
+                  #:ins              `(,ins ...)))
+
+    ((_ (lounge: predicate constructor st8-extractor)
+        (input: ins ...)
+        (apply: extractor* ...))
+     (exchange-do #:predicate        predicate
+                  #:constructor      constructor
+                  #:value-extractors `(,extractor* ...)
+                  #:ins              `(,ins ...)
+                  #:lounge?          #t
+                  #:state-extractor  st8-extractor))))
+
+(define-syntax push-xchange
+  ;; Wrapper providing lounge profile updating convenience.
+  (syntax-rules (input:)
+    ((_ (input: field value))
+     (xchange (lounge: (lambda (rs) (or (auths? rs) (set!s? rs)))
+                       set!q
+                       (lambda (rs st8)
+                         (match rs
+                           ((? set!s?) (mk-state (set!s-token rs)
+                                                 (state-lng st8)
+                                                 (state-lib st8)))
+                           ((? auths?) (mk-state (auths-token       rs)
+                                                 (auths-prof-server rs)
+                                                 (auths-mod-server  rs))))))
+              (input:  field value)
+              (apply:  (lambda (rs)
+                         (match rs
+                           ((? set!s?) `(,(set!s-value rs)))
+                           ((? auths?) #t))))))))
+
+
+;;;; Atomic Transactions / Monadic Transactions
+;;;
+;;; We must here introduce a way to return proper sxml return values
+;;; (without breaking backward compatibility), including for errors, so we can
+;;; ease the creation of non-Guile clients (e.g. Emacs UI).
+
 (define* (test-servers #:optional (server #f))
   "Return a client-monad mval which returns a nothing if one of the
 servers is down. If SERVER is 'library or 'lounge, only test that
@@ -346,271 +440,133 @@ server."
           (else (stateful '(test)
                           state)))))
 
+
+;;;;; Library Requests
+
+(define (fetch-challenge lexp dag shallow counter)
+  "Return challs or ERROR."
+  (xchange (library: (lambda (rs) (or (challs? rs) (upgs? rs))) challq)
+           (input:   lexp dag shallow counter)
+           (apply:   (lambda (rs)
+                       (match rs
+                         (($ <upgs> phantom content) `(,content))
+                         ((? challs?) `(,(challs-challenge rs))))))))
+
+(define (fetch-evaluation answer lexp dag shallow counter)
+  "Return evals or ERROR."
+  (xchange (library: (lambda (rs) (or (evals? rs) (upgs? rs))) evalq)
+           (input:   lexp dag shallow counter answer)
+           (apply:   (lambda (rs)
+                       (match rs
+                         (($ <upgs> phantom content) `(,content))
+                         ((? evals?)
+                          (map (cute <> rs)
+                               `(,evals-result ,evals-solution))))))))
+
+(define (fetch-hashmap crownsets)
+  "Return hashmaps or ERROR."
+  (xchange (library: hashmaps? hashmapq)
+           (input:   (car crownsets))
+           (apply:   hashmaps-content)))
+
+(define (fetch-hashpairs shallowhashes)
+  "Return a sethashess or ERROR."
+  (xchange (library: sethashess? sethashesq)
+           (input:   shallowhashes)
+           (apply:   sethashess-hashpairs)))
+
 (define (fetch-known-modules)
   "Return a client-monad mval for an availq."
-  (lambda (state)
-    (let ((rs (call/exchange
-               (state-lib state)        ; library connection
-               knowns? knownq           ; predicate, constructor
-               #f #f                    ; input
-               )))
-      (if (nothing? rs)
-          rs
-          (stateful (knowns-list rs)
-                    state)))))
+  (xchange (library: knowns? knownq)
+           (input:   #f #f)
+           (apply:   knowns-list)))
 
-(define (fetch-detail fullhash)
+(define (fetch-detail shallowhash)
   "Return a client-monad mval which, when invoked, returns details
-about the set identified by FULLHASH or nothing."
-  (lambda (state)
-    (let ((rs (call/exchange
-               (state-lib state)        ; library connection
-               details? detailq         ; predicate, constructor
-               fullhash                 ; input
-               )))
-      (if (nothing? rs)
-          rs
-          (stateful (details-list rs)
-                    state)))))
+about the set identified by SHALLOWHASH or nothing."
+  (xchange (library: details? detailq)
+           (input:   shallowhash)
+           (apply:   details-list)))
 
 (define (details->full-details details)
   "Return a client-monad mval, resolving to new DETAILS with
 human-friendly information about active-modules."
-  (lambda (state)
-    (let ((fullhashes (map cdr (cadddr details))))
-      (let ((rs (call/exchange
-                 (state-lib state)
-                 knowns? knownq
-                 'match `(hash . ,fullhashes))))
-        (if (nothing? rs)
-            rs
-            (stateful (list (car   details)
-                            (cadr  details)
-                            (caddr details)
-                            (knowns-list rs))
-                      state))))))
+  (match details
+    ((name lounge library ((lxps . hashes) ...))
+     (xchange (library: knowns? knownq)
+              (input:   'match `(hash . ,hashes))
+              (apply:   (lambda (rs)
+                          `(,name ,lounge ,library ,(knowns-list rs))))))))
 
-(define (push-deletion)
-  "Return a client-monad mval for a delpq request."
-  (lambda (state)
-    "Return a steteful whose result's first values is #t upon
-successful deletion of the profile identified by the lounge server and
-the token in STATE. Raise an Exchange Error otherwise."
-    (let ((rs (call/exchange
-               (state-lng state)        ; lounge connection
-               acks? delpq              ; predicate, constructor
-               (state-tk state))))      ; input
-      (if (nothing? rs)
-          rs
-          (stateful '(#t)
-                    (mk-state #f
-                              #f
-                              #f))))))
+
+;;;;; Lounge Requests
 
 (define (fetch-profile)
   "Return a client mvalue which, when invoked, returns the result of a
 viewq request."
-  (lambda (state)
-    (let ((rs (call/exchange
-               (state-lng state)        ; lounge connection
-               views? viewq             ; predicate, constructor
-               (state-tk state))))      ; input
-      (if (nothing? rs)
-          rs
-          (stateful `(,(views-details rs))
-                    (mk-state (views-token rs)
-                              (state-lng   state)
-                              (state-lib   state)))))))
+  (xchange (lounge: views? viewq (lambda (rs st8)
+                                   (mk-state (views-token rs)
+                                             (state-lng   st8)
+                                             (state-lib   st8))))
+           (input:  )
+           (apply:  views-details)))
 
 (define (fetch-challenge-id)
   "Return chauths or ERROR."
-  (lambda (state)
-    (match (call/exchange (state-lng state) ; lounge connection
-                          (lambda (rs)      ; predicate
-                            (or (chauths? rs)
-                                (set!s? rs)))
-                          chauthq           ; constructor
-                          (state-tk state))
-      ((? nothing? rs) rs)
-      ((? set!s? rs)
-       (stateful `(,(set!s-field rs) ,(set!s-value rs))
-                 (mk-state (set!s-token   rs)
-                           (state-lng     state)
-                           (state-lib     state))))
-      ((? chauths? rs)
-       (stateful `(,(chauths-lexp rs) ,(chauths-dag-hash rs)
-                   ,(chauths-shallow-hash rs) ,(chauths-counter rs))
-                 (mk-state (chauths-token rs)
-                           (state-lng     state)
-                           (state-lib     state)))))))
+  (xchange (lounge: (lambda (rs) (or (chauths? rs) (set!s? rs)))
+                    chauthq
+                    (lambda (rs st8)
+                      (mk-state (match rs
+                                  ((? set!s?)   (set!s-token rs))
+                                  ((? chauths?) (chauths-token rs)))
+                                (state-lng st8)
+                                (state-lib st8))))
+           (input:  )
+           (apply:  (lambda (rs)
+                      (match rs
+                        ((? set!s?)
+                         (map (cute <> rs) `(,set!s-field ,set!s-value)))
+                        ((? chauths?)
+                         (map (cute <> rs)
+                              (list chauths-lexp chauths-dag-hash
+                                    chauths-shallow-hash chauths-counter))))))))
 
-(define (fetch-challenge lexp dag shallow counter)
-  "Return challs or ERROR."
-  (lambda (state)
-    (match (call/exchange (state-lib state) ; library connection
-                          (lambda (rs)      ; predicate
-                            (or (challs? rs)
-                                (upgs? rs)))
-                          challq            ; constructor
-                          lexp dag shallow counter)
-      ((? nothing? rs) rs)
-      ;; XXX: PHANTOM is a non-existant field to make match work properly.
-      (($ <upgs> phantom content)
-       (stateful `(,content) state))
-      ((? challs?  rs) (stateful `(,(challs-challenge rs)) state)))))
-
-(define (fetch-evaluation answer lexp dag shallow counter)
-  "Return evals or ERROR."
-  (lambda (state)
-    (match (call/exchange (state-lib state) ; library connection
-                          (lambda (rs)      ; predicate
-                            (or (evals? rs)
-                                (upgs? rs)))
-                          evalq             ; constructor
-                          lexp dag shallow counter answer)
-      ((? nothing? rs) rs)
-      ;; XXX: PHANTOM is a non-existant field to make match work properly.
-      (($ <upgs> phantom content)
-       (stateful `(,content) state))
-      ((? evals?  rs) (stateful `(,(evals-result   rs)
-                                  ,(evals-solution rs))
-                                state)))))
+;;;;; Simple Lounge Updates
 
 (define (push-evaluation evaluation)
   "Return evals or ERROR."
-  (lambda (state)
-    (let ((rs (call/exchange
-               (state-lng state)        ; lounge connection
-               auths? evauthq           ; predicate, constructor
-               (state-tk state)         ; token
-               evaluation)))            ; input
-      (if (nothing? rs)
-          rs
-          (stateful '(unimportant)
-                    (mk-state (auths-token           rs)
-                              (auths-prof-server     rs)
-                              (auths-mod-server      rs)))))))
+  (xchange (lounge: auths? evauthq (lambda (rs st8)
+                                     (mk-state (auths-token       rs)
+                                               (auths-prof-server rs)
+                                               (auths-mod-server  rs))))
+           (input:  evaluation)
+           (apply:  )))
 
-(define (fetch-hashmap crownsets)
-  "Return hashmaps or ERROR."
-  (lambda (state)
-    (let ((rs (call/exchange
-               (state-lib state)        ; library connection
-               hashmaps? hashmapq       ; predicate, constructor
-               crownsets)))             ; input
-      (if (nothing? rs)
-          rs
-          (stateful `(,(hashmaps-content rs))
-                    state)))))
+(define (push-deletion)
+  "Return a client-monad mval for a delpq request."
+  (xchange (lounge: acks? delpq (const #f))
+           (input:  )
+           (apply:  )))
 
-(define (fetch-hashpairs fullhashes)
-  "Return a sethashess or ERROR."
-  (lambda (state)
-    (let ((rs (call/exchange
-               (state-lib state)        ; library connection
-               sethashess? sethashesq   ; predicate, constructor
-               fullhashes)))            ; input
-      (if (nothing? rs)
-          rs
-          (stateful `(,(sethashess-hashpairs rs))
-                    (mk-state (state-tk  state)
-                              (state-lng state)
-                              (state-lib state)))))))
+;;;;; Specialized Lounge Updates
 
 (define (push-scorecard hashmap)
   "Return an auths confirming success, a set!s requesting further data
 or ERROR."
-  (lambda (state)
-    (let ((rs (apply push-data
-                     'scorecard              ; thing to be updated,
-                     hashmap                 ; input,
-                     (state-lesser state)))) ; token, lounge
-      (cond ((nothing? rs)
-             rs)
-            ((set!s? rs)
-             (stateful `(,(set!s-value rs))
-                       (mk-state (set!s-token rs)
-                                 (state-lng   state)
-                                 (state-lib   state))))
-            (else
-             (stateful '(unimportant)
-                       (mk-state (auths-token       rs)
-                                 (auths-prof-server rs)
-                                 (auths-mod-server  rs))))))))
+  (push-xchange (input: 'scorecard hashmap)))
 
 (define (push-active-modules hashpairs)
   "Return an auths confirming success, a set!s requesting further data
 or ERROR."
-  (lambda (state)
-    (let* ((rs (apply push-data
-                      'active-modules         ; thing to be updated,
-                      hashpairs               ; input,
-                      (state-lesser state)))) ; token, lounge
-      (cond ((nothing? rs)
-             rs)
-            ((set!s? rs)
-             (stateful `(,(set!s-value rs))
-                       (mk-state (set!s-token rs)
-                                 (state-lng state)
-                                 (state-lib state))))
-            (else
-             (stateful 'unimportant
-                       (mk-state (auths-token       rs)
-                                 (auths-prof-server rs)
-                                 (auths-mod-server  rs))))))))
+  (push-xchange (input: 'active-modules hashpairs)))
 
 (define (push-profile id data)
   "Return a client mvalue built with ID and DATA, which when invoked
 attempts to perform a profile update, returning an auths confirming
 success or a nothing value."
-  (lambda (state)
-    (let* ((rs (apply push-data id data (state-lesser state))))
-      (cond ((nothing? rs)
-             rs)
-            (else
-             (stateful 'unimport
-                       (mk-state (auths-token       rs)
-                                 (auths-prof-server rs)
-                                 (auths-mod-server  rs))))))))
+  (push-xchange (input: id data)))
 
 (define (push-upgrade map)
-  (lambda (state)
-    (match (apply push-data 'upgrade map (state-lesser state))
-      ((? nothing? rs) rs)
-      ((? auths?   rs) (stateful 'unimportant
-                                 (mk-state (auths-token       rs)
-                                           (auths-prof-server rs)
-                                           (auths-mod-server  rs))))
-      (otherwise (throw 'glean-logic-error
-                        "PUSH-UPGRADE: unexpected response:" otherwise)))))
-
-
-;;;;; Helper Procedures
-(define (push-data type data token profile-server)
-  "Return an auths confirming success, a set!s requesting further data
-or ERROR."
-  (let ((result (lesser-call/exchange profile-server set!q
-                                      token type data)))
-    (if (or (auths? result)
-            (set!s? result))
-        result
-        (nothing 'exchange-error result))))
-
-(define (call/exchange target predicate rq . args)
-  "Return the expected request of performing an RQ with ARGS on TARGET
-as validated by PREDICATE. Raise an error if the response is not
-expected."
-  (let ((result (apply lesser-call/exchange target rq args)))
-    (if (predicate result)
-        result
-        (nothing 'exchange-error result))))
-
-(define (lesser-call/exchange target rq . args)
-  "Return the request of performing an RQ with ARGS on TARGET. Raise
-an error if the response is not expected."
-  (let ((rs (exchange (request (apply rq args)) target)))
-    (if rs
-        (rs-content rs)
-        (negs (apply rq args) '(exchange servers-down)))))
+  (push-xchange (input: 'upgrade map)))
 
 ;;; monadic-min.scm ends here
