@@ -303,8 +303,10 @@ VALUE."
       (match field
         ('scorecard (statef (make-diff hash 'hashmap value)))
         ('active-modules (statef (make-diff hash 'active-modules value)))
-        ('prof-server (statef (make-diff hash 'meta `(#f #f ,value #f #f))))
-        ('mod-server (statef (make-diff hash 'meta `(#f #f #f ,value #f))))
+        ('prof-server
+         (statef (make-diff hash 'meta `(#f #f ,value #f ,hash))))
+        ('mod-server
+         (statef (make-diff hash 'meta `(#f #f #f ,value ,hash))))
         ('name (match value
                  ((name . password)     ; guaranteed to be 2 strings.
                   (cond ((name-taken? name (lounge-profiles lounge))
@@ -498,7 +500,7 @@ PROFILE."
 profile resulting from processing the profile-hash HASH, NAME, PASSWORD,
 LOUNGE, LIB and the profile's OLDHASH."
   (define (update&save what new hash)
-    (save hash (update-profile what new (profile-from-hash hash profiles))
+    (save hash (update-profile what new (profile-from-hash oldhash profiles))
           (vhash-delete oldhash profiles)))
   (cond ((and name password lounge lib) ; Registration
          (save hash (make-bare-profile name lounge lib) profiles))
