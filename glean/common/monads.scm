@@ -43,6 +43,7 @@
   #:use-module (ice-9 match)
   #:use-module (srfi srfi-1)
   #:use-module (srfi srfi-9)
+  #:use-module (srfi srfi-9 gnu)
   #:use-module (srfi srfi-26)
   #:use-module ((system syntax)
                 #:select (syntax-local-binding))
@@ -75,8 +76,14 @@
             mk-state
             state?
             state-tk
+            set-state-tk
             state-lng
+            set-state-lng
             state-lib
+            set-state-lib
+            state-format
+            set-state-format
+            state-serialize
             mlogger
             )
   #:replace (imported-modules
@@ -293,21 +300,42 @@ lifted in monad, for which proc returns true."
   stateful?
   (res result)
   (st8 state))
-(define-record-type <st8>
-  (mk-state token lounge library)
+(define-immutable-record-type <st8>
+  (mecha-state token lounge library format)
   state?
-  (token   state-tk)
-  (lounge  state-lng)
-  (library state-lib))
+  (token   state-tk     set-state-tk)
+  (lounge  state-lng    set-state-lng)
+  (library state-lib    set-state-lib)
+  (format  state-format set-state-format))
 
-(define (result? thing)
-  (list? thing))
+(define (result? thing) (list? thing))
+
+(define (stateful-serialize st8f format)
+  (match format
+    ('records st8f)
+    ('sxml `(stateful (result ,(result st8f))
+                      ,(state-serialize (state st8f) format)))
+    (_     (throw 'glean-logic-error "STATEFUL-SERIALIZE: unexpected format"
+                  format))))
+
+(define* (mk-state token lounge library #:optional (format 'records))
+  (mecha-state token lounge library format))
+
+(define (state-serialize st8 format)
+  (match format
+    ('records st8)
+    ('sxml `(state (token   ,(state-tk st8))
+                   (lounge  ,(state-lng st8))
+                   (library ,(state-lib st8))
+                   (format  ,(state-format st8))))
+    (_     (throw 'glean-logic-error "STATE-SERIALIZE: unexpected format"
+                  format))))
 
 (define (state-return value)
   "Return a state mvalue seeded with VALUE."
   (lambda (state)
     "Return a state-pair of value and STATE."
-        (stateful value state)))
+    (stateful value state)))
 
 (define (state-bind mvalue mproc)
   "Return a state mvalue, in turn capable of returning the result of

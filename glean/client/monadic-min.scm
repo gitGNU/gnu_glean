@@ -99,9 +99,12 @@
 
 (define (client-return value)
   "Return a state mvalue seeded with VALUE."
-  (lambda (state)
-    "Return a state-pair of value and STATE."
-    (stateful value state)))
+  (lambda (st8)
+    "Return a state-pair of value and ST8."
+    (match (state-format st8)
+      ('records (stateful value st8))
+      ('sxml    `(stateful (result ,value)
+                           ,(state-serialize st8 (state-format st8)))))))
 
 (define (client-bind mvalue mproc)
   "Return a state mvalue, in turn capable of returning the result of
@@ -115,9 +118,20 @@ applying MVALUE to MPROC."
         (log new-stateful (log-level))
         ;; Return the state-pair resulting from applying the new
         ;; state to mproc seeded with the new result.
-        (if (nothing? new-stateful)
-            new-stateful
-            ((mproc (result new-stateful)) (state new-stateful)))))))
+        (match new-stateful
+          ;; Error in process
+          ((? nothing?)
+           (match (state-format st8)
+             ('records new-stateful)
+             ('sxml    `(nothing
+                         (nothing-id ,(nothing-id new-stateful))
+                         (nothing-context ,(nothing-context new-stateful))))))
+          ;; Early return
+          (('stateful ('result value) state)
+           `(stateful (result ,value)
+                      ,(state-serialize st8 (state-format st8))))
+          ;; Continue
+          (_ ((mproc (result new-stateful)) (state new-stateful))))))))
 
 (define-monad client-monad
   (bind   client-bind)
@@ -202,7 +216,8 @@ interpretation by mlogger, to emit meaningful lounge-monad message."
 
 ;;;; 'State' Generating Procedures
 
-(define (register-player name password profile-server library-server)
+(define* (register-player name password profile-server library-server
+                          #:optional (format 'records))
   "Return 'lounge state' upon successful registration with the
 lounge using NAME. Raise an Exchange Error otherwise."
   (let ((rs (call/exchange profile-server auths? regq
@@ -211,9 +226,10 @@ lounge using NAME. Raise an Exchange Error otherwise."
     (if (nothing? rs)
         rs
         (mk-state (auths-token rs) (auths-prof-server rs)
-                  (auths-mod-server rs)))))
+                  (auths-mod-server rs) format))))
 
-(define (authenticate-player name password profile-server)
+(define* (authenticate-player name password profile-server
+                              #:optional (format 'records))
   "Return 'lounge state' upon successful authentication with the
 lounge using NAME. Raise an Exchange Error otherwise."
   (let ((rs (call/exchange profile-server auths? authq
@@ -221,7 +237,7 @@ lounge using NAME. Raise an Exchange Error otherwise."
     (if (nothing? rs)
         rs
         (mk-state (auths-token rs) (auths-prof-server rs)
-                  (auths-mod-server rs)))))
+                  (auths-mod-server rs) format))))
 
 
 ;;;; Composite Transactions
@@ -270,15 +286,13 @@ transactions to activate these modules for the player."
         (req-maps   (push-active-modules (if negate?
                                              (cons 'negate hashpairs)
                                              hashpairs)))
-        ;; Get hashmaps if necessary.
-        (hashmap    (if (eqv? req-maps 'unimportant)
-                        (return req-maps)
-                        (fetch-hashmap req-maps))))
-     ;; Update profile scorecards with hashmaps.
-     (if (eqv? hashmap 'unimportant)
-         (return hashmap)
-         ;; Missing `return' in front of (push-scorecard)?
-         (push-scorecard hashmap))) state))
+        ;; Get hashmaps if necessary.  If not, Return valid mvalue.
+        (hashmap    (match req-maps
+                      (#t (return #t))
+                      (_  (fetch-hashmap req-maps))))
+        ;; Update profile scorecards with hashmaps if necessary.
+        (auths      (push-scorecard hashmap)))
+     (return auths)) state))
 
 (define (next-challenge state)
   "Given the usual STATE of token, lounge and library, return the
@@ -288,22 +302,19 @@ next-challenge for the player associated with token."
         ;; Get next challenge blobhash/counter
         (challenge-details (fetch-challenge-id))
         (challenge         (match challenge-details
-                             (('active-modules . _)
-                              (return '(no-active-modules)))
+                             (('active-modules _)
+                              (lambda (st8) (nothing 'no-active-modules #t)))
                              ((lxp dhash shash counter)
                               (fetch-challenge lxp dhash shash counter))))
+        ;; Check for upgrade, if we have active modules.
         (upgrade           (match challenge
                              ((('upgrade-map . _))
                               (push-upgrade (car challenge)))
-                             (otherwise (return otherwise))))
-        ;; Try again after upgrade
-        (challenge-details (fetch-challenge-id))
-        (challenge         (match challenge-details
-                             (('active-modules . _)
-                              (return '(no-active-modules)))
-                             ((lxp dhash shash counter)
-                              (fetch-challenge lxp dhash shash counter)))))
-     (return challenge)) state))
+                             (_ (return challenge))))
+        ;; Try again after upgrade, if necessary.
+        (new-details       (fetch-challenge-id))
+        (new-challenge     (apply fetch-challenge challenge-details)))
+     (return new-challenge)) state))
 
 (define (submit-answer answer state)
   "Given the usual STATE of token, lounge and library, submit the
@@ -311,12 +322,10 @@ player's answer for assesment, and push the result of assesment to the
 player's profile."
   ((mlet* client-monad
        ((test              (test-servers))
-        ;; Evaluate answer
         (challenge-details (fetch-challenge-id))
-        (evaluation (apply fetch-evaluation answer
-                           challenge-details))
+        (evaluation        (apply fetch-evaluation answer challenge-details))
         ;; Update profile scorecard…
-        (pushed (push-evaluation (car evaluation))))
+        (pushed            (push-evaluation (car evaluation))))
      ;; …But return evaluation result + new state
      (return evaluation)) state))
 
@@ -324,17 +333,17 @@ player's profile."
   "Given the usual STATE of token, lounge and library, request lounge
 delete the player identified by token."
   ((mlet* client-monad
-       ((test (test-servers)))
-     ;; Missing `return' in front of (push-deletion)?
-     (push-deletion)) state))
+       ((test (test-servers))
+        (ok   (push-deletion)))
+     (return ok)) state))
 
 (define (known-modules state)
   "Given the usual STATE of token, lounge and library, request library
 provides us with details of available modules."
   ((mlet* client-monad
-       ((test (test-servers 'library)))
-     ;; Missing `return' in front of (fetch-known-modules)?
-     (fetch-known-modules)) state))
+       ((test   (test-servers 'library))
+        (knowns (fetch-known-modules)))
+     (return knowns)) state))
 
 
 ;;;;; Helper Procedures
@@ -370,8 +379,8 @@ expected."
                       (()          #t)
                       ((extractor) (extractor rs))
                       (extractors  (proc-map rs extractors)))
-                    ;; If this is a lounge operation then we expect a means to
-                    ;; extract a new state from the response and state.
+                    ;; If this is a lounge operation then we expect a means
+                    ;; to extract a new state from the response and state.
                     (if state-extractor (state-extractor rs st8) st8))))))
 
 ;;;;; Helper Macros
@@ -405,12 +414,11 @@ expected."
                        set!q
                        (lambda (rs st8)
                          (match rs
-                           ((? set!s?) (mk-state (set!s-token rs)
-                                                 (state-lng st8)
-                                                 (state-lib st8)))
+                           ((? set!s?) (set-state-tk st8 (set!s-token rs)))
                            ((? auths?) (mk-state (auths-token       rs)
                                                  (auths-prof-server rs)
-                                                 (auths-mod-server  rs))))))
+                                                 (auths-mod-server  rs)
+                                                 (state-format      st8))))))
               (input:  field value)
               (apply:  (lambda (rs)
                          (match rs
@@ -505,9 +513,7 @@ human-friendly information about active-modules."
   "Return a client mvalue which, when invoked, returns the result of a
 viewq request."
   (xchange (lounge: views? viewq (lambda (rs st8)
-                                   (mk-state (views-token rs)
-                                             (state-lng   st8)
-                                             (state-lib   st8))))
+                                   (set-state-tk st8 (views-token rs))))
            (input:  )
            (apply:  views-details)))
 
@@ -516,11 +522,10 @@ viewq request."
   (xchange (lounge: (lambda (rs) (or (chauths? rs) (set!s? rs)))
                     chauthq
                     (lambda (rs st8)
-                      (mk-state (match rs
-                                  ((? set!s?)   (set!s-token rs))
-                                  ((? chauths?) (chauths-token rs)))
-                                (state-lng st8)
-                                (state-lib st8))))
+                      (set-state-tk st8
+                                    (match rs
+                                      ((? set!s?)   (set!s-token rs))
+                                      ((? chauths?) (chauths-token rs))))))
            (input:  )
            (apply:  (lambda (rs)
                       (match rs
@@ -538,13 +543,15 @@ viewq request."
   (xchange (lounge: auths? evauthq (lambda (rs st8)
                                      (mk-state (auths-token       rs)
                                                (auths-prof-server rs)
-                                               (auths-mod-server  rs))))
+                                               (auths-mod-server  rs)
+                                               (state-format      st8))))
            (input:  evaluation)
            (apply:  )))
 
 (define (push-deletion)
   "Return a client-monad mval for a delpq request."
-  (xchange (lounge: acks? delpq (const #f))
+  (xchange (lounge: acks? delpq (lambda (rs st8)
+                                  (mk-state #f #f #f (state-format st8))))
            (input:  )
            (apply:  )))
 

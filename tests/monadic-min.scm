@@ -111,42 +111,65 @@
          ((? nothing? noth)
           (eq? 'unknown-user (neg-msg (nothing-context noth)))))))
 
-(define (auth) (apply authenticate-player test-creds))
+(define* (auth #:optional (format 'records))
+  (apply authenticate-player (append test-creds `(,format))))
+
+(define (sxml-test obj predicate)
+  (match obj
+    (('stateful ('result (? predicate))
+                (or ('state ('token   tk)
+                            ('lounge  lng)
+                            ('library lib)
+                            ('format  format))
+                    ('state #f)))
+     #t)))
 
 ;;;;; Tests for: view-player
 
+(define (view-player-result? result)
+  (match result ((test-name %default-lounge% %default-library% ()) #t)))
+
 (test-assert "view-player"
   (match (view-player (auth))
-    ((? stateful? st8f)
-     (match (result st8f)
-       ((test-name %default-lounge% %default-library% ()) #t)))))
+    ((? stateful? st8f) (view-player-result? (result st8f)))))
+
+(test-assert "view-player-sxml"
+  (sxml-test (view-player (auth 'sxml)) view-player-result?))
 
 ;;;;; Tests for: fallback-view-player
 
+(define (fallback-view-player-result? result)
+  (match result ((test-name %default-lounge% %default-library% ()) #t)))
+
 (test-assert "fallback-view-player"
   (match (fallback-view-player (auth))
-    ((? stateful? st8f)
-     (match (result st8f)
-       ((test-name %default-lounge% %default-library% ()) #t)))))
+    ((? stateful? st8f) (fallback-view-player-result? (result st8f)))))
+
+(test-assert "fallback-view-player-sxml"
+  (sxml-test (fallback-view-player (auth 'sxml))
+             fallback-view-player-result?))
 
 ;;;;; Tests for: modify-player
+
+(define (modify-player-result? result) (and (boolean? result) result))
 
 (test-assert "modify-player-name"
   (let* ((test-name2 "new-name")
          (auth2 (lambda ()
                   (apply authenticate-player test-name2 (cdr test-creds)))))
-    (and (match (modify-player 'name `(,test-name2 . ,test-pw) (auth))
-           ((? stateful? st8f) (match (result st8f) (#t #t))))
-         (match (modify-player 'name `(,test-name . ,test-pw) (auth2))
-           ((? stateful? st8f) (match (result st8f) (#t #t)))))))
+    (and
+     (sxml-test (modify-player 'name `(,test-name2 . ,test-pw) (auth 'sxml))
+                modify-player-result?)
+     (match (modify-player 'name `(,test-name . ,test-pw) (auth2))
+       ((? stateful? st8f) (modify-player-result? (result st8f)))))))
 
 (test-assert "modify-player-password"
   (let* ((test-pw2 "new-pass")
          (auth2 (lambda ()
                   (apply authenticate-player (car test-creds) test-pw2
                          (cddr test-creds)))))
-    (and (match (modify-player 'password test-pw2 (auth))
-           ((? stateful? st8f) (match (result st8f) (#t #t))))
+    (and (sxml-test (modify-player 'password test-pw2 (auth 'sxml))
+                    modify-player-result?)
          (match (modify-player 'password test-pw (auth2))
            ((? stateful? st8f) (match (result st8f) (#t #t)))))))
 
@@ -187,15 +210,19 @@
 
 ;;;;; Tests for: known-modules
 
+(define (known-modules-result? result)
+  (match result
+    (() (error "No disciplines in the library."))
+    (((hashes ids names versions keywords synopsi logos) ...) hashes)
+    (_ (error "Wrong man... Just wrong."))))
+
 (test-assert "known-modules"
   (match (known-modules (auth))
-    ((? stateful? st8f)
-     (match (result st8f)
-       (() (error "No disciplines in the library."))
-       (((hashes ids names versions keywords synopsi logos) ...)
-        hashes)
-       (_ (error "Wrong man... Just wrong."))))
+    ((? stateful? st8f) (known-modules-result? (result st8f)))
     (_ (error "Definitely wrong."))))
+
+(test-assert "known-modules-sxml"
+  (sxml-test (known-modules (auth 'sxml)) known-modules-result?))
 
 (define (knowns)
   (match (result (known-modules (auth)))
@@ -206,12 +233,21 @@
 
 ;; We test all disciplines in the store.  If this fails, it could be a faulty
 ;; discipline, or faulty view-set.
+
+(define (view-set-result? result)
+  (match result
+    ((hash id name version keywords synopsis description creator
+           'resources 'attributes properties children logo) #t)))
+
 (test-assert "view-set"
   (match (map (cute view-set <> (auth)) (knowns))
-    (((? stateful? st8fs) ...) 
-     (match (map result st8fs)
-       (((hash id name version keywords synopsis description creator
-               'resources 'attributes properties children logo) ...) #t)))))
+    (((? stateful? st8fs) ...)
+     (fold (lambda (current previous)
+             (if previous (view-set-result? current) #f))
+           #t (map result st8fs)))))
+
+(test-assert "view-set-sxml"
+  (sxml-test (view-set (car (knowns)) (auth 'sxml)) view-set-result?))
 
 ;;;;; Tests for: add-active-modules
 
@@ -219,33 +255,54 @@
 ;; faulty discipline or a faulty add-active-modules.
 (test-assert "add-active-modules"
   (match (add-active-modules (knowns) (auth))
-    ((? stateful? st8f) (match (result st8f) (#t #t)))))
+    ((? stateful? st8f) (modify-player-result? (result st8f)))))
+
+;; The sensible next step would be to de-activate the disciplines (or even to
+;; purge them).  Neither is currently working.  This results in us having to
+;; test either 'records or 'sxml based add-active-modules.
+
+(test-skip 1)
+(test-assert "add-active-modules-sxml"
+  (sxml-test (add-active-modules (knowns) (auth 'sxml))
+             modify-player-result?))
 
 ;;;;; Tests for: next-challenge
 
-;; FIXME: output of next-challenge is incompatible with sxml (reason: pair).
+(define (next-challenge-result? result)
+  (match result ((((problem . resources) options type)) #t)))
+
+;; FIXME: output of next-challenge is incompatible with sxml. Reasons:
+;; Return of unlabeled list, use of pair.
 ;; Also the output is needlessly wrapped in a list.
 (test-assert "next-challenge"
   (match (next-challenge (auth))
-    ((? stateful? st8f)
-     (match (result st8f)
-       ((((problem . resources) options type)) #t)))))
+    ((? stateful? st8f) (next-challenge-result? (result st8f)))))
+
+(test-assert "next-challenge-sxml"
+  (sxml-test (next-challenge (auth 'sxml)) next-challenge-result?))
 
 ;;;;; Tests for: submit-answer
 
+(define (submit-answer-result? result)
+  (match result (((? boolean?) solution) #t)))
+
 (test-assert "submit-answer"
   (match (submit-answer "bogus" (auth))
-    ((? stateful? st8f)
-     (match (result st8f)
-       (((? boolean?) solution) #t)))))
+    ((? stateful? st8f) (submit-answer-result? (result st8f)))))
+
+(test-assert "submit-answer-sxml"
+  (sxml-test (submit-answer "bogus" (auth 'sxml)) submit-answer-result?))
 
 ;;;;; Tests for: delete-player
 
 (test-assert "delete-player"
   (match (delete-player (auth))
-    ((? stateful? st8f)
-     (and (match (result st8f) (#t #t))
-          (match (state  st8f) (#f #t))))))
+    ((? stateful? st8f) (modify-player-result? (result st8f)))))
+
+(test-assert "delete-player-sxml"
+  (begin
+    (register-player test-name test-pw %default-lounge% %default-library%)
+    (sxml-test (delete-player (auth 'sxml)) modify-player-result?)))
 
 (test-end "monadic-min")
 
