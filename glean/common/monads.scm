@@ -75,6 +75,8 @@
             state
             mk-state
             state?
+            null-state
+            null-state?
             state-tk
             set-state-tk
             state-lng
@@ -84,6 +86,7 @@
             state-format
             set-state-format
             state-serialize
+            state-unserialize
             mlogger
             )
   #:replace (imported-modules
@@ -321,6 +324,14 @@ lifted in monad, for which proc returns true."
 (define* (mk-state token lounge library #:optional (format 'records))
   (mecha-state token lounge library format))
 
+(define* (null-state #:optional (lounge "") (library "") (format 'records))
+  (mk-state 0 lounge library format))
+
+(define (null-state? st8)
+  (match st8
+    (($ <st8> 0 (? string?) (? string?) (? symbol?)) #t)
+    (_                                               #f)))
+
 (define (state-serialize st8 format)
   (match format
     ('records st8)
@@ -330,6 +341,18 @@ lifted in monad, for which proc returns true."
                    (format  ,(state-format st8))))
     (_     (throw 'glean-logic-error "STATE-SERIALIZE: unexpected format"
                   format))))
+
+(define (state-unserialize st8 format)
+  (match format
+    ('records st8)
+    ('sxml    (match st8
+                (('state ('token   tk)
+                         ('lounge  lng)
+                         ('library lib)
+                         ('format  form))
+                 (mk-state (inexact->exact tk) lng lib form))))
+    (_        (throw 'glean-logic-error "STATE-UNSERIALIZE: unexpected format"
+                     format))))
 
 (define (state-return value)
   "Return a state mvalue seeded with VALUE."

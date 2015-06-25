@@ -31,6 +31,7 @@
 (define-module (tests monads)
   #:use-module (glean common monads)
   #:use-module (glean common utils)
+  #:use-module (ice-9 match)
   #:use-module (srfi srfi-64)
   )
 
@@ -38,6 +39,7 @@
 ;;;; Tests
 
 (test-begin "monads")
+
 ;;; Test whether `mlogger' indeed switches on and off, depending on `logger',
 ;;; and whether `mlogger' handles bogus messages.
 (parameterize ((logger (const #t)))
@@ -46,6 +48,32 @@
 (parameterize ((logger (const #f)))
   (test-assert "mlogger-off"
     (not ((mlogger boolean? (const #t)) 'message 'log-level))))
-(test-end)
+
+;;;;; Tests for: state-serialize
+
+(let ((st8 (mk-state 6546 "lng" "lib")))
+  (test-assert "state-serialize"
+    (equal? (state-serialize st8 'records) st8))
+
+  (test-assert "state-serialize-sxml"
+    (match (state-serialize st8 'sxml)
+      (('state ('token 6546)
+               ('lounge "lng")
+               ('library "lib")
+               ('format 'records))))))
+
+;;;;; Tests for: state-unserialize
+
+(let ((st8 (mk-state 65464 "lng" "lib")))
+
+  (test-assert "state-unserialize"
+    (equal? (state-unserialize (state-serialize st8 'records) 'records)
+            st8))
+
+  (test-assert "state-unserialize-sxml"
+    (equal? (state-unserialize (state-serialize st8 'sxml) 'sxml)
+            st8)))
+
+(test-end "monads")
 
 ;;; monads ends here
