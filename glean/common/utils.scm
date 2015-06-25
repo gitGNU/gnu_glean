@@ -63,6 +63,7 @@
             nothing?
             nothing-id
             nothing-context
+            nothing-serialize
             inform
             caution
             insist
@@ -151,6 +152,14 @@ pair or improper list."
   nothing?
   (id      nothing-id)
   (context nothing-context))
+
+(define (nothing-serialize nothing format)
+  (match format
+    ('records nothing)
+    ('sxml `(nothing (id ,(nothing-id nothing))
+                     ,(map object->string (nothing-context nothing))))
+    (_     (throw 'glean-logic-error "STATEFUL-SERIALIZE: unexpected format"
+                  format))))
 
 
 ;;;; UI Convenience
