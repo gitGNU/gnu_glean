@@ -224,9 +224,10 @@ lounge using NAME. Raise an Exchange Error otherwise."
                            name password profile-server
                            library-server)))
     (if (nothing? rs)
-        rs
-        (mk-state (auths-token rs) (auths-prof-server rs)
-                  (auths-mod-server rs) format))))
+        (nothing-serialize rs format)
+        (state-serialize (mk-state (auths-token rs) (auths-prof-server rs)
+                                   (auths-mod-server rs) format)
+                         format))))
 
 (define* (authenticate-player name password profile-server
                               #:optional (format 'records))
@@ -235,46 +236,48 @@ lounge using NAME. Raise an Exchange Error otherwise."
   (let ((rs (call/exchange profile-server auths? authq
                            name password)))
     (if (nothing? rs)
-        rs
-        (mk-state (auths-token rs) (auths-prof-server rs)
-                  (auths-mod-server rs) format))))
+        (nothing-serialize rs format)
+        (state-serialize (mk-state (auths-token rs) (auths-prof-server rs)
+                                   (auths-mod-server rs) format)
+                         format))))
 
 
 ;;;; Composite Transactions
-(define (view-set fullhash state)
+(define* (view-set fullhash state #:optional (format 'records))
   "Return a user-friendly list of full set fields as provided by the
 details response, for the set identified by FULLHASH."
   ((mlet* client-monad
        ((test         (test-servers 'library))
         (detail       (fetch-detail fullhash)))
-     (return detail)) state))
+     (return detail)) (state-unserialize state format)))
 
-(define (view-player state)
+(define* (view-player state #:optional (format 'records))
   "Return a user-friendly list of profile fields for display for the
 profile identified by the token in STATE."
   ((mlet* client-monad
        ((test         (test-servers))
         (details      (fetch-profile))
         (full-details (details->full-details details)))
-     (return full-details)) state))
+     (return full-details)) (state-unserialize state format)))
 
-(define (fallback-view-player state)
+(define* (fallback-view-player state #:optional (format 'records))
   "Return a module-less list of profile fields for display for the
 profile identified by the token in STATE."
   ((mlet* client-monad
        ((test         (test-servers 'lounge))
         (details      (fetch-profile)))
-     (return details)) state))
+     (return details)) (state-unserialize state format)))
 
-(define (modify-player id value state)
+(define* (modify-player id value state #:optional (format 'records))
   "Return an auths confirming that the profile identified by STATE has
 had its field (ID) updated with string VALUE."
   ((mlet* client-monad
        ((test      (test-servers 'lounge))
         (auths     (push-profile id value)))
-     (return auths)) state))
+     (return auths)) (state-unserialize state format)))
 
-(define* (add-active-modules fullhashes state #:optional (negate? #f))
+(define* (add-active-modules fullhashes state #:optional (negate? #f)
+                             (format 'records))
   "Given a set of FULLHASHES provided, for instance, by the player
 choosing from amongst a list of modules, carry out the necessary
 transactions to activate these modules for the player."
@@ -283,18 +286,19 @@ transactions to activate these modules for the player."
         ;; Get set-hashpairs (minhash . fullhash)
         (hashpairs  (fetch-hashpairs fullhashes))
         ;; Update profile active modules, retrieve newly required hashmaps.
-        (req-maps   (push-active-modules (if negate?
-                                             (cons 'negate hashpairs)
-                                             hashpairs)))
+        (req-maps   (push-active-modules (if (or (not negate?)
+                                                 (string=? negate? "f"))
+                                             hashpairs
+                                             (cons 'negate hashpairs))))
         ;; Get hashmaps if necessary.  If not, Return valid mvalue.
         (hashmap    (match req-maps
                       (#t (return #t))
                       (_  (fetch-hashmap req-maps))))
         ;; Update profile scorecards with hashmaps if necessary.
         (auths      (push-scorecard hashmap)))
-     (return auths)) state))
+     (return auths)) (state-unserialize state format)))
 
-(define (next-challenge state)
+(define* (next-challenge state #:optional (format 'records))
   "Given the usual STATE of token, lounge and library, return the
 next-challenge for the player associated with token."
   ((mlet* client-monad
@@ -314,9 +318,9 @@ next-challenge for the player associated with token."
         ;; Try again after upgrade, if necessary.
         (new-details       (fetch-challenge-id))
         (new-challenge     (apply fetch-challenge challenge-details)))
-     (return new-challenge)) state))
+     (return new-challenge)) (state-unserialize state format)))
 
-(define (submit-answer answer state)
+(define* (submit-answer answer state #:optional (format 'records))
   "Given the usual STATE of token, lounge and library, submit the
 player's answer for assesment, and push the result of assesment to the
 player's profile."
@@ -327,23 +331,23 @@ player's profile."
         ;; Update profile scorecard…
         (pushed            (push-evaluation (car evaluation))))
      ;; …But return evaluation result + new state
-     (return evaluation)) state))
+     (return evaluation)) (state-unserialize state format)))
 
-(define (delete-player state)
+(define* (delete-player state #:optional (format 'records))
   "Given the usual STATE of token, lounge and library, request lounge
 delete the player identified by token."
   ((mlet* client-monad
        ((test (test-servers))
         (ok   (push-deletion)))
-     (return ok)) state))
+     (return ok)) (state-unserialize state format)))
 
-(define (known-modules state)
+(define* (known-modules state #:optional (format 'records))
   "Given the usual STATE of token, lounge and library, request library
 provides us with details of available modules."
   ((mlet* client-monad
        ((test   (test-servers 'library))
         (knowns (fetch-known-modules)))
-     (return knowns)) state))
+     (return knowns)) (state-unserialize state format)))
 
 
 ;;;;; Helper Procedures
@@ -359,9 +363,11 @@ expected."
       ((? response? rs)
        (match (rs-content rs)
          ((? predicate result) result)
+         ((? negs? ngs)        (nothing 'exchange-error
+                                        `(,(neg-msg ngs) ,(neg-orig ngs))))
          (otherwise            (nothing 'exchange-error otherwise))))
-      (otherwise        (nothing 'exchange-error
-                                 (negs rq '(exchange servers-down)))))))
+      (otherwise               (nothing 'exchange-error
+                                        `((exchange servers-down) ,rq))))))
 
 (define* (exchange-do #:key (predicate (const #f)) (constructor (const #f))
                       (value-extractors '()) (ins '()) lounge?
@@ -551,7 +557,9 @@ viewq request."
 (define (push-deletion)
   "Return a client-monad mval for a delpq request."
   (xchange (lounge: acks? delpq (lambda (rs st8)
-                                  (mk-state #f #f #f (state-format st8))))
+                                  (null-state (state-lng    st8)
+                                              (state-lib    st8)
+                                              (state-format st8))))
            (input:  )
            (apply:  )))
 
